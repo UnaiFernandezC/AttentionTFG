@@ -38,6 +38,7 @@ public static class SceneLoader
     public const string PLANNING_ORDEN_CORRECTO      = "Planning_OrdenCorrecto";       // ← Orden correcto
     public const string PLANNING_RESOURCE_MANAGEMENT = "Planning_ResourceManagement";  // ← Gestión de recursos
     public const string PLANNING_OPTIMAL_PATH        = "Planning_OptimalPath";          // ← Ruta optima
+    public const string PLANNING_ACTION_SEQUENCE     = "Planning_ActionSequence";       // ← Secuencia de acciones
 
     // --- Slots vacíos para los 25 minijuegos futuros ---
     // Añade aquí las constantes de cada nuevo minijuego
