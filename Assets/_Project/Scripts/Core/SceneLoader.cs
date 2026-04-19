@@ -30,6 +30,7 @@ public static class SceneLoader
 
     // --- Minijuegos: Gestión Emocional ---
     public const string EMOTION_AVENTURA = "Aventura emocional";
+    public const string EMOTION_BALANCE  = "Emotional_Balance";          // ← Manten el equilibrio
 
     // --- Minijuegos: Atención ---
     public const string ATTENTION_SCENE = "Attention";

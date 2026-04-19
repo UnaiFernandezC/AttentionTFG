@@ -165,21 +165,10 @@ Camera:
   m_Enabled: 1
   serializedVersion: 2
   m_ClearFlags: 2
-  m_BackGroundColor: {r: 0.08, g: 0.09, b: 0.18, a: 1}
+  m_BackGroundColor: {r: 0.06, g: 0.10, b: 0.16, a: 1}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
   m_FOVAxisMode: 0
-  m_Iso: 200
-  m_ShutterSpeed: 0.005
-  m_Aperture: 16
-  m_FocusDistance: 10
-  m_FocalLength: 50
-  m_BladeCount: 5
-  m_Curvature: {x: 2, y: 11}
-  m_BarrelClipping: 0.25
-  m_Anamorphism: 0
-  m_SensorSize: {x: 36, y: 24}
-  m_LensShift: {x: 0, y: 0}
   m_NormalizedViewPortRect:
     serializedVersion: 2
     x: 0
@@ -255,31 +244,19 @@ MonoBehaviour:
   m_GameObject: {fileID: 100000020}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d3d3574ced71506458b22379e604a08b, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  minigameName: Gestion de recursos
-  category: 4
-  starsEasy: 20
-  starsMedium: 14
-  starsHard: 9
-  goal: 100
-  actions:
-  - icon: "\u273F"
-    actionName: Pasito corto
-    cost: 1
-    progress: 6
-    buttonColor: {r: 0, g: 0, b: 0, a: 1}
-  - icon: "\u2726"
-    actionName: Buen avance
-    cost: 2
-    progress: 10
-    buttonColor: {r: 0, g: 0, b: 0, a: 1}
-  - icon: "\u26A1"
-    actionName: Super impulso
-    cost: 5
-    progress: 25
-    buttonColor: {r: 0, g: 0, b: 0, a: 1}
+  m_Script: {fileID: 11500000, guid: c53c5d6f0653da644956e84b62f494bf, type: 3}
+  m_Name:
+  m_EditorClassIdentifier:
+  minigameName: Manten el equilibrio
+  category: 2
+  safeZoneWidth: 0.4
+  yellowZoneWidth: 0.68
+  driftAmplitude: 0.2
+  driftSpeed: 0.4
+  inputForce: 1.6
+  damping: 0.86
+  winTime: 12
+  loseTime: 6
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

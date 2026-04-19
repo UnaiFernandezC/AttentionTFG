@@ -63,6 +63,11 @@ public class ColorMatchGameController : MinigameBase
     // MinigameBase
     // ═══════════════════════════════════════════════════════════════════════
 
+    protected override string GetIntroDescription() =>
+        "Encuentra todas las parejas de cartas del mismo color.\n" +
+        "Haz clic en dos cartas para darles la vuelta.\n" +
+        "Si coinciden se quedan descubiertas. Si no, se vuelven a tapar.";
+
     protected override void OnMinigameStart()
     {
         var diff = GameManager.Instance != null

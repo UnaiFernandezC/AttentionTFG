@@ -84,6 +84,11 @@ public class PatternGameController : MinigameBase
 
     // ─── MinigameBase ─────────────────────────────────────────────────────
 
+    protected override string GetIntroDescription() =>
+        "Se te mostrara un patron de casillas iluminadas durante unos segundos.\n" +
+        "Cuando desaparezca, reproduce el mismo patron haciendo clic en las casillas.\n" +
+        "3 rondas, cada vez mas dificil. Falla una y pierdes!";
+
     protected override void OnMinigameStart()
     {
         EnsureEventSystem();

@@ -112,6 +112,11 @@ public class ResourceGameController : MinigameBase
     //  MINIGAME BASE
     // ═══════════════════════════════════════════════════════════════════════
 
+    protected override string GetIntroDescription() =>
+        "Tienes estrellas de energia limitadas. Elige las acciones correctas\n" +
+        "para llenar la barra de progreso al 100%.\n" +
+        "Si se te acaban las estrellas sin llegar al 100%, perderas.";
+
     protected override void OnMinigameStart()
     {
         if (actions == null || actions.Count == 0)

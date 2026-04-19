@@ -50,11 +50,28 @@ public class JuegoMemoria : MonoBehaviour
 
     private readonly int[] monedasPorRonda = { 2, 4, 6 };
 
-    private void Start()
+    private IEnumerator Start()
     {
         posicionInicial = camaraPrincipal.position;
         rotacionInicial = camaraPrincipal.rotation;
         panelBotones.SetActive(false);
+
+        // Panel de introduccion
+        bool _started = false;
+        var introCanvas = IntroPanel.Build(
+            "Algo no cuadra",
+            "Memoria",
+            "Observa bien la habitacion. Tienes unos segundos para memorizar.\n" +
+            "Despues, algunos objetos desapareceran.\n" +
+            "Tu tarea es identificar cuales han desaparecido y senalarlos.",
+            () => _started = true);
+
+        while (!_started)
+        {
+            if (Input.GetKeyDown(KeyCode.Space)) _started = true;
+            yield return null;
+        }
+        Object.Destroy(introCanvas);
 
         StartCoroutine(FlujoJuego());
     }

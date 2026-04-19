@@ -96,6 +96,11 @@ public class ActionSequenceController : MinigameBase
     //  MINIGAME BASE
     // ═════════════════════════════════════════════════════════════════════
 
+    protected override string GetIntroDescription() =>
+        "Pulsa las acciones en el orden correcto para completar cada tarea.\n" +
+        "Si te equivocas, la secuencia vuelve al principio.\n" +
+        "Hay 3 rondas que superar. Piensa antes de pulsar.";
+
     protected override void OnMinigameStart()
     {
         EnsureES();

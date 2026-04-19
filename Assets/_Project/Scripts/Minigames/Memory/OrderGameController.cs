@@ -84,6 +84,11 @@ public class OrderGameController : MinigameBase
 
     // ─── MinigameBase ─────────────────────────────────────────────────────
 
+    protected override string GetIntroDescription() =>
+        "Apareceran numeros desordenados en pantalla.\n" +
+        "Haz clic en ellos de menor a mayor antes de que se acabe el tiempo.\n" +
+        "Hay 3 rondas con mas numeros y menos tiempo. Piensa rapido!";
+
     protected override void OnMinigameStart()
     {
         EnsureEventSystem();

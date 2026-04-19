@@ -105,6 +105,11 @@ public class OptimalPathController : MinigameBase
     //  MINIGAME BASE
     // ═════════════════════════════════════════════════════════════════════
 
+    protected override string GetIntroDescription() =>
+        "Haz clic en las casillas para moverte desde INICIO hasta META.\n" +
+        "Intenta llegar con el menor numero de pasos posible.\n" +
+        "Hay 3 niveles, cada uno con un mapa diferente.";
+
     protected override void OnMinigameStart()
     {
         EnsureES();

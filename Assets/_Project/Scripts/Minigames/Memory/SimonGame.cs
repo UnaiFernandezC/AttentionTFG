@@ -37,7 +37,7 @@ public class SimonGame : MonoBehaviour
     private int rondaActual = 1;
     private bool esperandoRespuesta = false;
 
-    void Start()
+    IEnumerator Start()
     {
         pantalla.SetActive(false);
         foreach (var b in botonesUI) b.gameObject.SetActive(false);
@@ -45,6 +45,23 @@ public class SimonGame : MonoBehaviour
         // Asegurarse que feedback está oculto al inicio
         if (feedbackMonedas != null)
             feedbackMonedas.SetActive(false);
+
+        // Panel de introduccion
+        bool _started = false;
+        var introCanvas = IntroPanel.Build(
+            "Simon Dice",
+            "Memoria",
+            "Observa los colores que aparecen en pantalla.\n" +
+            "Cuando sea tu turno, pulsa los botones en el mismo orden.\n" +
+            "La secuencia se hace mas larga con cada ronda. Concentracion!",
+            () => _started = true);
+
+        while (!_started)
+        {
+            if (Input.GetKeyDown(KeyCode.Space)) _started = true;
+            yield return null;
+        }
+        Object.Destroy(introCanvas);
 
         StartCoroutine(IniciarJuego());
     }

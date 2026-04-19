@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -26,8 +27,25 @@ public class MemorySelector : MonoBehaviour
 
     private MemoryQuestion currentQuestion;
 
-    void Start()
+    IEnumerator Start()
     {
+        // Panel de introduccion
+        bool _started = false;
+        var introCanvas = IntroPanel.Build(
+            "Aventura emocional",
+            "Gestion emocional",
+            "Lee cada situacion con atencion y elige la respuesta correcta.\n" +
+            "Si aciertas, el personaje avanzara hacia la meta.\n" +
+            "Piensa bien antes de responder, las emociones importan!",
+            () => _started = true);
+
+        while (!_started)
+        {
+            if (Input.GetKeyDown(KeyCode.Space)) _started = true;
+            yield return null;
+        }
+        Object.Destroy(introCanvas);
+
         // Clonar la lista original para no modificarla directamente
         remainingQuestions = new List<MemoryQuestion>(questions);
         LoadRandomQuestion();
@@ -37,7 +55,7 @@ public class MemorySelector : MonoBehaviour
     {
         if (remainingQuestions.Count == 0)
         {
-            Debug.Log("¡Se han acabado las preguntas!");
+            Debug.Log("ï¿½Se han acabado las preguntas!");
             return;
         }
 
@@ -46,7 +64,7 @@ public class MemorySelector : MonoBehaviour
         currentQuestion = remainingQuestions[randomIndex];
         remainingQuestions.RemoveAt(randomIndex); // Eliminarla para no repetir
 
-        // Mostrar título
+        // Mostrar tï¿½tulo
         if (questionTitleText != null)
             questionTitleText.text = currentQuestion.questionTitle;
 
@@ -65,16 +83,16 @@ public class MemorySelector : MonoBehaviour
     {
         if (selectedIndex == currentQuestion.correctIndex)
         {
-            Debug.Log("¡Respuesta correcta!");
+            Debug.Log("ï¿½Respuesta correcta!");
             characterJumper.JumpToNextPlatform();
         }
         else
         {
             Debug.Log("Respuesta incorrecta");
-            // Feedback visual aquí si quieres
+            // Feedback visual aquï¿½ si quieres
         }
 
-        // Cargar siguiente pregunta tras un pequeño delay
+        // Cargar siguiente pregunta tras un pequeï¿½o delay
         Invoke(nameof(LoadRandomQuestion), 1.2f);
     }
 }
