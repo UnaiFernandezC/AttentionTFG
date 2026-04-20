@@ -29,8 +29,9 @@ public static class SceneLoader
     public const string MEMORY_ALGO_NO_CUADRA = "¡Algo no cuadra!";
 
     // --- Minijuegos: Gestión Emocional ---
-    public const string EMOTION_AVENTURA = "Aventura emocional";
-    public const string EMOTION_BALANCE  = "Emotional_Balance";          // ← Manten el equilibrio
+    public const string EMOTION_AVENTURA      = "Aventura emocional";
+    public const string EMOTION_BALANCE       = "Emotional_Balance";           // ← Manten el equilibrio
+    public const string EMOTION_REDUCE_STRESS = "Emotional_ReduceStress_Easy"; // ← Reduce el estres
 
     // --- Minijuegos: Atención ---
     public const string ATTENTION_SCENE = "Attention";
