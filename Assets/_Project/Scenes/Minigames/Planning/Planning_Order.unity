@@ -259,7 +259,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   minigameName: Orden correcto
-  category: 0
+  category: 4
   numbersRound1: 4
   timeLimitRound1: 15
   numbersRound2: 6
