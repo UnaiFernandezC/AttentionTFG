@@ -27,13 +27,18 @@ public static class SceneLoader
     public const string MEMORY_PATTERN_RECALL = "Memory_PatternRecall";       // ← Repite el dibujo
     public const string MEMORY_SIMON_SAYS     = "SimonSays";
     public const string MEMORY_ALGO_NO_CUADRA = "¡Algo no cuadra!";
-    public const string MEMORY_FIND_CHANGE    = "Memory_FindChange_Easy";     // ← Cambios sutiles
+    public const string MEMORY_FIND_CHANGE      = "Memory_FindChange_Easy";     // ← Cambios sutiles
+    public const string MEMORY_POSITION_MEMORY  = "Memory_PositionMemory_Easy"; // ← Memoria de posiciones
+    public const string MEMORY_WORD_MEMORY      = "Memory_WordMemory_Easy";      // ← Palabras Fugaces
 
     // --- Minijuegos: Gestión Emocional ---
     public const string EMOTION_AVENTURA      = "Aventura emocional";
     public const string EMOTION_BALANCE       = "Emotional_Balance";           // ← Manten el equilibrio
     // --- Minijuegos: Atención ---
-    public const string ATTENTION_SCENE = "Attention";
+    public const string ATTENTION_SCENE            = "Attention";
+    public const string ATTENTION_OBJECT_TRACKING  = "Attention_ObjectTracking_Easy"; // ← Seguimiento de objeto
+    public const string ATTENTION_QUICK_REACTION   = "Attention_QuickReaction_Easy";  // ← Reacción rápida
+    public const string ATTENTION_RULE_SWITCH      = "Attention_RuleSwitch_Easy";      // ← Cambio de regla
 
     // --- Minijuegos: Planificación ---
     public const string PLANNING_ORDEN_CORRECTO      = "Planning_OrdenCorrecto";       // ← Orden correcto
