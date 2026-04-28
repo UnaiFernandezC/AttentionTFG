@@ -33,7 +33,14 @@ public static class SceneLoader
 
     // --- Minijuegos: Gestión Emocional ---
     public const string EMOTION_AVENTURA      = "Aventura emocional";
-    public const string EMOTION_BALANCE       = "Emotional_Balance";           // ← Manten el equilibrio
+    public const string EMOTION_BALANCE       = "Emotional_Balance";            // ← Manten el equilibrio
+    public const string EMOTION_CONSEQUENCES           = "Emotional_Consequences_Easy";          // ← Consecuencias emocionales
+    public const string EMOTION_PROGRESSIVE_REGULATION = "Emotional_ProgressiveRegulation_Easy"; // ← Regulacion progresiva
+    public const string EMOTION_ATTRACTION_CONTROL     = "Emotional_AttractionControl_Easy";      // ← Atraccion emocional
+    // --- Minijuegos: Control de impulsos ---
+    public const string IMPULSE_DONT_PRESS_YET   = "Impulse_DontPressYet_Easy";    // ← No pulses todavia
+    public const string IMPULSE_INVERSE_RESPONSE  = "Impulse_InverseResponse_Easy"; // ← Respuesta Inversa
+
     // --- Minijuegos: Atención ---
     public const string ATTENTION_SCENE            = "Attention";
     public const string ATTENTION_OBJECT_TRACKING  = "Attention_ObjectTracking_Easy"; // ← Seguimiento de objeto

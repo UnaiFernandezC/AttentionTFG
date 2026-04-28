@@ -1,0 +1,457 @@
+using System;
+using System.Collections;
+using UnityEngine;
+using UnityEngine.UI;
+using TMPro;
+
+/// <summary>
+/// Construye toda la UI de "No pulses todavia" de forma procedural.
+/// Sin prefabs ni assets externos.
+///
+/// Layout (1920x1080, CanvasScaler ScaleWithScreenSize):
+///   Header:        Titulo + categoria + indicadores de ronda
+///   Centro:        Boton grande (280x280), halo, texto de estado
+///   Panel lateral: Instruccion permanente + barra de cuenta atras
+///   Footer:        Boton Menu
+///   ResultPanel:   Overlay de victoria/derrota (por ronda y final)
+///
+/// La clase expone referencias publicas al GameManager:
+///   ButtonCtrl  → DontPressButtonController conectado al boton visual
+///   MainButton  → Button de Unity para registrar clicks
+/// </summary>
+public class DontPressUIController : MonoBehaviour
+{
+    // ── Helpers de color/vector ───────────────────────────────────────────
+    static Vector2 V(float x, float y) => new Vector2(x, y);
+    static Color   C(float r, float g, float b, float a = 1f) => new Color(r, g, b, a);
+
+    static readonly Color BG      = C(0.05f, 0.08f, 0.14f);
+    static readonly Color HDR     = C(0.03f, 0.05f, 0.10f);
+    static readonly Color PANEL   = C(0.07f, 0.11f, 0.20f);
+    static readonly Color ACCENT  = C(0.18f, 0.80f, 0.58f);
+    static readonly Color DIM     = C(0.40f, 0.55f, 0.65f);
+    static readonly Color CRED    = C(0.90f, 0.22f, 0.28f);
+    static readonly Color CGREEN  = C(0.22f, 0.86f, 0.54f);
+    static readonly Color CYELLOW = C(0.95f, 0.80f, 0.15f);
+
+    // ── Refs publicas ─────────────────────────────────────────────────────
+    public DontPressButtonController ButtonCtrl  { get; private set; }
+    public Button                    MainButton  { get; private set; }
+
+    // ── Refs internas ─────────────────────────────────────────────────────
+    Image[]          _roundDots;
+    TextMeshProUGUI  _statusText;    // texto grande bajo el boton
+    TextMeshProUGUI  _instrText;     // instruccion permanente en panel lateral
+    Image            _countdownBar;  // fill horizontal de cuenta atras
+    Image            _flashOverlay;
+
+    GameObject       _resultPanel;
+    TextMeshProUGUI  _resultTitle;
+    TextMeshProUGUI  _resultSub;
+
+    // ═════════════════════════════════════════════════════════════════════
+    // Construccion
+    // ═════════════════════════════════════════════════════════════════════
+
+    public void BuildUI(int rounds, Action onRestart, Action onMenu)
+    {
+        // ── Canvas ──────────────────────────────────────────────────────
+        var cGO = new GameObject("Canvas_DontPress");
+        cGO.transform.SetParent(transform, false);
+        var cv = cGO.AddComponent<Canvas>();
+        cv.renderMode   = RenderMode.ScreenSpaceOverlay;
+        cv.sortingOrder = 5;
+        var sc = cGO.AddComponent<CanvasScaler>();
+        sc.uiScaleMode         = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        sc.referenceResolution = V(1920f, 1080f);
+        sc.matchWidthOrHeight  = 0.5f;
+        cGO.AddComponent<GraphicRaycaster>();
+        var R = cGO.GetComponent<RectTransform>();
+
+        // ── Fondo ────────────────────────────────────────────────────────
+        MkImg(R, "BG",   BG,                           V(0,0), V(1,1), V(0,0), V(0,0));
+        MkImg(R, "Grad", C(0.00f,0.08f,0.18f,0.30f),  V(0,0), V(1,1), V(0,0), V(0,0));
+        BuildGrid(R);
+
+        // ── Header ──────────────────────────────────────────────────────
+        var hdr = MkImg(R, "Hdr", HDR, V(0,1), V(1,1), V(0,-44), V(0,88));
+        MkImg(hdr, "LineB", ACCENT,  V(0,0), V(1,0), V(0,1.5f), V(0,3));
+        MkImg(hdr, "AccL",  ACCENT,  V(0,0.18f), V(0,0.82f), V(3,0), V(6,0));
+
+        var ttl = MkTxt(hdr, "T", "NO PULSES TODAVIA", Color.white, 30,
+                        V(0.03f,0.12f), V(0.52f,0.88f));
+        ttl.fontStyle = FontStyles.Bold;
+        ttl.alignment = TextAlignmentOptions.MidlineLeft;
+        ttl.characterSpacing = 1.5f;
+
+        MkTxt(hdr, "Cat", "CONTROL DE IMPULSOS", DIM, 15,
+              V(0.52f,0.12f), V(0.72f,0.88f)).alignment = TextAlignmentOptions.MidlineRight;
+
+        // Indicadores de ronda (puntos)
+        _roundDots = BuildRoundDots(hdr, rounds);
+
+        // ── Panel instruccion (lateral izquierdo) ─────────────────────────
+        BuildInstructionPanel(R);
+
+        // ── Boton central ────────────────────────────────────────────────
+        BuildMainButton(R);
+
+        // ── Texto de estado (bajo el boton) ──────────────────────────────
+        _statusText = MkTxt(R, "StatusTxt",
+                            "Espera a que cambie a verde...",
+                            DIM, 28, V(0.20f, 0.28f), V(0.80f, 0.38f));
+        _statusText.alignment = TextAlignmentOptions.Center;
+        _statusText.fontStyle = FontStyles.Italic;
+
+        // ── Flash de impacto ─────────────────────────────────────────────
+        var flashGO = new GameObject("Flash");
+        flashGO.transform.SetParent(R, false);
+        var fRT = flashGO.AddComponent<RectTransform>();
+        fRT.anchorMin = V(0,0); fRT.anchorMax = V(1,1);
+        fRT.sizeDelta = V(0,0); fRT.anchoredPosition = V(0,0);
+        _flashOverlay = flashGO.AddComponent<Image>();
+        _flashOverlay.color = C(0,0,0,0);
+        flashGO.SetActive(false);
+
+        // ── Footer ──────────────────────────────────────────────────────
+        var bot = MkImg(R, "Bot", HDR, V(0,0), V(1,0), V(0,40), V(0,80));
+        MkImg(bot, "LineT", ACCENT, V(0,1), V(1,1), V(0,-1.5f), V(0,3));
+        MkTxt(bot, "Info",
+              "Resiste el impulso  •  Solo pulsa cuando el boton se ponga VERDE",
+              C(ACCENT.r, ACCENT.g - 0.08f, ACCENT.b - 0.05f),
+              16, V(0.01f,0), V(0.78f,1)).alignment = TextAlignmentOptions.MidlineLeft;
+        MkImg(bot, "Sep", C(1,1,1,0.10f), V(0.78f,0.1f), V(0.782f,0.9f), V(0,0), V(0,0));
+        MkBtn(bot, "Menu", C(0.12f,0.18f,0.32f), V(0.80f,0.08f), V(0.99f,0.92f), onMenu);
+
+        // ── Panel resultado ──────────────────────────────────────────────
+        BuildResultPanel(R, onRestart, onMenu);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    void BuildGrid(RectTransform R)
+    {
+        for (int i = 1; i < 6; i++)
+        {
+            float t = i / 6f;
+            MkImg(R, "GH_"+i, C(1,1,1,0.02f), V(0,t-0.001f), V(1,t+0.001f), V(0,0), V(0,0));
+            MkImg(R, "GV_"+i, C(1,1,1,0.02f), V(t-0.0006f,0), V(t+0.0006f,1), V(0,0), V(0,0));
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    Image[] BuildRoundDots(RectTransform hdr, int rounds)
+    {
+        var dots = new Image[rounds];
+        float startX = 0.75f;
+        float spacing = 0.04f;
+        for (int i = 0; i < rounds; i++)
+        {
+            var gO = new GameObject("Dot_" + i);
+            gO.transform.SetParent(hdr, false);
+            var rt = gO.AddComponent<RectTransform>();
+            rt.anchorMin        = V(startX + i * spacing, 0.5f);
+            rt.anchorMax        = V(startX + i * spacing, 0.5f);
+            rt.pivot            = V(0.5f, 0.5f);
+            rt.sizeDelta        = V(26f, 26f);
+            rt.anchoredPosition = V(0f, 0f);
+            var img = gO.AddComponent<Image>();
+            img.sprite = MakeCircleSprite(32);
+            img.color  = C(0.25f, 0.30f, 0.40f);
+            dots[i]    = img;
+        }
+        return dots;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    void BuildInstructionPanel(RectTransform R)
+    {
+        var panel = MkImg(R, "InstrPanel", C(0.04f,0.07f,0.14f,0.88f),
+                          V(0,0.15f), V(0,0.85f), V(90f,0), V(160f,0));
+        MkImg(panel, "Line", ACCENT, V(1,0), V(1,1), V(-1.5f,0), V(3,0));
+
+        MkTxt(panel, "T1", "ROJO", CRED, 22,
+              V(0.1f,0.72f), V(0.9f,0.92f)).fontStyle = FontStyles.Bold;
+        MkTxt(panel, "D1", "No pulses", DIM, 16,
+              V(0.1f,0.58f), V(0.9f,0.72f));
+
+        MkImg(panel, "Sep", C(1,1,1,0.08f), V(0.1f,0.53f), V(0.9f,0.54f), V(0,0), V(0,0));
+
+        MkTxt(panel, "T2", "VERDE", CGREEN, 22,
+              V(0.1f,0.35f), V(0.9f,0.52f)).fontStyle = FontStyles.Bold;
+        MkTxt(panel, "D2", "¡Pulsa ya!", DIM, 16,
+              V(0.1f,0.20f), V(0.9f,0.36f));
+
+        // Barra de cuenta atras (fill horizontal)
+        MkImg(panel, "BarBG", C(0.02f,0.04f,0.08f), V(0.1f,0.06f), V(0.9f,0.16f), V(0,0), V(0,0));
+        var fillGO = new GameObject("CDFill");
+        fillGO.transform.SetParent(panel, false);
+        var fillRT = fillGO.AddComponent<RectTransform>();
+        fillRT.anchorMin = V(0.1f,0.06f); fillRT.anchorMax = V(0.9f,0.16f);
+        fillRT.sizeDelta = V(0,0); fillRT.anchoredPosition = V(0,0);
+        _countdownBar             = fillGO.AddComponent<Image>();
+        _countdownBar.color       = CGREEN;
+        _countdownBar.type        = Image.Type.Filled;
+        _countdownBar.fillMethod  = Image.FillMethod.Horizontal;
+        _countdownBar.fillOrigin  = 0;
+        _countdownBar.fillAmount  = 0f;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    void BuildMainButton(RectTransform R)
+    {
+        // Halo exterior (anillo difuso)
+        var glowGO = new GameObject("Glow");
+        glowGO.transform.SetParent(R, false);
+        var glowRT = glowGO.AddComponent<RectTransform>();
+        glowRT.anchorMin = glowRT.anchorMax = V(0.5f, 0.5f);
+        glowRT.pivot     = V(0.5f, 0.5f);
+        glowRT.sizeDelta = V(380f, 380f);
+        glowRT.anchoredPosition = V(0, 20f);
+        var glowImg = glowGO.AddComponent<Image>();
+        glowImg.sprite = MakeCircleSprite(128);
+        glowImg.color  = C(0.80f, 0.18f, 0.22f, 0.22f);
+
+        // Boton principal
+        var btnGO = new GameObject("MainBtn");
+        btnGO.transform.SetParent(R, false);
+        var btnRT = btnGO.AddComponent<RectTransform>();
+        btnRT.anchorMin = btnRT.anchorMax = V(0.5f, 0.5f);
+        btnRT.pivot     = V(0.5f, 0.5f);
+        btnRT.sizeDelta = V(280f, 280f);
+        btnRT.anchoredPosition = V(0, 20f);
+
+        var btnImg = btnGO.AddComponent<Image>();
+        btnImg.sprite = MakeCircleSprite(256);
+        btnImg.color  = C(0.14f, 0.19f, 0.30f);
+
+        MainButton = btnGO.AddComponent<Button>();
+        MainButton.targetGraphic = btnImg;
+        var cb = MainButton.colors;
+        cb.normalColor      = Color.white;
+        cb.highlightedColor = C(0.90f, 0.90f, 0.90f);
+        cb.pressedColor     = C(0.70f, 0.70f, 0.70f);
+        MainButton.colors   = cb;
+
+        // Texto del boton
+        var btnTxtGO = new GameObject("BtnTxt");
+        btnTxtGO.transform.SetParent(btnGO.transform, false);
+        var tRT = btnTxtGO.AddComponent<RectTransform>();
+        tRT.anchorMin = V(0,0); tRT.anchorMax = V(1,1);
+        tRT.sizeDelta = V(0,0); tRT.anchoredPosition = V(0,0);
+        var btnTxt = btnTxtGO.AddComponent<TextMeshProUGUI>();
+        btnTxt.text      = "Preparado";
+        btnTxt.color     = Color.white;
+        btnTxt.fontSize  = 38f;
+        btnTxt.fontStyle = FontStyles.Bold;
+        btnTxt.alignment = TextAlignmentOptions.Center;
+        btnTxt.overflowMode = TextOverflowModes.Overflow;
+
+        // Anillo del borde del boton
+        var ringGO = new GameObject("BtnRing");
+        ringGO.transform.SetParent(R, false);
+        var ringRT = ringGO.AddComponent<RectTransform>();
+        ringRT.anchorMin = ringRT.anchorMax = V(0.5f, 0.5f);
+        ringRT.pivot     = V(0.5f, 0.5f);
+        ringRT.sizeDelta = V(296f, 296f);
+        ringRT.anchoredPosition = V(0, 20f);
+        var ringImg = ringGO.AddComponent<Image>();
+        ringImg.sprite = MakeCircleSprite(256);
+        ringImg.color  = C(1f, 1f, 1f, 0.08f);
+        ringGO.transform.SetAsFirstSibling(); // detras del boton
+
+        // Conectar ButtonController
+        ButtonCtrl            = btnGO.AddComponent<DontPressButtonController>();
+        ButtonCtrl.ButtonImage = btnImg;
+        ButtonCtrl.GlowImage   = glowImg;
+        ButtonCtrl.ButtonText  = btnTxt;
+        ButtonCtrl.SetIdle();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    void BuildResultPanel(RectTransform R, Action onRestart, Action onMenu)
+    {
+        _resultPanel = new GameObject("ResultPanel");
+        _resultPanel.transform.SetParent(R, false);
+        var er = _resultPanel.AddComponent<RectTransform>();
+        er.anchorMin = V(0,0); er.anchorMax = V(1,1);
+        er.sizeDelta = V(0,0); er.anchoredPosition = V(0,0);
+        _resultPanel.AddComponent<Image>().color = C(0,0,0,0.88f);
+
+        var card = MkImg(er, "Card", PANEL, V(0.5f,0.5f), V(0.5f,0.5f), V(0,0), V(900f,480f));
+        MkImg(card, "Sh",    C(1,1,1,0.03f), V(0,0.5f), V(1,1),     V(0,0),  V(0,0));
+        MkImg(card, "LineT", ACCENT,          V(0,1),    V(1,1),     V(0,-4), V(0,8));
+        MkImg(card, "AccL",  ACCENT,          V(0,0.08f), V(0,0.92f), V(4,0), V(8,0));
+
+        _resultTitle = MkTxt(card, "RT", "", Color.white, 44,
+                             V(0.05f,0.76f), V(0.95f,0.97f));
+        _resultTitle.fontStyle = FontStyles.Bold;
+        _resultTitle.enableAutoSizing = true;
+        _resultTitle.fontSizeMin = 26f; _resultTitle.fontSizeMax = 46f;
+
+        _resultSub = MkTxt(card, "RS", "", C(0.50f,0.68f,0.80f), 22,
+                           V(0.05f,0.22f), V(0.95f,0.74f));
+        _resultSub.overflowMode = TextOverflowModes.Overflow;
+        _resultSub.alignment    = TextAlignmentOptions.Center;
+        _resultSub.lineSpacing  = 10f;
+
+        MkBtn(card, "Jugar de nuevo", ACCENT,              V(0.05f,0.04f), V(0.46f,0.17f), onRestart);
+        MkBtn(card, "Menu",          C(0.14f,0.22f,0.38f), V(0.54f,0.04f), V(0.95f,0.17f), onMenu);
+
+        _resultPanel.SetActive(false);
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // API publica de actualizacion
+    // ═════════════════════════════════════════════════════════════════════
+
+    /// <summary>Actualiza el estado del indicador de ronda (punto vacio/correcto/fallido).</summary>
+    public void SetRoundDot(int index, bool? correct)
+    {
+        if (_roundDots == null || index >= _roundDots.Length) return;
+        _roundDots[index].color = correct == null  ? C(0.25f,0.30f,0.40f)   // pendiente
+                                : correct == true  ? CGREEN                   // correcto
+                                                   : CRED;                    // fallido
+    }
+
+    /// <summary>Muestra el texto de estado bajo el boton.</summary>
+    public void SetStatusText(string txt, Color col)
+    {
+        if (_statusText == null) return;
+        _statusText.text  = txt;
+        _statusText.color = col;
+    }
+
+    /// <summary>
+    /// Actualiza la barra de cuenta atras mientras el boton esta activo.
+    /// elapsed / window → relleno de derecha a izquierda (el tiempo se acaba).
+    /// </summary>
+    public void UpdateCountdown(float elapsed, float window)
+    {
+        if (_countdownBar == null) return;
+        float frac = 1f - Mathf.Clamp01(elapsed / window);
+        _countdownBar.fillAmount = frac;
+        _countdownBar.color = Color.Lerp(CRED, CGREEN, frac);
+    }
+
+    /// <summary>Oculta la barra de cuenta atras (cuando el boton no esta activo).</summary>
+    public void HideCountdown()
+    {
+        if (_countdownBar != null)
+            _countdownBar.fillAmount = 0f;
+    }
+
+    /// <summary>Flash de color sobre toda la pantalla.</summary>
+    public void Flash(Color col)
+    {
+        if (_flashOverlay == null) return;
+        _flashOverlay.gameObject.SetActive(true);
+        _flashOverlay.color = col;
+        StartCoroutine(FlashRoutine());
+    }
+
+    IEnumerator FlashRoutine()
+    {
+        Color start = _flashOverlay.color;
+        float t = 0f;
+        while (t < 0.45f)
+        {
+            t += Time.deltaTime;
+            _flashOverlay.color = Color.Lerp(start, C(0,0,0,0), t / 0.45f);
+            yield return null;
+        }
+        _flashOverlay.gameObject.SetActive(false);
+    }
+
+    /// <summary>Muestra el panel de resultado final.</summary>
+    public void ShowFinalResult(bool won, int correct, int total, int score)
+    {
+        string title = won ? "¡Control total!" : "El impulso ganó";
+        Color  tcol  = won ? CGREEN : CRED;
+
+        string msg = won
+            ? "Resististe la tentacion de pulsar antes de tiempo.\n" +
+              "Rondas correctas: " + correct + " / " + total + "\n" +
+              "Puntuacion: " + score + " pts\n\n" +
+              "El control de impulsos es una habilidad que se entrena."
+            : "Rondas correctas: " + correct + " / " + total + "\n\n" +
+              "Los impulsos son fuertes, pero puedes aprender a resistirlos.\n" +
+              "Intenta anticipar el cambio sin adelantarte.";
+
+        _resultTitle.text  = title;
+        _resultTitle.color = tcol;
+        _resultSub.text    = msg;
+        _resultPanel.SetActive(true);
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // Generacion de sprite circular (reutilizado de AttractionUIController)
+    // ═════════════════════════════════════════════════════════════════════
+
+    public static Sprite MakeCircleSprite(int res = 128)
+    {
+        var tex    = new Texture2D(res, res, TextureFormat.RGBA32, false);
+        tex.filterMode = FilterMode.Bilinear;
+        var center = new Vector2(res * 0.5f, res * 0.5f);
+        float r    = res * 0.5f;
+        var px     = new Color[res * res];
+        for (int y = 0; y < res; y++)
+            for (int x = 0; x < res; x++)
+            {
+                float d   = Vector2.Distance(new Vector2(x+.5f, y+.5f), center);
+                float a   = Mathf.Clamp01(1f - (d - r + 1.5f) / 2f);
+                px[y*res+x] = new Color(1,1,1,a);
+            }
+        tex.SetPixels(px);
+        tex.Apply();
+        return Sprite.Create(tex, new Rect(0,0,res,res), V(0.5f,0.5f));
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // Helpers de construccion UI
+    // ═════════════════════════════════════════════════════════════════════
+
+    RectTransform MkImg(RectTransform p, string n, Color col,
+                        Vector2 am, Vector2 aM, Vector2 pos, Vector2 sd)
+    {
+        var go = new GameObject(n);
+        go.transform.SetParent(p, false);
+        var rt = go.AddComponent<RectTransform>();
+        rt.anchorMin = am; rt.anchorMax = aM;
+        rt.pivot = V(0.5f,0.5f);
+        rt.anchoredPosition = pos; rt.sizeDelta = sd;
+        go.AddComponent<Image>().color = col;
+        return rt;
+    }
+
+    TextMeshProUGUI MkTxt(RectTransform p, string n, string txt, Color col,
+                           float sz, Vector2 am, Vector2 aM)
+    {
+        var go = new GameObject(n);
+        go.transform.SetParent(p, false);
+        var rt = go.AddComponent<RectTransform>();
+        rt.anchorMin = am; rt.anchorMax = aM;
+        rt.pivot = V(0.5f,0.5f);
+        rt.anchoredPosition = Vector2.zero; rt.sizeDelta = Vector2.zero;
+        var t = go.AddComponent<TextMeshProUGUI>();
+        t.text = txt; t.color = col; t.fontSize = sz;
+        t.alignment    = TextAlignmentOptions.Center;
+        t.overflowMode = TextOverflowModes.Overflow;
+        return t;
+    }
+
+    void MkBtn(RectTransform p, string lbl, Color bg, Vector2 am, Vector2 aM, Action click)
+    {
+        var rt = MkImg(p, "Btn_"+lbl, bg, am, aM, V(0,0), V(0,0));
+        MkImg(rt, "Sh", C(1,1,1,0.09f), V(0,0.5f), V(1,1), V(0,0), V(0,0));
+        var b = rt.gameObject.AddComponent<Button>();
+        b.targetGraphic = rt.GetComponent<Image>();
+        var cb = b.colors;
+        cb.normalColor    = Color.white;
+        cb.highlightedColor = C(1,1,1,0.82f);
+        cb.pressedColor   = C(0.72f,0.72f,0.72f);
+        b.colors = cb;
+        b.onClick.AddListener(() => click?.Invoke());
+        var t = MkTxt(rt, "T", lbl, Color.white, 24, V(0,0), V(1,1));
+        t.fontStyle = FontStyles.Bold;
+    }
+}
