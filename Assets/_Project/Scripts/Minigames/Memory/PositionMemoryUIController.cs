@@ -4,45 +4,24 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-/// <summary>
-/// Construye toda la UI del minijuego "Memoria de Posiciones" de forma procedural.
-/// Sin prefabs ni assets externos.
-///
-/// Layout (1920×1080 canvas):
-///   • Header: titulo + categoría + ronda + puntuacion
-///   • Phase label: instruccion grande centrada (Memoriza / Recuerda / Resultado)
-///   • Cuadricula NxN de celdas en el centro
-///   • Boton CONFIRMAR (visible solo en fase recuerdo)
-///   • Barra inferior: instruccion + boton Menu
-///   • Panel resultado final (overlay oscuro + card)
-///
-/// Estados de celda:
-///   CELL_OFF  → oscura, inactiva
-///   CELL_ON   → iluminada (fase memorizar)
-///   CELL_SEL  → seleccionada por el jugador (fase recuerdo)
-///   Verde     → acertada
-///   Naranja   → faltaba (target no seleccionado)
-///   Rojo      → error (seleccionada pero no era target)
-/// </summary>
 public class PositionMemoryUIController : MonoBehaviour
 {
-    // ── Paleta ────────────────────────────────────────────────────────
+
     static Color C(float r, float g, float b, float a = 1f) => new Color(r, g, b, a);
     static Vector2 V(float x, float y) => new Vector2(x, y);
 
     static readonly Color BG       = C(0.06f, 0.07f, 0.13f);
     static readonly Color HDR      = C(0.04f, 0.05f, 0.11f);
     static readonly Color PANEL    = C(0.08f, 0.11f, 0.20f);
-    static readonly Color ACCENT   = C(0.58f, 0.28f, 0.92f);   // morado memoria
+    static readonly Color ACCENT   = C(0.58f, 0.28f, 0.92f);
     static readonly Color DIM      = C(0.40f, 0.48f, 0.68f);
     static readonly Color CELL_OFF = C(0.12f, 0.15f, 0.25f);
-    static readonly Color CELL_ON  = C(0.65f, 0.35f, 1.00f);   // iluminada
-    static readonly Color CELL_SEL = C(0.35f, 0.55f, 0.90f);   // seleccionada
+    static readonly Color CELL_ON  = C(0.65f, 0.35f, 1.00f);
+    static readonly Color CELL_SEL = C(0.35f, 0.55f, 0.90f);
     static readonly Color CGREEN   = C(0.25f, 0.90f, 0.52f);
     static readonly Color CRED     = C(0.90f, 0.28f, 0.30f);
     static readonly Color CORANGE  = C(0.96f, 0.62f, 0.18f);
 
-    // ── Referencias internas ──────────────────────────────────────────
     Image[]           _cellImgs;
     Button[]          _cellBtns;
     bool[]            _selected;
@@ -60,10 +39,6 @@ public class PositionMemoryUIController : MonoBehaviour
     Action<int>       _onCellToggled;
     Action            _onConfirm;
 
-    // ═════════════════════════════════════════════════════════════════════
-    // Construccion
-    // ═════════════════════════════════════════════════════════════════════
-
     public void BuildUI(int rows, int cols,
                         Action<int> onCellToggled, Action onConfirm,
                         Action onRestart, Action onMenu)
@@ -73,7 +48,6 @@ public class PositionMemoryUIController : MonoBehaviour
         _onCellToggled  = onCellToggled;
         _onConfirm      = onConfirm;
 
-        // ── Canvas ────────────────────────────────────────────────────
         var cGO = new GameObject("Canvas_PositionMemory");
         cGO.transform.SetParent(transform, false);
         var cv = cGO.AddComponent<Canvas>();
@@ -86,11 +60,9 @@ public class PositionMemoryUIController : MonoBehaviour
         cGO.AddComponent<GraphicRaycaster>();
         var R = cGO.GetComponent<RectTransform>();
 
-        // Fondo
         MkImg(R, "BG",    BG,                             V(0,0),      V(1,1),     V(0,0), V(0,0));
         MkImg(R, "GradT", C(0.16f, 0.06f, 0.28f, 0.20f), V(0, 0.55f), V(1, 1),    V(0,0), V(0,0));
 
-        // ── Header ────────────────────────────────────────────────────
         var hdr = MkImg(R, "Hdr", HDR, V(0,1), V(1,1), V(0,-44), V(0,88));
         MkImg(hdr, "Line", ACCENT, V(0,0),     V(1,0),     V(0, 1.5f), V(0,3));
         MkImg(hdr, "AccL", ACCENT, V(0,0.18f), V(0,0.82f), V(3, 0),    V(6,0));
@@ -114,20 +86,16 @@ public class PositionMemoryUIController : MonoBehaviour
         _scoreLbl.fontStyle = FontStyles.Bold;
         _scoreLbl.alignment = TextAlignmentOptions.MidlineRight;
 
-        // ── Phase label ───────────────────────────────────────────────
         _phaseLbl = MkTxt(R, "Phase", "", ACCENT, 40, V(0.1f, 0.865f), V(0.9f, 0.932f));
         _phaseLbl.fontStyle = FontStyles.Bold;
 
         _infoLbl = MkTxt(R, "Info", "", DIM, 22, V(0.1f, 0.808f), V(0.9f, 0.865f));
 
-        // ── Cuadricula ────────────────────────────────────────────────
         BuildGrid(R, rows, cols);
 
-        // ── Boton CONFIRMAR ───────────────────────────────────────────
         _confirmBtnGO = BuildConfirmBtn(R);
         _confirmBtnGO.SetActive(false);
 
-        // ── Barra inferior ────────────────────────────────────────────
         var bot = MkImg(R, "Bot", HDR, V(0,0), V(1,0), V(0,40), V(0,80));
         MkImg(bot, "BotLine", ACCENT, V(0,1), V(1,1), V(0,-1.5f), V(0,3));
         MkTxt(bot, "Instr", "Observa las casillas · Luego selecciona las que recuerdas",
@@ -136,11 +104,9 @@ public class PositionMemoryUIController : MonoBehaviour
         MkImg(bot, "Sep", C(1,1,1,0.10f), V(0.78f, 0.1f), V(0.782f, 0.9f), V(0,0), V(0,0));
         MkBtn(bot, "Menu", C(0.12f, 0.20f, 0.36f), V(0.80f, 0.08f), V(0.99f, 0.92f), onMenu);
 
-        // ── Panel resultado ───────────────────────────────────────────
         BuildResultPanel(R, onRestart, onMenu);
     }
 
-    // ─────────────────────────────────────────────────────────────────
     void BuildGrid(RectTransform R, int rows, int cols)
     {
         float cellSize = 108f;
@@ -148,7 +114,6 @@ public class PositionMemoryUIController : MonoBehaviour
         float totalW   = cols * cellSize + (cols - 1) * gap;
         float totalH   = rows * cellSize + (rows - 1) * gap;
 
-        // Parent centrado verticalmente entre header y footer
         var gridGO = new GameObject("Grid");
         gridGO.transform.SetParent(R, false);
         var gridRT = gridGO.AddComponent<RectTransform>();
@@ -156,7 +121,7 @@ public class PositionMemoryUIController : MonoBehaviour
         gridRT.anchorMax        = new Vector2(0.5f, 0.5f);
         gridRT.pivot            = new Vector2(0.5f, 0.5f);
         gridRT.sizeDelta        = new Vector2(totalW, totalH);
-        gridRT.anchoredPosition = new Vector2(0f, -8f); // ligero offset hacia arriba del centro
+        gridRT.anchoredPosition = new Vector2(0f, -8f);
         gridGO.AddComponent<Image>().color          = Color.clear;
         gridGO.GetComponent<Image>().raycastTarget  = false;
 
@@ -185,7 +150,6 @@ public class PositionMemoryUIController : MonoBehaviour
             img.color      = CELL_OFF;
             _cellImgs[i]   = img;
 
-            // Capa brillante superior
             var shGO = new GameObject("Sh");
             shGO.transform.SetParent(cellRT, false);
             var shRT = shGO.AddComponent<RectTransform>();
@@ -250,10 +214,6 @@ public class PositionMemoryUIController : MonoBehaviour
         _resultPanel.SetActive(false);
     }
 
-    // ═════════════════════════════════════════════════════════════════════
-    // API publica
-    // ═════════════════════════════════════════════════════════════════════
-
     public void SetPhaseLabel(string text, Color col)
     {
         if (_phaseLbl != null) { _phaseLbl.text = text; _phaseLbl.color = col; }
@@ -274,7 +234,6 @@ public class PositionMemoryUIController : MonoBehaviour
         if (_scoreLbl != null) _scoreLbl.text = score + " pts";
     }
 
-    /// <summary>Ilumina las celdas objetivo; deshabilita interaccion.</summary>
     public void ShowMemorizePhase(List<int> targets)
     {
         for (int i = 0; i < _cellImgs.Length; i++)
@@ -287,7 +246,6 @@ public class PositionMemoryUIController : MonoBehaviour
         if (_confirmBtnGO != null) _confirmBtnGO.SetActive(false);
     }
 
-    /// <summary>Apaga todas las celdas y activa la interaccion del jugador.</summary>
     public void ShowRecallPhase()
     {
         for (int i = 0; i < _cellImgs.Length; i++)
@@ -299,7 +257,6 @@ public class PositionMemoryUIController : MonoBehaviour
         if (_confirmBtnGO != null) _confirmBtnGO.SetActive(true);
     }
 
-    /// <summary>Alterna el estado de seleccion de una celda.</summary>
     public void ToggleCell(int idx)
     {
         if (idx < 0 || idx >= _selected.Length) return;
@@ -315,7 +272,6 @@ public class PositionMemoryUIController : MonoBehaviour
         return list;
     }
 
-    /// <summary>Colorea las celdas segun resultado: verde / naranja / rojo.</summary>
     public void ShowRoundResult(HashSet<int> targets, List<int> playerSelected)
     {
         if (_confirmBtnGO != null) _confirmBtnGO.SetActive(false);
@@ -329,9 +285,9 @@ public class PositionMemoryUIController : MonoBehaviour
             bool inTarget = targets.Contains(i);
             bool inPlayer = playerSet.Contains(i);
 
-            if      ( inTarget &&  inPlayer) _cellImgs[i].color = CGREEN;    // correcto
-            else if (!inTarget &&  inPlayer) _cellImgs[i].color = CRED;      // error
-            else if ( inTarget && !inPlayer) _cellImgs[i].color = CORANGE;   // faltaba
+            if      ( inTarget &&  inPlayer) _cellImgs[i].color = CGREEN;
+            else if (!inTarget &&  inPlayer) _cellImgs[i].color = CRED;
+            else if ( inTarget && !inPlayer) _cellImgs[i].color = CORANGE;
             else                             _cellImgs[i].color = CELL_OFF;
         }
     }
@@ -343,10 +299,6 @@ public class PositionMemoryUIController : MonoBehaviour
         _resultSub.text    = sub;
         _resultPanel.SetActive(true);
     }
-
-    // ═════════════════════════════════════════════════════════════════════
-    // Helpers
-    // ═════════════════════════════════════════════════════════════════════
 
     RectTransform MkImg(RectTransform p, string n, Color col,
                         Vector2 am, Vector2 aM, Vector2 pos, Vector2 sd)

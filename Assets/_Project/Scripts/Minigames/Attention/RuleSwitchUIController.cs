@@ -3,27 +3,9 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-/// <summary>
-/// Construye toda la UI del minijuego "Cambio de regla" de forma procedural.
-/// Sin prefabs ni assets externos.
-///
-/// Layout (1920×1080 canvas):
-///   • Header: título "CAMBIO DE REGLA" + categoría "ATENCIÓN"
-///   • Info bar: dot indicador de regla + texto de regla + score + progreso
-///   • Timer bar: barra horizontal que se depleta por estímulo (debajo del info bar)
-///   • Área de juego (centro): donde aparecen los estímulos
-///   • Status label: feedback textual por respuesta
-///   • Barra inferior: instrucciones + botón Menú
-///   • Panel resultado final (overlay oscuro + card)
-///
-/// Truco del dot indicador:
-///   El pequeño círculo de color en la info bar cambia de color cuando cambia
-///   la regla. Es el único cue visual del cambio. El jugador que lo observe
-///   puede adaptarse antes de cometer errores.
-/// </summary>
 public class RuleSwitchUIController : MonoBehaviour
 {
-    // ── Paleta ────────────────────────────────────────────────────────
+
     static Color C(float r, float g, float b, float a = 1f) => new Color(r, g, b, a);
     static Vector2 V(float x, float y) => new Vector2(x, y);
 
@@ -36,11 +18,10 @@ public class RuleSwitchUIController : MonoBehaviour
     static readonly Color CRED    = C(0.90f, 0.28f, 0.30f);
     static readonly Color CYELLOW = C(0.96f, 0.72f, 0.18f);
 
-    // ── Referencias internas ──────────────────────────────────────────
     public RectTransform GameAreaRT { get; private set; }
 
-    Image           _ruleDot;         // dot indicador (único cue visual del cambio)
-    TextMeshProUGUI _ruleLbl;         // texto de regla (no se actualiza = trampa/pista)
+    Image           _ruleDot;
+    TextMeshProUGUI _ruleLbl;
     TextMeshProUGUI _scoreLbl;
     TextMeshProUGUI _progressLbl;
     Image           _timerFill;
@@ -49,13 +30,9 @@ public class RuleSwitchUIController : MonoBehaviour
     GameObject      _resultPanel;
     TextMeshProUGUI _resultTitle, _resultSub;
 
-    // ═════════════════════════════════════════════════════════════════════
-    // Construcción
-    // ═════════════════════════════════════════════════════════════════════
-
     public RectTransform BuildUI(Action onRestart, Action onMenu)
     {
-        // ── Canvas ────────────────────────────────────────────────────
+
         var cGO = new GameObject("Canvas_RuleSwitch");
         cGO.transform.SetParent(transform, false);
         var cv = cGO.AddComponent<Canvas>();
@@ -68,11 +45,9 @@ public class RuleSwitchUIController : MonoBehaviour
         cGO.AddComponent<GraphicRaycaster>();
         var R = cGO.GetComponent<RectTransform>();
 
-        // Fondo + gradiente decorativo
         MkImg(R, "BG",    BG,                                 V(0, 0),     V(1, 1),     V(0, 0), V(0, 0));
         MkImg(R, "GradT", C(0.10f, 0.20f, 0.38f, 0.24f),     V(0, 0.70f), V(1, 1),     V(0, 0), V(0, 0));
 
-        // ── Header ────────────────────────────────────────────────────
         var hdr = MkImg(R, "Hdr", HDR, V(0, 1), V(1, 1), V(0, -44), V(0, 88));
         MkImg(hdr, "Line", ACCENT, V(0, 0),     V(1, 0),     V(0, 1.5f), V(0, 3));
         MkImg(hdr, "AccL", ACCENT, V(0, 0.18f), V(0, 0.82f), V(3, 0),    V(6, 0));
@@ -80,28 +55,22 @@ public class RuleSwitchUIController : MonoBehaviour
         ttl.fontStyle = FontStyles.Bold; ttl.alignment = TextAlignmentOptions.MidlineLeft; ttl.characterSpacing = 2f;
         MkTxt(hdr, "Cat", "ATENCIÓN", DIM2, 16, V(0.62f, 0.12f), V(0.97f, 0.88f)).alignment = TextAlignmentOptions.MidlineRight;
 
-        // ── Info bar (regla + score + progreso) ───────────────────────
         var info = MkImg(R, "InfoBar", C(0, 0, 0, 0.12f), V(0, 0.857f), V(1, 0.918f), V(0, 0), V(0, 0));
 
-        // Dot indicador (círculo de color ← único cue del cambio de regla)
         BuildRuleDot(info);
 
-        // Texto de regla (se muestra al inicio; se puede no actualizar para mayor dificultad)
         _ruleLbl = MkTxt(info, "RuleLbl", "Pulsa solo los ROJOS", ACCENT, 22,
                          V(0.04f, 0), V(0.52f, 1));
         _ruleLbl.fontStyle = FontStyles.Bold;
         _ruleLbl.alignment = TextAlignmentOptions.MidlineLeft;
 
-        // Score
         _scoreLbl = MkTxt(info, "Score", "0 pts", Color.white, 24, V(0.60f, 0), V(0.79f, 1));
         _scoreLbl.fontStyle = FontStyles.Bold;
         _scoreLbl.alignment = TextAlignmentOptions.MidlineRight;
 
-        // Progreso
         _progressLbl = MkTxt(info, "Prog", "0/15", DIM2, 18, V(0.80f, 0), V(0.99f, 1));
         _progressLbl.alignment = TextAlignmentOptions.MidlineRight;
 
-        // ── Timer bar ─────────────────────────────────────────────────
         var timerBg = MkImg(R, "TimerBg", C(0.04f, 0.07f, 0.14f),
                             V(0, 0.817f), V(1, 0.857f), V(0, 0), V(0, 0));
         MkImg(timerBg, "TBShine", C(1, 1, 1, 0.04f), V(0, 0.55f), V(1, 1), V(0, 0), V(0, 0));
@@ -117,7 +86,6 @@ public class RuleSwitchUIController : MonoBehaviour
         _timerFill.fillMethod = Image.FillMethod.Horizontal;
         _timerFill.fillAmount = 1f;
 
-        // ── Área de juego ─────────────────────────────────────────────
         var areaGO = new GameObject("GameArea");
         areaGO.transform.SetParent(R, false);
         GameAreaRT = areaGO.AddComponent<RectTransform>();
@@ -128,12 +96,10 @@ public class RuleSwitchUIController : MonoBehaviour
         areaGO.AddComponent<Image>().color = Color.clear;
         areaGO.GetComponent<Image>().raycastTarget = false;
 
-        // ── Status label (feedback por respuesta) ─────────────────────
         _statusLbl = MkTxt(R, "Status", "", DIM2, 30, V(0.10f, 0.16f), V(0.90f, 0.25f));
         _statusLbl.fontStyle = FontStyles.Bold;
         _statusLbl.alignment = TextAlignmentOptions.Center;
 
-        // ── Barra inferior ────────────────────────────────────────────
         var bot = MkImg(R, "Bot", HDR, V(0, 0), V(1, 0), V(0, 40), V(0, 80));
         MkImg(bot, "BotLine", ACCENT, V(0, 1), V(1, 1), V(0, -1.5f), V(0, 3));
         MkTxt(bot, "Instr", "Click en el estímulo para elegirlo · Sin click = rechazarlo",
@@ -142,7 +108,6 @@ public class RuleSwitchUIController : MonoBehaviour
         MkImg(bot, "Sep", C(1, 1, 1, 0.10f), V(0.78f, 0.1f), V(0.782f, 0.9f), V(0, 0), V(0, 0));
         MkBtn(bot, "Menu", C(0.12f, 0.20f, 0.36f), V(0.80f, 0.08f), V(0.99f, 0.92f), onMenu);
 
-        // ── Panel resultado ───────────────────────────────────────────
         BuildResultPanel(R, onRestart, onMenu);
 
         return GameAreaRT;
@@ -187,22 +152,12 @@ public class RuleSwitchUIController : MonoBehaviour
         _resultPanel.SetActive(false);
     }
 
-    // ═════════════════════════════════════════════════════════════════════
-    // API pública
-    // ═════════════════════════════════════════════════════════════════════
-
-    /// <summary>
-    /// Actualiza el texto de regla y el color del dot indicador.
-    /// En Easy: llamar también cuando cambia la regla.
-    /// En Hard: llamar solo al inicio; después solo actualizar el dot.
-    /// </summary>
     public void SetRuleLabel(string text, Color dotColor)
     {
         if (_ruleLbl  != null) _ruleLbl.text   = text;
         if (_ruleDot  != null) _ruleDot.color  = dotColor;
     }
 
-    /// <summary>Solo actualiza el dot (cue mínimo). No revela el nuevo texto de regla.</summary>
     public void SetRuleIndicatorOnly(Color dotColor)
     {
         if (_ruleDot != null) _ruleDot.color = dotColor;
@@ -218,7 +173,6 @@ public class RuleSwitchUIController : MonoBehaviour
         if (_progressLbl != null) _progressLbl.text = current + "/" + total;
     }
 
-    /// <summary>Actualiza la barra de tiempo. t=1 llena, t=0 vacía.</summary>
     public void SetTimerBar(float t)
     {
         if (_timerFill == null) return;
@@ -243,10 +197,6 @@ public class RuleSwitchUIController : MonoBehaviour
         _resultSub.text    = sub;
         _resultPanel.SetActive(true);
     }
-
-    // ═════════════════════════════════════════════════════════════════════
-    // Helpers
-    // ═════════════════════════════════════════════════════════════════════
 
     RectTransform MkImg(RectTransform p, string n, Color col, Vector2 am, Vector2 aM, Vector2 pos, Vector2 sd)
     {

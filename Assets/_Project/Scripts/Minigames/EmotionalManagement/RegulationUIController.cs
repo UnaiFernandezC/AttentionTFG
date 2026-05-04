@@ -3,15 +3,6 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-/// <summary>
-/// UI de "Regulacion Progresiva".
-///
-/// Novedades respecto a la version anterior:
-///   • Indicador de regeneracion (+8/turno) siempre visible junto a la barra
-///   • Numero de nivel puede superar 100 (sin tope superior)
-///   • Barra llena al 100% cuando nivel >= 100, con color rojo vivo
-///   • Cooldown visible en cada boton (overlay oscuro + contador)
-/// </summary>
 public class RegulationUIController : MonoBehaviour
 {
     static Color C(float r, float g, float b, float a = 1f) => new Color(r, g, b, a);
@@ -27,15 +18,14 @@ public class RegulationUIController : MonoBehaviour
     static readonly Color CGREEN  = C(0.22f, 0.86f, 0.54f);
     static readonly Color CYELLOW = C(0.96f, 0.82f, 0.20f);
     static readonly Color CRED    = C(0.90f, 0.28f, 0.30f);
-    static readonly Color CDARK   = C(0.60f, 0.14f, 0.15f);  // rojo muy oscuro (sobrecarga)
+    static readonly Color CDARK   = C(0.60f, 0.14f, 0.15f);
 
-    // ── Referencias ───────────────────────────────────────────────────────
     TextMeshProUGUI _stepsLbl;
     TextMeshProUGUI _scoreLbl;
     Image           _barFill;
     TextMeshProUGUI _levelLbl;
     TextMeshProUGUI _stateLbl;
-    TextMeshProUGUI _regenLbl;      // "+8 / turno" siempre visible
+    TextMeshProUGUI _regenLbl;
     Image           _stepsFill;
     TextMeshProUGUI _stepsBarLbl;
     TextMeshProUGUI _feedbackLbl;
@@ -51,7 +41,6 @@ public class RegulationUIController : MonoBehaviour
 
     Action<int> _onAction;
 
-    // ═════════════════════════════════════════════════════════════════════
     public void BuildUI(Action<int> onAction, Action onRestart, Action onMenu)
     {
         _onAction = onAction;
@@ -72,7 +61,6 @@ public class RegulationUIController : MonoBehaviour
         MkImg(R, "GradT", C(0.04f,0.18f,0.14f,0.18f), V(0,0.50f), V(1,1),   V(0,0), V(0,0));
         MkImg(R, "GradB", C(0.02f,0.04f,0.08f,0.28f), V(0,0),     V(1,0.3f),V(0,0), V(0,0));
 
-        // ── Header ──────────────────────────────────────────────────────
         var hdr = MkImg(R, "Hdr", HDR, V(0,1), V(1,1), V(0,-44), V(0,88));
         MkImg(hdr, "Line", ACCENT, V(0,0),     V(1,0),     V(0,1.5f), V(0,3));
         MkImg(hdr, "AccL", ACCENT, V(0,0.18f), V(0,0.82f), V(3,0),    V(6,0));
@@ -95,13 +83,10 @@ public class RegulationUIController : MonoBehaviour
         _scoreLbl.fontStyle = FontStyles.Bold;
         _scoreLbl.alignment = TextAlignmentOptions.MidlineRight;
 
-        // ── Barra emocional ──────────────────────────────────────────────
         BuildEmotionBar(R);
 
-        // ── Barra de pasos restantes ─────────────────────────────────────
         BuildStepsBar(R);
 
-        // ── Feedback label ───────────────────────────────────────────────
         _feedbackLbl = MkTxt(R, "Feedback",
                              "El nivel sube +8 cada turno automaticamente. Elige bien.",
                              DIM, 19, V(0.06f,0.432f), V(0.94f,0.470f));
@@ -109,10 +94,8 @@ public class RegulationUIController : MonoBehaviour
         _feedbackLbl.fontSizeMin = 13f; _feedbackLbl.fontSizeMax = 19f;
         _feedbackLbl.overflowMode = TextOverflowModes.Overflow;
 
-        // ── Grid de acciones ─────────────────────────────────────────────
         BuildActionGrid(R);
 
-        // ── Footer ──────────────────────────────────────────────────────
         var bot = MkImg(R, "Bot", HDR, V(0,0), V(1,0), V(0,40), V(0,80));
         MkImg(bot, "BotLine", ACCENT, V(0,1), V(1,1), V(0,-1.5f), V(0,3));
         MkTxt(bot, "Instr",
@@ -125,13 +108,11 @@ public class RegulationUIController : MonoBehaviour
         BuildResultPanel(R, onRestart, onMenu);
     }
 
-    // ─────────────────────────────────────────────────────────────────────
     void BuildEmotionBar(RectTransform R)
     {
         MkTxt(R, "BarTitle", "NIVEL DE ACTIVACION EMOCIONAL", DIM, 17,
               V(0.06f,0.862f), V(0.75f,0.896f)).characterSpacing = 1.5f;
 
-        // Indicador de regeneracion (siempre visible, esquina derecha del titulo)
         _regenLbl = MkTxt(R, "RegenLbl", "+8 / turno", CRED, 18,
                           V(0.75f,0.862f), V(0.94f,0.896f));
         _regenLbl.fontStyle = FontStyles.Bold;
@@ -165,7 +146,6 @@ public class RegulationUIController : MonoBehaviour
         _stateLbl.fontStyle = FontStyles.Bold;
         _stateLbl.alignment = TextAlignmentOptions.MidlineRight;
 
-        // Marcadores de referencia en la barra (0, 25, 50, 75, 100)
         for (int i = 0; i <= 4; i++)
         {
             float frac = i / 4f;
@@ -176,7 +156,6 @@ public class RegulationUIController : MonoBehaviour
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────
     void BuildStepsBar(RectTransform R)
     {
         MkTxt(R, "StepsTitle", "ACCIONES RESTANTES", DIM, 14,
@@ -204,7 +183,6 @@ public class RegulationUIController : MonoBehaviour
         _stepsBarLbl.alignment = TextAlignmentOptions.MidlineRight;
     }
 
-    // ─────────────────────────────────────────────────────────────────────
     void BuildActionGrid(RectTransform R)
     {
         int n = RegulationEmotionManager.ACTIONS.Length;
@@ -235,7 +213,6 @@ public class RegulationUIController : MonoBehaviour
             MkImg(btnRT, "Sh",   C(1,1,1,0.06f),                      V(0,0.5f),  V(1,1),     V(0,0), V(0,0));
             MkImg(btnRT, "AccL", C(ACCENT.r,ACCENT.g,ACCENT.b,0.55f), V(0,0.12f), V(0,0.88f), V(4,0), V(8,0));
 
-            // Etiqueta de impacto (neto = impacto + regen)
             string impStr = (action.impact >= 0 ? "+" : "") + action.impact;
             Color  impCol = action.impact <= -16 ? CGREEN
                           : action.impact <= -12 ? CYELLOW
@@ -251,7 +228,6 @@ public class RegulationUIController : MonoBehaviour
             txt.enableAutoSizing = true;
             txt.fontSizeMin = 13f; txt.fontSizeMax = 21f;
 
-            // Overlay de cooldown
             var cdOvGO = new GameObject("CDOverlay");
             cdOvGO.transform.SetParent(btnRT, false);
             var cdRT = cdOvGO.AddComponent<RectTransform>();
@@ -281,7 +257,6 @@ public class RegulationUIController : MonoBehaviour
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────
     void BuildResultPanel(RectTransform R, Action onRestart, Action onMenu)
     {
         _resultPanel = new GameObject("ResultPanel");
@@ -314,19 +289,15 @@ public class RegulationUIController : MonoBehaviour
         _resultPanel.SetActive(false);
     }
 
-    // ═════════════════════════════════════════════════════════════════════
-    // API publica
-    // ═════════════════════════════════════════════════════════════════════
-
     public void UpdateBar(float level, int stepsTaken, int maxSteps, float regenPerTurn)
     {
-        // La barra muestra 0-100 (llena si >= 100); el numero muestra el valor real
+
         float displayFrac = Mathf.Clamp01(level / 100f);
         _barFill.fillAmount = displayFrac;
 
         if (level > 100f)
         {
-            // Sobrecarga: rojo muy oscuro para indicar que se ha pasado del limite
+
             _barFill.color = CDARK;
             _stateLbl.text  = "SOBRECARGADO"; _stateLbl.color = CDARK;
             _levelLbl.color = CRED;
@@ -354,7 +325,6 @@ public class RegulationUIController : MonoBehaviour
         _levelLbl.text  = Mathf.RoundToInt(level).ToString();
         _regenLbl.text  = "+" + Mathf.RoundToInt(regenPerTurn) + " / turno";
 
-        // Barra de pasos
         int   remaining = maxSteps - stepsTaken;
         float stepFrac  = maxSteps > 0 ? (float)remaining / maxSteps : 0f;
         _stepsFill.fillAmount = Mathf.Clamp01(stepFrac);
@@ -429,7 +399,6 @@ public class RegulationUIController : MonoBehaviour
         _resultPanel.SetActive(true);
     }
 
-    // ═════════════════════════════════════════════════════════════════════
     RectTransform MkImg(RectTransform p, string n, Color col,
                         Vector2 am, Vector2 aM, Vector2 pos, Vector2 sd)
     {

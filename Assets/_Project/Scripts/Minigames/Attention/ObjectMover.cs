@@ -1,14 +1,5 @@
 using UnityEngine;
 
-/// <summary>
-/// Mueve un objeto UI de forma fluida hacia waypoints aleatorios.
-/// Añade oscilación Perlin para que el movimiento sea orgánico.
-///
-/// Dificultad:
-///   Fácil  → speed=160, dirChangeRate=2.5
-///   Medio  → speed=230, dirChangeRate=1.8
-///   Difícil→ speed=310, dirChangeRate=0.9 (cambios más bruscos)
-/// </summary>
 public class ObjectMover : MonoBehaviour
 {
     [Header("Velocidad (px/s)")]
@@ -18,7 +9,6 @@ public class ObjectMover : MonoBehaviour
     [Header("Amplitud de oscilación Perlin")]
     public float driftAmp       = 28f;
 
-    // Límites del área de juego (canvas space, asignados por GameManager)
     [HideInInspector] public float boundsXMin = -840f;
     [HideInInspector] public float boundsXMax =  840f;
     [HideInInspector] public float boundsYMin = -380f;
@@ -30,8 +20,6 @@ public class ObjectMover : MonoBehaviour
     Vector2 _target;
     float   _dirTimer;
     float   _noiseOffX, _noiseOffY;
-
-    // ═════════════════════════════════════════════════════════════════════
 
     public void StartMoving()
     {
@@ -52,17 +40,14 @@ public class ObjectMover : MonoBehaviour
 
         Vector2 pos = ObjectRT.anchoredPosition;
 
-        // Moverse hacia el target
         Vector2 toTarget = _target - pos;
         if (toTarget.magnitude < 25f) PickTarget();
         pos += toTarget.normalized * speed * Time.deltaTime;
 
-        // Oscilación Perlin suave
         float t = Time.time * 0.55f;
         pos.x += (Mathf.PerlinNoise(t + _noiseOffX, 0f) - 0.5f) * driftAmp * Time.deltaTime;
         pos.y += (Mathf.PerlinNoise(0f, t + _noiseOffY) - 0.5f) * driftAmp * Time.deltaTime;
 
-        // Mantener dentro de los límites (rebotar)
         if (pos.x < boundsXMin) { pos.x = boundsXMin; _target.x = Random.Range(0f, boundsXMax); }
         if (pos.x > boundsXMax) { pos.x = boundsXMax; _target.x = Random.Range(boundsXMin, 0f); }
         if (pos.y < boundsYMin) { pos.y = boundsYMin; _target.y = Random.Range(0f, boundsYMax); }

@@ -4,56 +4,32 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-/// <summary>
-/// Construye toda la UI del minijuego "Palabras Fugaces" de forma procedural.
-/// Sin prefabs ni assets externos.
-///
-/// Layout (1920x1080 canvas):
-///   • Header: titulo + categoria + ronda + puntuacion
-///   • Phase label: instruccion grande (Memoriza / Elige / Resultado)
-///   • Countdown bar: barra que se depleta durante la fase de memorizar
-///   • Panel central intercambiable:
-///       - Fase MEMORIZAR: lista de palabras objetivo en tarjetas iluminadas
-///       - Fase ELEGIR:    grid de botones con todas las palabras (targets + distractoras)
-///   • Boton CONFIRMAR (solo visible en fase ELEGIR)
-///   • Barra inferior: instruccion + boton Menu
-///   • Panel resultado final (overlay + card)
-///
-/// Colores de feedback en fase ELEGIR tras confirmar:
-///   Verde  = palabra objetivo seleccionada correctamente
-///   Rojo   = palabra seleccionada que NO era objetivo
-///   Naranja= palabra objetivo NO seleccionada (se la perdio)
-///   Gris oscuro = distractor no seleccionado (correcto por omision)
-/// </summary>
 public class WordMemoryUIController : MonoBehaviour
 {
-    // ── Paleta ────────────────────────────────────────────────────────
+
     static Color C(float r, float g, float b, float a = 1f) => new Color(r, g, b, a);
     static Vector2 V(float x, float y) => new Vector2(x, y);
 
     static readonly Color BG        = C(0.05f, 0.07f, 0.13f);
     static readonly Color HDR       = C(0.04f, 0.05f, 0.11f);
     static readonly Color PANEL     = C(0.08f, 0.11f, 0.20f);
-    static readonly Color ACCENT    = C(0.58f, 0.28f, 0.92f);  // morado memoria
+    static readonly Color ACCENT    = C(0.58f, 0.28f, 0.92f);
     static readonly Color DIM       = C(0.40f, 0.48f, 0.68f);
-    static readonly Color WORD_BG   = C(0.11f, 0.14f, 0.24f);  // fondo tarjeta palabra
-    static readonly Color BTN_IDLE  = C(0.13f, 0.17f, 0.28f);  // boton sin seleccionar
-    static readonly Color BTN_SEL   = C(0.40f, 0.20f, 0.72f);  // boton seleccionado
+    static readonly Color WORD_BG   = C(0.11f, 0.14f, 0.24f);
+    static readonly Color BTN_IDLE  = C(0.13f, 0.17f, 0.28f);
+    static readonly Color BTN_SEL   = C(0.40f, 0.20f, 0.72f);
     static readonly Color CGREEN    = C(0.25f, 0.90f, 0.52f);
     static readonly Color CRED      = C(0.90f, 0.28f, 0.30f);
     static readonly Color CORANGE   = C(0.96f, 0.62f, 0.18f);
 
-    // ── Referencias internas ──────────────────────────────────────────
     TextMeshProUGUI _phaseLbl;
     TextMeshProUGUI _infoLbl;
     TextMeshProUGUI _roundLbl;
     TextMeshProUGUI _scoreLbl;
     Image           _countdownFill;
 
-    // Panel memorizar
     RectTransform   _memorizePanel;
 
-    // Panel elegir
     RectTransform   _choosePanel;
     List<Image>     _wordBtnsImg;
     List<Button>    _wordBtns;
@@ -68,17 +44,12 @@ public class WordMemoryUIController : MonoBehaviour
     Action<int>     _onWordToggled;
     Action          _onConfirm;
 
-    // ═════════════════════════════════════════════════════════════════════
-    // Construccion principal
-    // ═════════════════════════════════════════════════════════════════════
-
     public void BuildUI(Action<int> onWordToggled, Action onConfirm,
                         Action onRestart, Action onMenu)
     {
         _onWordToggled = onWordToggled;
         _onConfirm     = onConfirm;
 
-        // ── Canvas ────────────────────────────────────────────────────
         var cGO = new GameObject("Canvas_WordMemory");
         cGO.transform.SetParent(transform, false);
         var cv = cGO.AddComponent<Canvas>();
@@ -91,12 +62,10 @@ public class WordMemoryUIController : MonoBehaviour
         cGO.AddComponent<GraphicRaycaster>();
         var R = cGO.GetComponent<RectTransform>();
 
-        // Fondo
         MkImg(R, "BG",    BG,                             V(0, 0),     V(1, 1),  V(0,0), V(0,0));
         MkImg(R, "GradT", C(0.16f, 0.06f, 0.28f, 0.18f), V(0, 0.55f), V(1, 1),  V(0,0), V(0,0));
         MkImg(R, "GradB", C(0.02f, 0.04f, 0.10f, 0.30f), V(0, 0),     V(1, 0.3f), V(0,0), V(0,0));
 
-        // ── Header ────────────────────────────────────────────────────
         var hdr = MkImg(R, "Hdr", HDR, V(0,1), V(1,1), V(0,-44), V(0,88));
         MkImg(hdr, "Line", ACCENT, V(0,0),     V(1,0),     V(0, 1.5f), V(0,3));
         MkImg(hdr, "AccL", ACCENT, V(0,0.18f), V(0,0.82f), V(3, 0),    V(6,0));
@@ -120,13 +89,11 @@ public class WordMemoryUIController : MonoBehaviour
         _scoreLbl.fontStyle = FontStyles.Bold;
         _scoreLbl.alignment = TextAlignmentOptions.MidlineRight;
 
-        // ── Phase label ───────────────────────────────────────────────
         _phaseLbl = MkTxt(R, "Phase", "", ACCENT, 38, V(0.1f, 0.862f), V(0.9f, 0.930f));
         _phaseLbl.fontStyle = FontStyles.Bold;
 
         _infoLbl = MkTxt(R, "Info", "", DIM, 21, V(0.1f, 0.806f), V(0.9f, 0.862f));
 
-        // ── Countdown bar (bajo el phase label) ──────────────────────
         var cdBg = MkImg(R, "CdBg", C(0.04f, 0.06f, 0.12f),
                          V(0, 0.790f), V(1, 0.806f), V(0,0), V(0,0));
         MkImg(cdBg, "CdShine", C(1,1,1,0.04f), V(0,0.55f), V(1,1), V(0,0), V(0,0));
@@ -142,7 +109,6 @@ public class WordMemoryUIController : MonoBehaviour
         _countdownFill.fillMethod = Image.FillMethod.Horizontal;
         _countdownFill.fillAmount = 1f;
 
-        // ── Panel MEMORIZAR ───────────────────────────────────────────
         var memGO = new GameObject("MemorizePanel");
         memGO.transform.SetParent(R, false);
         _memorizePanel = memGO.AddComponent<RectTransform>();
@@ -153,7 +119,6 @@ public class WordMemoryUIController : MonoBehaviour
         memGO.AddComponent<Image>().color          = Color.clear;
         memGO.GetComponent<Image>().raycastTarget  = false;
 
-        // ── Panel ELEGIR ──────────────────────────────────────────────
         var choGO = new GameObject("ChoosePanel");
         choGO.transform.SetParent(R, false);
         _choosePanel = choGO.AddComponent<RectTransform>();
@@ -164,11 +129,9 @@ public class WordMemoryUIController : MonoBehaviour
         choGO.AddComponent<Image>().color         = Color.clear;
         choGO.GetComponent<Image>().raycastTarget = false;
 
-        // ── Boton CONFIRMAR ───────────────────────────────────────────
         _confirmBtnGO = BuildConfirmBtn(R);
         _confirmBtnGO.SetActive(false);
 
-        // ── Barra inferior ────────────────────────────────────────────
         var bot = MkImg(R, "Bot", HDR, V(0,0), V(1,0), V(0,40), V(0,80));
         MkImg(bot, "BotLine", ACCENT, V(0,1), V(1,1), V(0,-1.5f), V(0,3));
         MkTxt(bot, "Instr", "Memoriza las palabras · Luego identifica cuales viste",
@@ -177,22 +140,15 @@ public class WordMemoryUIController : MonoBehaviour
         MkImg(bot, "Sep", C(1,1,1,0.10f), V(0.78f, 0.1f), V(0.782f, 0.9f), V(0,0), V(0,0));
         MkBtn(bot, "Menu", C(0.12f, 0.20f, 0.36f), V(0.80f, 0.08f), V(0.99f, 0.92f), onMenu);
 
-        // ── Panel resultado ───────────────────────────────────────────
         BuildResultPanel(R, onRestart, onMenu);
 
-        // Empezar con ambos paneles ocultos
         _memorizePanel.gameObject.SetActive(false);
         _choosePanel.gameObject.SetActive(false);
     }
 
-    // ═════════════════════════════════════════════════════════════════════
-    // Fase MEMORIZAR
-    // ═════════════════════════════════════════════════════════════════════
-
-    /// <summary>Muestra las palabras objetivo en tarjetas verticales.</summary>
     public void ShowMemorizePhase(List<string> targetWords)
     {
-        // Limpiar panel anterior
+
         foreach (Transform ch in _memorizePanel) Destroy(ch.gameObject);
         _choosePanel.gameObject.SetActive(false);
         _memorizePanel.gameObject.SetActive(true);
@@ -220,7 +176,6 @@ public class WordMemoryUIController : MonoBehaviour
             var cardImg = cardGO.AddComponent<Image>();
             cardImg.color = WORD_BG;
 
-            // Borde izquierdo de acento
             var accGO = new GameObject("Acc");
             accGO.transform.SetParent(cardRT, false);
             var accRT = accGO.AddComponent<RectTransform>();
@@ -228,7 +183,6 @@ public class WordMemoryUIController : MonoBehaviour
             accRT.sizeDelta = V(6, 0); accRT.anchoredPosition = V(3, 0);
             accGO.AddComponent<Image>().color = ACCENT;
 
-            // Capa brillante superior
             var shGO = new GameObject("Sh");
             shGO.transform.SetParent(cardRT, false);
             var shRT = shGO.AddComponent<RectTransform>();
@@ -236,7 +190,6 @@ public class WordMemoryUIController : MonoBehaviour
             shRT.sizeDelta = V(0, 0); shRT.anchoredPosition = V(0, 0);
             shGO.AddComponent<Image>().color = C(1, 1, 1, 0.05f);
 
-            // Texto de la palabra
             var txt = MkTxt(cardRT, "W", targetWords[i], Color.white, 36, V(0.04f, 0), V(0.96f, 1));
             txt.fontStyle = FontStyles.Bold;
             txt.alignment = TextAlignmentOptions.MidlineLeft;
@@ -245,11 +198,6 @@ public class WordMemoryUIController : MonoBehaviour
         SetCountdown(1f);
     }
 
-    // ═════════════════════════════════════════════════════════════════════
-    // Fase ELEGIR
-    // ═════════════════════════════════════════════════════════════════════
-
-    /// <summary>Muestra grid de palabras mezcladas (targets + distractoras) como botones.</summary>
     public void ShowChoosePhase(List<string> allWords)
     {
         foreach (Transform ch in _choosePanel) Destroy(ch.gameObject);
@@ -295,7 +243,6 @@ public class WordMemoryUIController : MonoBehaviour
             _wordBtnsImg.Add(img);
             _wordSelected.Add(false);
 
-            // Shine
             var shGO = new GameObject("Sh");
             shGO.transform.SetParent(btnRT, false);
             var shRT = shGO.AddComponent<RectTransform>();
@@ -318,12 +265,8 @@ public class WordMemoryUIController : MonoBehaviour
             _wordBtns.Add(btn);
         }
 
-        SetCountdown(0f); // barra vacía en fase elegir
+        SetCountdown(0f);
     }
-
-    // ═════════════════════════════════════════════════════════════════════
-    // API publica
-    // ═════════════════════════════════════════════════════════════════════
 
     public void SetPhaseLabel(string text, Color col)
     {
@@ -345,7 +288,6 @@ public class WordMemoryUIController : MonoBehaviour
         if (_scoreLbl != null) _scoreLbl.text = score + " pts";
     }
 
-    /// <summary>Actualiza la barra de cuenta atras. t=1 llena, t=0 vacia.</summary>
     public void SetCountdown(float t)
     {
         if (_countdownFill == null) return;
@@ -354,7 +296,6 @@ public class WordMemoryUIController : MonoBehaviour
         _countdownFill.color = Color.Lerp(CRED, ACCENT, t);
     }
 
-    /// <summary>Alterna la seleccion del boton de palabra.</summary>
     public void ToggleWord(int idx)
     {
         if (idx < 0 || idx >= _wordSelected.Count) return;
@@ -370,11 +311,6 @@ public class WordMemoryUIController : MonoBehaviour
         return list;
     }
 
-    /// <summary>
-    /// Colorea los botones segun resultado.
-    /// targetSet: indices de las palabras objetivo en la lista allWords.
-    /// playerSelected: indices seleccionados por el jugador.
-    /// </summary>
     public void ShowWordResult(HashSet<int> targetIndices, List<int> playerSelected)
     {
         if (_confirmBtnGO != null) _confirmBtnGO.SetActive(false);
@@ -386,10 +322,10 @@ public class WordMemoryUIController : MonoBehaviour
             bool inPlayer = playerSet.Contains(i);
             _wordBtns[i].interactable = false;
 
-            if      ( inTarget &&  inPlayer) _wordBtnsImg[i].color = CGREEN;   // correcto
-            else if (!inTarget &&  inPlayer) _wordBtnsImg[i].color = CRED;     // error
-            else if ( inTarget && !inPlayer) _wordBtnsImg[i].color = CORANGE;  // se la perdio
-            else                             _wordBtnsImg[i].color = C(0.09f, 0.11f, 0.18f); // neutro
+            if      ( inTarget &&  inPlayer) _wordBtnsImg[i].color = CGREEN;
+            else if (!inTarget &&  inPlayer) _wordBtnsImg[i].color = CRED;
+            else if ( inTarget && !inPlayer) _wordBtnsImg[i].color = CORANGE;
+            else                             _wordBtnsImg[i].color = C(0.09f, 0.11f, 0.18f);
         }
     }
 
@@ -400,10 +336,6 @@ public class WordMemoryUIController : MonoBehaviour
         _resultSub.text    = sub;
         _resultPanel.SetActive(true);
     }
-
-    // ═════════════════════════════════════════════════════════════════════
-    // Helpers privados
-    // ═════════════════════════════════════════════════════════════════════
 
     GameObject BuildConfirmBtn(RectTransform R)
     {

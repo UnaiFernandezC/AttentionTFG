@@ -3,24 +3,9 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-/// <summary>
-/// Construye toda la UI del minijuego "Reacción rápida" de forma procedural.
-/// No requiere prefabs ni assets externos.
-///
-/// Layout:
-///   • Header fijo con título y categoría
-///   • Zona central: círculo de estímulo (ROJO en espera → VERDE al reaccionar)
-///     + arco radial de cuenta atrás que depleta mientras corre el tiempo
-///   • Indicadores de ronda (puntitos)
-///   • Label de estado + tiempo de reacción en ms
-///   • Barra inferior: instrucciones + botón menú
-///   • Panel de resultado final (overlay)
-/// </summary>
 public class QuickReactionUIController : MonoBehaviour
 {
-    // ------------------------------------------------------------------ //
-    // Paleta
-    // ------------------------------------------------------------------ //
+
     static Color C(float r, float g, float b, float a = 1f) => new Color(r, g, b, a);
     static Vector2 V(float x, float y) => new Vector2(x, y);
 
@@ -33,38 +18,25 @@ public class QuickReactionUIController : MonoBehaviour
     static readonly Color CRED    = C(0.90f, 0.28f, 0.30f);
     static readonly Color CYELLOW = C(0.96f, 0.72f, 0.18f);
 
-    // ────────────────────────────────────────────────────────────────────
-    // Referencias internas
-    // ────────────────────────────────────────────────────────────────────
-
-    // Círculo de estímulo
     Image           _stimGlow1, _stimGlow2, _stimCore, _stimShine;
-    TextMeshProUGUI _stimLabel;          // "ESPERA…" / "¡YA!" / "3" "2" "1"
+    TextMeshProUGUI _stimLabel;
 
-    // Arco de cuenta atrás (Image.Type.Filled radial, alrededor del círculo)
-    Image           _countdownRing;      // pista exterior vacía (dim)
-    Image           _countdownFill;      // arco que se depleta
+    Image           _countdownRing;
+    Image           _countdownFill;
 
-    // Info de ronda
     TextMeshProUGUI _statusLbl;
     TextMeshProUGUI _timeLbl;
     Image[]         _roundDots;
 
-    // Resultado final
     GameObject      _resultPanel;
     TextMeshProUGUI _resultTitle, _resultSub;
 
     int _totalRounds;
 
-    // ════════════════════════════════════════════════════════════════════
-    // API pública — construcción
-    // ════════════════════════════════════════════════════════════════════
-
     public void BuildUI(int rounds, Action onRestart, Action onMenu)
     {
         _totalRounds = rounds;
 
-        // ── Canvas principal ──────────────────────────────────────────
         var cGO = new GameObject("Canvas_QuickReaction");
         cGO.transform.SetParent(transform, false);
         var cv = cGO.AddComponent<Canvas>();
@@ -77,11 +49,9 @@ public class QuickReactionUIController : MonoBehaviour
         cGO.AddComponent<GraphicRaycaster>();
         var R = cGO.GetComponent<RectTransform>();
 
-        // Fondo + gradiente
         MkImg(R, "BG",    BG,                                V(0, 0),     V(1, 1),     V(0, 0), V(0, 0));
         MkImg(R, "GradT", C(0.10f, 0.20f, 0.38f, 0.28f),    V(0, 0.70f), V(1, 1),     V(0, 0), V(0, 0));
 
-        // ── Header ────────────────────────────────────────────────────
         var hdr = MkImg(R, "Hdr", HDR, V(0, 1), V(1, 1), V(0, -44), V(0, 88));
         MkImg(hdr, "Line", ACCENT, V(0, 0),      V(1, 0),      V(0, 1.5f), V(0, 3));
         MkImg(hdr, "AccL", ACCENT, V(0, 0.18f),  V(0, 0.82f),  V(3, 0),    V(6, 0));
@@ -89,13 +59,10 @@ public class QuickReactionUIController : MonoBehaviour
         ttl.fontStyle = FontStyles.Bold; ttl.alignment = TextAlignmentOptions.MidlineLeft; ttl.characterSpacing = 2f;
         MkTxt(hdr, "Cat", "ATENCIÓN", DIM2, 16, V(0.60f, 0.12f), V(0.97f, 0.88f)).alignment = TextAlignmentOptions.MidlineRight;
 
-        // ── Indicadores de ronda ──────────────────────────────────────
         BuildRoundDots(R, rounds);
 
-        // ── Círculo de estímulo + arco cuenta atrás ───────────────────
         BuildStimulus(R);
 
-        // ── Status / tiempo ───────────────────────────────────────────
         _statusLbl = MkTxt(R, "Status", "Espera el estímulo…", DIM2, 28,
                            V(0.10f, 0.16f), V(0.90f, 0.26f));
         _statusLbl.alignment = TextAlignmentOptions.Center;
@@ -103,7 +70,6 @@ public class QuickReactionUIController : MonoBehaviour
         _timeLbl = MkTxt(R, "Time", "", ACCENT, 48, V(0.25f, 0.26f), V(0.75f, 0.38f));
         _timeLbl.fontStyle = FontStyles.Bold; _timeLbl.alignment = TextAlignmentOptions.Center;
 
-        // ── Barra inferior ────────────────────────────────────────────
         var bot = MkImg(R, "Bot", HDR, V(0, 0), V(1, 0), V(0, 40), V(0, 80));
         MkImg(bot, "BotLine", ACCENT, V(0, 1), V(1, 1), V(0, -1.5f), V(0, 3));
         MkTxt(bot, "Instr", "Haz click (o pulsa ESPACIO) cuando el círculo se ponga verde.",
@@ -112,17 +78,12 @@ public class QuickReactionUIController : MonoBehaviour
         MkImg(bot, "Sep", C(1, 1, 1, 0.10f), V(0.78f, 0.1f), V(0.782f, 0.9f), V(0, 0), V(0, 0));
         MkBtn(bot, "Menu", C(0.12f, 0.20f, 0.36f), V(0.80f, 0.08f), V(0.99f, 0.92f), onMenu);
 
-        // ── Panel resultado final ─────────────────────────────────────
         BuildResultPanel(R, onRestart, onMenu);
     }
 
-    // ────────────────────────────────────────────────────────────────────
-    // Construcción de piezas
-    // ────────────────────────────────────────────────────────────────────
-
     void BuildStimulus(RectTransform R)
     {
-        // Contenedor centrado
+
         var go = new GameObject("Stimulus");
         go.transform.SetParent(R, false);
         var rt = go.AddComponent<RectTransform>();
@@ -132,8 +93,6 @@ public class QuickReactionUIController : MonoBehaviour
         rt.anchoredPosition = new Vector2(0, 20f);
         go.AddComponent<Image>().color = Color.clear;
 
-        // ── Arco de cuenta atrás (detrás del círculo) ─────────────────
-        // Pista (fondo del arco, dim)
         _countdownRing = AddCircleLayer(go.transform, "CDRing", new Vector2(196f, 196f),
                                         C(1, 1, 1, 0.08f));
         _countdownRing.type       = Image.Type.Filled;
@@ -142,7 +101,6 @@ public class QuickReactionUIController : MonoBehaviour
         _countdownRing.fillClockwise = true;
         _countdownRing.fillAmount = 1f;
 
-        // Relleno activo (el que se depleta)
         _countdownFill = AddCircleLayer(go.transform, "CDFill", new Vector2(196f, 196f),
                                         CGREEN);
         _countdownFill.type          = Image.Type.Filled;
@@ -150,16 +108,14 @@ public class QuickReactionUIController : MonoBehaviour
         _countdownFill.fillOrigin    = (int)Image.Origin360.Top;
         _countdownFill.fillClockwise = true;
         _countdownFill.fillAmount    = 1f;
-        _countdownFill.gameObject.SetActive(false); // oculto hasta que aparezca el estímulo
+        _countdownFill.gameObject.SetActive(false);
 
-        // ── Capas del círculo ─────────────────────────────────────────
         _stimGlow1 = AddCircleLayer(go.transform, "SG1", new Vector2(320f, 320f), C(CRED.r, CRED.g, CRED.b, 0.06f));
         _stimGlow2 = AddCircleLayer(go.transform, "SG2", new Vector2(220f, 220f), C(CRED.r, CRED.g, CRED.b, 0.14f));
         _stimCore  = AddCircleLayer(go.transform, "SC",  new Vector2(140f, 140f), CRED);
         _stimShine = AddCircleLayer(go.transform, "SS",  new Vector2( 42f,  42f), C(1, 1, 1, 0.40f));
         _stimShine.rectTransform.anchoredPosition = new Vector2(-34f, 38f);
 
-        // Label sobre el círculo
         _stimLabel = MkTxt(R, "StimLbl", "ESPERA…", C(1, 1, 1, 0.55f), 22,
                            V(0.30f, 0.46f), V(0.70f, 0.55f));
         _stimLabel.fontStyle = FontStyles.Bold; _stimLabel.alignment = TextAlignmentOptions.Center;
@@ -221,11 +177,6 @@ public class QuickReactionUIController : MonoBehaviour
         _resultPanel.SetActive(false);
     }
 
-    // ════════════════════════════════════════════════════════════════════
-    // API pública — estado de juego
-    // ════════════════════════════════════════════════════════════════════
-
-    /// <summary>Cambia el círculo a modo "espera" (rojo). Oculta el arco.</summary>
     public void SetWaiting()
     {
         SetStimulusColor(CRED, false);
@@ -239,7 +190,6 @@ public class QuickReactionUIController : MonoBehaviour
         if (_countdownRing != null) _countdownRing.color = C(1, 1, 1, 0.08f);
     }
 
-    /// <summary>Activa el estímulo visual (verde) y muestra el arco de cuenta atrás.</summary>
     public void SetStimulus(float timeLimit)
     {
         SetStimulusColor(CGREEN, true);
@@ -259,10 +209,6 @@ public class QuickReactionUIController : MonoBehaviour
             _countdownRing.color = C(1, 1, 1, 0.12f);
     }
 
-    /// <summary>
-    /// Actualiza el arco radial de cuenta atrás.
-    /// Llamar cada frame mientras el estímulo está activo.
-    /// </summary>
     public void UpdateCountdown(float elapsed, float total)
     {
         if (_countdownFill == null || total <= 0f) return;
@@ -270,7 +216,6 @@ public class QuickReactionUIController : MonoBehaviour
         float t = Mathf.Clamp01(1f - elapsed / total);
         _countdownFill.fillAmount = t;
 
-        // Color: verde → amarillo → rojo conforme el tiempo se acaba
         Color col;
         if (t > 0.5f)
             col = Color.Lerp(CYELLOW, CGREEN,   (t - 0.5f) * 2f);
@@ -278,7 +223,6 @@ public class QuickReactionUIController : MonoBehaviour
             col = Color.Lerp(CRED,    CYELLOW,  t * 2f);
         _countdownFill.color = col;
 
-        // Número de segundos restantes dentro del label del círculo
         int secsLeft = Mathf.CeilToInt(total - elapsed);
         if (_stimLabel != null && secsLeft > 0)
         {
@@ -287,7 +231,6 @@ public class QuickReactionUIController : MonoBehaviour
         }
     }
 
-    /// <summary>Muestra el resultado de una ronda individual.</summary>
     public void ShowRoundResult(bool tooEarly, bool timeout, long reactionMs, string evalMsg)
     {
         if (_countdownFill != null) _countdownFill.gameObject.SetActive(false);
@@ -322,14 +265,12 @@ public class QuickReactionUIController : MonoBehaviour
         }
     }
 
-    /// <summary>Actualiza el dot de la ronda indicada.</summary>
     public void SetRoundDot(int roundIndex, bool correct)
     {
         if (roundIndex < 0 || roundIndex >= _roundDots.Length) return;
         _roundDots[roundIndex].color = correct ? CGREEN : CRED;
     }
 
-    /// <summary>Pulso de escala en el glow exterior.</summary>
     public void PulseGlow(float t)
     {
         if (_stimGlow1 == null) return;
@@ -337,7 +278,6 @@ public class QuickReactionUIController : MonoBehaviour
         _stimGlow1.rectTransform.localScale = Vector3.one * s;
     }
 
-    /// <summary>Muestra el panel de resultado final.</summary>
     public void ShowFinalResult(bool win, string sub)
     {
         _resultTitle.text  = win ? "¡Bien hecho!" : "Fin del juego";
@@ -345,10 +285,6 @@ public class QuickReactionUIController : MonoBehaviour
         _resultSub.text    = sub;
         _resultPanel.SetActive(true);
     }
-
-    // ════════════════════════════════════════════════════════════════════
-    // Helpers internos
-    // ════════════════════════════════════════════════════════════════════
 
     void SetStimulusColor(Color core, bool bright)
     {

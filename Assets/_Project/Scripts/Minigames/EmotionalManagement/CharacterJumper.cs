@@ -7,18 +7,17 @@ public class CharacterJumper : MonoBehaviour
     private int currentPlatformIndex = 0;
 
     [Header("Movimiento")]
-    public float jumpSpeed = 1.5f;             // Reduce para que el salto sea más lento y fluido
-    public float jumpHeight = 2f;              // Ajusta la altura de la parábola
-    public float landingYOffset = 0.5f;        // Ajusta para que no se hunda en la nube
+    public float jumpSpeed = 1.5f;
+    public float jumpHeight = 2f;
+    public float landingYOffset = 0.5f;
 
-    [Header("Animación")]
+    [Header("Animaciï¿½n")]
     public Animator animator;
 
     public void JumpToNextPlatform()
     {
         if (currentPlatformIndex >= jumpTargets.Length) return;
 
-        // Activar animación de salto
         if (animator != null)
             animator.SetTrigger("Jump");
 
@@ -30,7 +29,7 @@ public class CharacterJumper : MonoBehaviour
     System.Collections.IEnumerator JumpTo(Vector3 targetPosition)
     {
         Vector3 start = transform.position;
-        Vector3 end = targetPosition + new Vector3(0, landingYOffset, 0); // subir un poco el destino
+        Vector3 end = targetPosition + new Vector3(0, landingYOffset, 0);
 
         float t = 0f;
 

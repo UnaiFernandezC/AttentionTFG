@@ -2,9 +2,9 @@ using UnityEngine;
 
 public class CameraTransition : MonoBehaviour
 {
-    [Header("Transición")]
-    public Transform puntoInicio;     // Posición y rotación inicial
-    public Transform puntoDestino;    // Posición y rotación final
+    [Header("Transiciï¿½n")]
+    public Transform puntoInicio;
+    public Transform puntoDestino;
     public float duracion = 2f;
 
     private float tiempo;
@@ -19,7 +19,7 @@ public class CameraTransition : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning("No se asignó un punto de inicio. Usando posición actual.");
+            Debug.LogWarning("No se asignï¿½ un punto de inicio. Usando posiciï¿½n actual.");
         }
 
         tiempo = 0f;

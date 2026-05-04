@@ -5,23 +5,8 @@ using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using TMPro;
 
-/// <summary>
-/// Minijuego "Secuencia de acciones" — Planificacion.
-///
-/// 3 rondas secuenciales. En cada ronda el jugador pulsa las acciones
-/// en el orden correcto para completar la tarea.
-///   Ronda 1: easyActions   (Levantarte, Desayunar, Ir al colegio)
-///   Ronda 2: mediumActions (Chutar, Marcar, Celebrar)
-///   Ronda 3: hardActions   (Tumbarte, Cerrar los ojos, Dormir)
-///
-/// Correcto  -> boton verde + pulso, avanza al siguiente paso
-/// Incorrecto -> parpadeo rojo, reinicia desde el paso 1 de esa ronda
-///
-/// Toda la UI se genera por codigo; no se necesitan assets externos.
-/// </summary>
 public class ActionSequenceController : MinigameBase
 {
-    // ─── Inspector ────────────────────────────────────────────────────────
 
     [Header("Ronda 1")]
     public string[] easyActions   = { "Levantarte", "Desayunar", "Ir al colegio" };
@@ -35,37 +20,26 @@ public class ActionSequenceController : MinigameBase
     [Header("Segundos de feedback de error antes de reiniciar")]
     public float errorDelay = 0.9f;
 
-    // ─── Estado de sesion ─────────────────────────────────────────────────
-
     const int ROUNDS = 3;
-    int _round;        // 0-based
+    int _round;
 
-    // ─── Estado de ronda ─────────────────────────────────────────────────
+    string[] _sequence;
+    string[] _shuffled;
+    int      _progress;
+    bool     _locked;
 
-    string[] _sequence;   // orden correcto fijo
-    string[] _shuffled;   // orden aleatorio en pantalla
-    int      _progress;   // cuantas acciones correctas lleva en esta ronda
-    bool     _locked;     // bloquea pulsaciones durante animacion
-
-    // ─── UI raiz ─────────────────────────────────────────────────────────
-
-    RectTransform _canvasRT;   // root del canvas
-
-    // ─── UI de juego ─────────────────────────────────────────────────────
+    RectTransform _canvasRT;
 
     TextMeshProUGUI _progressLbl;
     TextMeshProUGUI _roundLbl;
     TextMeshProUGUI _instructLbl;
     Image[]         _dots;
 
-    // Contenedor de botones (se destruye y recrea en cada ronda)
     GameObject        _btnAreaGO;
     Button[]          _btns;
     Image[]           _btnBgs;
     TextMeshProUGUI[] _btnLbls;
     Color[]           _btnDefaultColors;
-
-    // ─── Paneles ─────────────────────────────────────────────────────────
 
     GameObject      _transPanel;
     TextMeshProUGUI _transTitle;
@@ -75,8 +49,6 @@ public class ActionSequenceController : MinigameBase
     Image           _endBar;
     TextMeshProUGUI _endTitle;
     TextMeshProUGUI _endSub;
-
-    // ─── Colores ──────────────────────────────────────────────────────────
 
     static readonly Color BG     = C(0.08f, 0.09f, 0.18f);
     static readonly Color PANEL  = C(0.12f, 0.13f, 0.24f);
@@ -91,10 +63,6 @@ public class ActionSequenceController : MinigameBase
     static readonly Color BTNC   = C(0.18f, 0.22f, 0.45f);
 
     static Color C(float r, float g, float b) { return new Color(r, g, b); }
-
-    // ═════════════════════════════════════════════════════════════════════
-    //  MINIGAME BASE
-    // ═════════════════════════════════════════════════════════════════════
 
     protected override string GetIntroDescription() =>
         "Pulsa las acciones en el orden correcto para completar cada tarea.\n" +
@@ -111,10 +79,6 @@ public class ActionSequenceController : MinigameBase
     protected override void OnMinigameComplete() { }
     protected override void OnMinigameFailed()   { }
 
-    // ═════════════════════════════════════════════════════════════════════
-    //  GESTION DE RONDAS
-    // ═════════════════════════════════════════════════════════════════════
-
     void StartRound(int r)
     {
         _round = r;
@@ -123,13 +87,11 @@ public class ActionSequenceController : MinigameBase
         if (_transPanel != null) _transPanel.SetActive(false);
         if (_endPanel   != null) _endPanel.SetActive(false);
 
-        // Elegir secuencia
         string[] src = SequenceFor(r);
         _sequence = src;
         _shuffled = (string[])src.Clone();
         Shuffle(_shuffled);
 
-        // Reconstruir botones para esta ronda
         RebuildButtons();
 
         UpdateRoundUI();
@@ -158,7 +120,7 @@ public class ActionSequenceController : MinigameBase
 
         if (_round >= ROUNDS - 1)
         {
-            // Todas las rondas completadas
+
             CompleteMinigame(1000);
             ShowEnd();
         }
@@ -185,10 +147,6 @@ public class ActionSequenceController : MinigameBase
         StartRound(_round + 1);
     }
 
-    // ═════════════════════════════════════════════════════════════════════
-    //  LOGICA DE PULSACION
-    // ═════════════════════════════════════════════════════════════════════
-
     void OnActionPressed(int shuffleIdx)
     {
         if (_locked) return;
@@ -213,7 +171,7 @@ public class ActionSequenceController : MinigameBase
 
         if (_progress >= _sequence.Length)
         {
-            // Ronda completada
+
             UpdateDots();
             yield return StartCoroutine(HandleRoundComplete());
         }
@@ -259,10 +217,6 @@ public class ActionSequenceController : MinigameBase
             _btnBgs[i].color = _btnDefaultColors[i];
     }
 
-    // ═════════════════════════════════════════════════════════════════════
-    //  UI — ROUND HEADER
-    // ═════════════════════════════════════════════════════════════════════
-
     void UpdateRoundUI()
     {
         if (_roundLbl != null)
@@ -276,13 +230,9 @@ public class ActionSequenceController : MinigameBase
             _dots[i].color = i <= _round ? ACCENT : DOTOFF;
     }
 
-    // ═════════════════════════════════════════════════════════════════════
-    //  UI — BOTONES (se reconstruyen en cada ronda)
-    // ═════════════════════════════════════════════════════════════════════
-
     void RebuildButtons()
     {
-        // Destruir botones anteriores
+
         if (_btnAreaGO != null)
             DestroyImmediate(_btnAreaGO);
 
@@ -290,7 +240,6 @@ public class ActionSequenceController : MinigameBase
         int cols = (n <= 4) ? n : Mathf.CeilToInt(n / 2f);
         int rows = (n <= 4) ? 1 : 2;
 
-        // Crear nuevo contenedor anclado en el canvas
         _btnAreaGO = new GameObject("BtnArea");
         _btnAreaGO.transform.SetParent(_canvasRT, false);
         RectTransform area = _btnAreaGO.AddComponent<RectTransform>();
@@ -344,14 +293,9 @@ public class ActionSequenceController : MinigameBase
             _btnDefaultColors[i] = BTNC;
         }
 
-        // Garantizar que los paneles overlay siempre esten por encima de los botones
         if (_transPanel != null) _transPanel.transform.SetAsLastSibling();
         if (_endPanel   != null) _endPanel.transform.SetAsLastSibling();
     }
-
-    // ═════════════════════════════════════════════════════════════════════
-    //  ANIMACIONES
-    // ═════════════════════════════════════════════════════════════════════
 
     IEnumerator PulseBtn(int idx, float peak)
     {
@@ -368,10 +312,6 @@ public class ActionSequenceController : MinigameBase
         rt.localScale = Vector3.one;
     }
 
-    // ═════════════════════════════════════════════════════════════════════
-    //  PANEL FIN
-    // ═════════════════════════════════════════════════════════════════════
-
     void ShowEnd()
     {
         _endBar.color  = YELLOW;
@@ -380,13 +320,9 @@ public class ActionSequenceController : MinigameBase
         _endPanel.SetActive(true);
     }
 
-    // ═════════════════════════════════════════════════════════════════════
-    //  CONSTRUCCION DE UI (solo una vez)
-    // ═════════════════════════════════════════════════════════════════════
-
     void BuildUI()
     {
-        // Canvas
+
         GameObject cGO = new GameObject("Canvas");
         cGO.transform.SetParent(transform, false);
         Canvas cv = cGO.AddComponent<Canvas>();
@@ -399,10 +335,8 @@ public class ActionSequenceController : MinigameBase
         cGO.AddComponent<GraphicRaycaster>();
         _canvasRT = cGO.GetComponent<RectTransform>();
 
-        // Fondo
         MkImg(_canvasRT, "BG", BG, V2(0, 0), V2(1, 1), V2(0, 0), V2(0, 0));
 
-        // Header
         RectTransform hdr = MkImg(_canvasRT, "Hdr", HDR, V2(0, 1), V2(1, 1), V2(0, -40), V2(0, 80));
         MkImg(hdr, "HL", ACCENT, V2(0, 0), V2(1, 0), V2(0, 1.5f), V2(0, 3));
 
@@ -417,7 +351,6 @@ public class ActionSequenceController : MinigameBase
         _progressLbl.fontStyle = FontStyles.Bold;
         _progressLbl.alignment = TextAlignmentOptions.MidlineRight;
 
-        // Dots
         _dots = new Image[ROUNDS];
         for (int i = 0; i < ROUNDS; i++)
         {
@@ -433,7 +366,6 @@ public class ActionSequenceController : MinigameBase
             _dots[i].color       = DOTOFF;
         }
 
-        // Instruccion
         RectTransform instrArea = MkImg(_canvasRT, "IA", new Color(0, 0, 0, 0),
             V2(0.05f, 0.80f), V2(0.95f, 0.91f), V2(0, 0), V2(0, 0));
         _instructLbl = MkTxt(instrArea, "IL",
@@ -441,7 +373,6 @@ public class ActionSequenceController : MinigameBase
             DIM, 30, V2(0, 0), V2(1, 1));
         _instructLbl.alignment = TextAlignmentOptions.Center;
 
-        // Barra inferior
         RectTransform bot = MkImg(_canvasRT, "Bot", HDR, V2(0, 0), V2(1, 0), V2(0, 45), V2(0, 90));
         MkImg(bot, "BotL", ACCENT, V2(0, 1), V2(1, 1), V2(0, -1.5f), V2(0, 3));
         MkBtn(bot, "Reiniciar ronda", GREY,      V2(0.04f, 0.12f), V2(0.35f, 0.88f), () =>
@@ -453,10 +384,8 @@ public class ActionSequenceController : MinigameBase
         });
         MkBtn(bot, "Volver al menu", GREY, V2(0.65f, 0.12f), V2(0.96f, 0.88f), () => ReturnToGameSelector());
 
-        // Panel transicion
         BuildTransPanel(_canvasRT);
 
-        // Panel fin
         BuildEndPanel(_canvasRT);
     }
 
@@ -504,10 +433,6 @@ public class ActionSequenceController : MinigameBase
 
         _endPanel.SetActive(false);
     }
-
-    // ═════════════════════════════════════════════════════════════════════
-    //  HELPERS
-    // ═════════════════════════════════════════════════════════════════════
 
     static void Shuffle(string[] arr)
     {

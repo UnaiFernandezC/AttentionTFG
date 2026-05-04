@@ -11,7 +11,7 @@ public class LevelButton : MonoBehaviour
 
     void Awake()
     {
-        // Intenta obtener el componente Button
+
         button = GetComponent<Button>();
         if (button != null)
         {
@@ -19,7 +19,7 @@ public class LevelButton : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning("No se encontró un componente Button en " + gameObject.name);
+            Debug.LogWarning("No se encontrï¿½ un componente Button en " + gameObject.name);
         }
     }
 

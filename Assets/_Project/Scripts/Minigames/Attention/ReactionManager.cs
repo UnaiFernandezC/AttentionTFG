@@ -1,71 +1,31 @@
 using System;
 using UnityEngine;
 
-/// <summary>
-/// Gestiona la lógica de tiempo del minijuego "Reacción rápida".
-///
-/// Máquina de estados:
-///   Idle → Waiting (tiempo aleatorio) → Stimulus (aparece estímulo) → Resolved
-///
-/// Countdown por ronda:
-///   Ronda 1 → ReactionTimeLimit=3 s
-///   Ronda 2 → ReactionTimeLimit=2 s
-///   Ronda 3 → ReactionTimeLimit=1 s
-///   (asignado por el GameManager antes de cada StartRound)
-///
-/// Dificultad (ajustar en Inspector del GameManager):
-///   Fácil  → waitMin=2.5, waitMax=5.5  (ventana amplia, predecible)
-///   Medio  → waitMin=1.5, waitMax=4.5
-///   Difícil→ waitMin=0.8, waitMax=6.0  (rango extremo, impredecible)
-/// </summary>
 public class ReactionManager : MonoBehaviour
 {
-    // ------------------------------------------------------------------ //
-    // Inspector
-    // ------------------------------------------------------------------ //
 
     [Header("Tiempo de espera antes del estímulo (segundos)")]
     public float waitMin = 2.5f;
     public float waitMax = 5.5f;
 
-    // ------------------------------------------------------------------ //
-    // Estado
-    // ------------------------------------------------------------------ //
-
     public enum State { Idle, Waiting, Stimulus, Resolved }
 
     public State CurrentState   { get; private set; } = State.Idle;
-    public long  LastReactionMs { get; private set; }   // ms de reacción
-    public bool  WasTooEarly    { get; private set; }   // true si click prematuro
-    public bool  WasTimeout     { get; private set; }   // true si se agotó el tiempo
+    public long  LastReactionMs { get; private set; }
+    public bool  WasTooEarly    { get; private set; }
+    public bool  WasTimeout     { get; private set; }
 
-    /// <summary>Segundos transcurridos desde que apareció el estímulo.</summary>
     public float StimulusElapsed { get; private set; }
 
-    /// <summary>
-    /// Límite de tiempo para reaccionar tras el estímulo.
-    /// Asignar antes de llamar a StartRound().
-    /// </summary>
     public float ReactionTimeLimit { get; set; } = 3f;
 
-    // ------------------------------------------------------------------ //
-    // Eventos
-    // ------------------------------------------------------------------ //
+    public event Action OnStimulusAppeared;
+    public event Action OnReactionRegistered;
 
-    public event Action OnStimulusAppeared;   // estímulo visible → ¡ya!
-    public event Action OnReactionRegistered; // jugador reaccionó o tiempo agotado
-
-    // ------------------------------------------------------------------ //
-    // Internos
-    // ------------------------------------------------------------------ //
-
-    float  _waitTarget;    // tiempo que hay que esperar
-    float  _waitElapsed;   // tiempo transcurrido en fase Waiting
+    float  _waitTarget;
+    float  _waitElapsed;
     bool   _active;
 
-    // ═════════════════════════════════════════════════════════════════════
-
-    /// <summary>Inicia una nueva ronda desde cero.</summary>
     public void StartRound()
     {
         WasTooEarly      = false;
@@ -79,10 +39,6 @@ public class ReactionManager : MonoBehaviour
         Debug.Log($"[ReactionManager] Ronda iniciada. Espera: {_waitTarget:F2}s | Límite reacción: {ReactionTimeLimit}s");
     }
 
-    /// <summary>
-    /// Llamado por el InputHandler cuando el jugador hace click / pulsa tecla.
-    /// Devuelve true si la entrada se ha procesado.
-    /// </summary>
     public bool RegisterInput()
     {
         if (!_active) return false;
@@ -110,14 +66,11 @@ public class ReactionManager : MonoBehaviour
         return false;
     }
 
-    /// <summary>Detiene la ronda sin registrar resultado (reset).</summary>
     public void Cancel()
     {
         _active      = false;
         CurrentState = State.Idle;
     }
-
-    // ═════════════════════════════════════════════════════════════════════
 
     void Update()
     {
@@ -140,7 +93,7 @@ public class ReactionManager : MonoBehaviour
             StimulusElapsed += Time.deltaTime;
             if (StimulusElapsed >= ReactionTimeLimit)
             {
-                // Tiempo agotado → ronda fallida automáticamente
+
                 WasTimeout   = true;
                 WasTooEarly  = false;
                 CurrentState = State.Resolved;
@@ -150,11 +103,6 @@ public class ReactionManager : MonoBehaviour
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // Helpers de evaluación
-    // ─────────────────────────────────────────────────────────────────────
-
-    /// <summary>Devuelve un mensaje textual según el tiempo de reacción.</summary>
     public static string EvaluateTime(long ms)
     {
         if (ms < 180)  return "¡Increíble!";
@@ -165,10 +113,6 @@ public class ReactionManager : MonoBehaviour
         return "Lento";
     }
 
-    /// <summary>
-    /// Puntuación por ronda basada en velocidad.
-    /// Máximo 500 pts en 100 ms, decae linealmente hasta 0 pts en 1000 ms.
-    /// </summary>
     public static int CalcRoundScore(long ms)
     {
         float t = Mathf.InverseLerp(1000f, 100f, (float)ms);

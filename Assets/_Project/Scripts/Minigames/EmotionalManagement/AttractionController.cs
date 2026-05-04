@@ -2,41 +2,20 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-/// <summary>
-/// Gestiona los estimulos negativos de "Atraccion Emocional".
-/// Cada estimulo genera una fuerza de atraccion sobre el cursor:
-///   fuerza = strength * falloff^2   (falloff 0→1 segun distancia relativa)
-///
-/// Esto produce una atraccion fuerte cerca del estimulo y suave desde lejos.
-/// Con 3 estimulos en Facil, el jugador siente tension pero puede resistir.
-///
-/// AJUSTE DE DIFICULTAD (desde el Inspector de AttractionGameManager):
-///   Facil   → attractionStrength=160, influenceRadius=320, 3 estimulos
-///   Medio   → attractionStrength=240, influenceRadius=380, 4 estimulos
-///   Dificil → attractionStrength=340, influenceRadius=420, 5 estimulos
-/// </summary>
 public class AttractionController : MonoBehaviour
 {
-    // ── Datos de un estimulo ──────────────────────────────────────────────
+
     public struct Stimulus
     {
         public Vector2       canvasPos;
-        public float         influenceRadius;  // a partir de aqui ejerce fuerza
-        public float         strength;         // intensidad maxima de la fuerza
-        public float         contactRadius;    // colision con el cursor
+        public float         influenceRadius;
+        public float         strength;
+        public float         contactRadius;
         public RectTransform visual;
     }
 
     public List<Stimulus> Stimuli { get; private set; } = new List<Stimulus>();
 
-    // ═════════════════════════════════════════════════════════════════════
-    // Construccion
-    // ═════════════════════════════════════════════════════════════════════
-
-    /// <summary>
-    /// Crea los estimulos visuales en el canvas y los registra.
-    /// Llamar desde AttractionGameManager.OnMinigameStart() despues de BuildUI().
-    /// </summary>
     public void BuildStimuli(RectTransform parent, List<Vector2> positions,
                              float strength, float influenceRadius, float contactRadius)
     {
@@ -44,14 +23,13 @@ public class AttractionController : MonoBehaviour
 
         foreach (var pos in positions)
         {
-            // ── GameObject base del estimulo ──────────────────────────
+
             var go = new GameObject("Stimulus");
             go.transform.SetParent(parent, false);
             var rt = go.AddComponent<RectTransform>();
             rt.anchoredPosition = pos;
             rt.sizeDelta        = Vector2.one * contactRadius * 2f;
 
-            // ── Halo exterior (zona de influencia) ────────────────────
             var haloGO = new GameObject("Halo");
             haloGO.transform.SetParent(rt, false);
             var haloRT = haloGO.AddComponent<RectTransform>();
@@ -63,7 +41,6 @@ public class AttractionController : MonoBehaviour
             haloImg.sprite = AttractionUIController.MakeCircleSprite(128);
             haloImg.color  = new Color(0.90f, 0.18f, 0.18f, 0.07f);
 
-            // ── Anillo de peligro ────────────────────────────────────
             var ringGO = new GameObject("Ring");
             ringGO.transform.SetParent(rt, false);
             var ringRT = ringGO.AddComponent<RectTransform>();
@@ -75,12 +52,10 @@ public class AttractionController : MonoBehaviour
             ringImg.sprite = AttractionUIController.MakeCircleSprite(128);
             ringImg.color  = new Color(0.90f, 0.20f, 0.20f, 0.28f);
 
-            // ── Cuerpo del estimulo ──────────────────────────────────
             var bodyImg = go.AddComponent<Image>();
             bodyImg.sprite = AttractionUIController.MakeCircleSprite(128);
             bodyImg.color  = new Color(0.92f, 0.18f, 0.22f, 0.95f);
 
-            // ── Brillo interior ──────────────────────────────────────
             var glowGO = new GameObject("Glow");
             glowGO.transform.SetParent(rt, false);
             var glowRT = glowGO.AddComponent<RectTransform>();
@@ -103,14 +78,6 @@ public class AttractionController : MonoBehaviour
         }
     }
 
-    // ═════════════════════════════════════════════════════════════════════
-    // Fisica de atraccion
-    // ═════════════════════════════════════════════════════════════════════
-
-    /// <summary>
-    /// Devuelve la fuerza total que ejercen los estimulos sobre el cursor
-    /// (en canvas units/s). Usa falloff cuadratico para mas realismo.
-    /// </summary>
     public Vector2 CalculateTotalForce(Vector2 cursorCanvasPos)
     {
         Vector2 total = Vector2.zero;
@@ -122,7 +89,6 @@ public class AttractionController : MonoBehaviour
 
             if (dist > s.influenceRadius || dist < 0.5f) continue;
 
-            // Falloff cuadratico: suave en el borde, maximo en el centro
             float t         = 1f - (dist / s.influenceRadius);
             float magnitude = s.strength * t * t;
 
@@ -132,7 +98,6 @@ public class AttractionController : MonoBehaviour
         return total;
     }
 
-    /// <summary>True si el cursor esta en contacto con algun estimulo.</summary>
     public bool IsTouchingAny(Vector2 cursorCanvasPos, float cursorRadius)
     {
         foreach (var s in Stimuli)
@@ -143,11 +108,6 @@ public class AttractionController : MonoBehaviour
         return false;
     }
 
-    /// <summary>
-    /// Nivel de peligro 0-1 basado en la proximidad al estimulo mas cercano.
-    /// 0 = fuera de todos los radios de influencia.
-    /// 1 = en el borde de contacto.
-    /// </summary>
     public float GetDangerLevel(Vector2 cursorCanvasPos)
     {
         float maxDanger = 0f;

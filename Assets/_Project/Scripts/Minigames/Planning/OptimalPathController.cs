@@ -5,21 +5,8 @@ using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using TMPro;
 
-/// <summary>
-/// Minijuego "Ruta optima" — Planificacion.
-///
-/// 3 rondas secuenciales. Cada ronda el jugador debe ir de INICIO a META
-/// en el menor numero de pasos posible.
-///
-/// Ronda 1: grid pequeño sin obstaculos  (muy facil)
-/// Ronda 2: grid mediano con pocos obstaculos
-/// Ronda 3: grid mayor con mas obstaculos
-///
-/// Todo configurable desde el Inspector.
-/// </summary>
 public class OptimalPathController : MinigameBase
 {
-    // ─── Inspector ────────────────────────────────────────────────────────
 
     [Header("Ronda 1 - Muy facil")]
     public int cols1 = 4;
@@ -39,14 +26,10 @@ public class OptimalPathController : MinigameBase
     [Header("Semilla aleatoria (0 = distinto cada vez)")]
     public int randomSeed = 0;
 
-    // ─── Estado global de sesion ──────────────────────────────────────────
-
     const int ROUNDS = 3;
-    int _round;          // 0-based
+    int _round;
     int _totalSteps;
     int _totalOptimal;
-
-    // ─── Estado de ronda ──────────────────────────────────────────────────
 
     int    _cols, _rows, _numObs;
     bool[] _blocked;
@@ -54,8 +37,6 @@ public class OptimalPathController : MinigameBase
     int    _startIdx, _goalIdx, _playerIdx;
     int    _steps, _optimal;
     bool   _roundOver;
-
-    // ─── UI ───────────────────────────────────────────────────────────────
 
     GameObject        _gridGO;
     Image[]           _cellBg;
@@ -77,8 +58,6 @@ public class OptimalPathController : MinigameBase
     TextMeshProUGUI _endTitle;
     TextMeshProUGUI _endSub;
 
-    // ─── Colores ──────────────────────────────────────────────────────────
-
     static readonly Color BG     = Hex(0.08f,0.09f,0.18f);
     static readonly Color PANEL  = Hex(0.12f,0.13f,0.24f);
     static readonly Color HDR    = Hex(0.10f,0.11f,0.22f);
@@ -90,20 +69,15 @@ public class OptimalPathController : MinigameBase
     static readonly Color GREY   = Hex(0.28f,0.30f,0.42f);
     static readonly Color DOTOFF = Hex(0.25f,0.27f,0.45f);
 
-    // Colores de celda
-    static readonly Color CN = Hex(0.20f,0.22f,0.38f); // normal
-    static readonly Color CB = Hex(0.07f,0.07f,0.12f); // bloqueada
-    static readonly Color CS = Hex(0.22f,0.80f,0.50f); // inicio
-    static readonly Color CG = Hex(0.88f,0.26f,0.32f); // meta
-    static readonly Color CP = Hex(0.25f,0.70f,1.00f); // jugador
-    static readonly Color CV = Hex(0.28f,0.32f,0.55f); // visitada
-    static readonly Color CA = Hex(0.32f,0.38f,0.65f); // adyacente valida
+    static readonly Color CN = Hex(0.20f,0.22f,0.38f);
+    static readonly Color CB = Hex(0.07f,0.07f,0.12f);
+    static readonly Color CS = Hex(0.22f,0.80f,0.50f);
+    static readonly Color CG = Hex(0.88f,0.26f,0.32f);
+    static readonly Color CP = Hex(0.25f,0.70f,1.00f);
+    static readonly Color CV = Hex(0.28f,0.32f,0.55f);
+    static readonly Color CA = Hex(0.32f,0.38f,0.65f);
 
     static Color Hex(float r, float g, float b) { return new Color(r, g, b); }
-
-    // ═════════════════════════════════════════════════════════════════════
-    //  MINIGAME BASE
-    // ═════════════════════════════════════════════════════════════════════
 
     protected override string GetIntroDescription() =>
         "Haz clic en las casillas para moverte desde INICIO hasta META.\n" +
@@ -123,10 +97,6 @@ public class OptimalPathController : MinigameBase
     protected override void OnMinigameComplete() { }
     protected override void OnMinigameFailed()   { }
 
-    // ═════════════════════════════════════════════════════════════════════
-    //  GESTION DE RONDAS
-    // ═════════════════════════════════════════════════════════════════════
-
     void RoundConfig(int r, out int c, out int rw, out int obs)
     {
         if      (r == 0) { c = cols1; rw = rows1; obs = obs1; }
@@ -141,12 +111,11 @@ public class OptimalPathController : MinigameBase
 
         RoundConfig(r, out _cols, out _rows, out _numObs);
 
-        // Semilla diferente por ronda para mapas distintos
         int s = randomSeed != 0 ? randomSeed + r : System.Environment.TickCount;
         Random.InitState(s);
 
         GenerateGrid();
-        RebuildCells();     // destruye y recrea las celdas en el GridLayoutGroup
+        RebuildCells();
 
         if (_transPanel != null) _transPanel.SetActive(false);
         if (_endPanel   != null) _endPanel.SetActive(false);
@@ -160,13 +129,9 @@ public class OptimalPathController : MinigameBase
         StopAllCoroutines();
         if (_transPanel != null) _transPanel.SetActive(false);
         if (_endPanel   != null) _endPanel.SetActive(false);
-        // Regenerar la misma ronda con la misma semilla
+
         StartRound(_round);
     }
-
-    // ═════════════════════════════════════════════════════════════════════
-    //  GENERACION DEL GRID
-    // ═════════════════════════════════════════════════════════════════════
 
     void GenerateGrid()
     {
@@ -178,7 +143,6 @@ public class OptimalPathController : MinigameBase
         _playerIdx = _startIdx;
         _steps     = 0;
 
-        // Colocar obstaculos garantizando que siempre haya camino
         int placed = 0, tries = 0;
         while (placed < _numObs && tries < 3000)
         {
@@ -195,8 +159,6 @@ public class OptimalPathController : MinigameBase
         _optimal           = BFS(_startIdx, _goalIdx);
         _visited[_startIdx] = true;
     }
-
-    // ─── BFS para calcular distancia minima ───────────────────────────────
 
     int BFS(int from, int to)
     {
@@ -226,10 +188,6 @@ public class OptimalPathController : MinigameBase
         }
         return -1;
     }
-
-    // ═════════════════════════════════════════════════════════════════════
-    //  MOVIMIENTO
-    // ═════════════════════════════════════════════════════════════════════
 
     void TryMove(int target)
     {
@@ -264,7 +222,7 @@ public class OptimalPathController : MinigameBase
 
         if (_round >= ROUNDS - 1)
         {
-            // Todas las rondas completadas
+
             int score = Mathf.Max(100, 1000 - (_totalSteps - _totalOptimal) * 50);
             CompleteMinigame(score);
             ShowEnd();
@@ -292,10 +250,6 @@ public class OptimalPathController : MinigameBase
         StartRound(_round + 1);
     }
 
-    // ═════════════════════════════════════════════════════════════════════
-    //  REFRESCO DE CELDAS
-    // ═════════════════════════════════════════════════════════════════════
-
     void RefreshCells()
     {
         if (_cellBg == null || _cellBg.Length != _cols * _rows) return;
@@ -303,7 +257,6 @@ public class OptimalPathController : MinigameBase
         int total = _cols * _rows;
         int pr    = _playerIdx / _cols, pc = _playerIdx % _cols;
 
-        // Calcular adyacentes validas
         bool[] adj  = new bool[total];
         int[]  dr   = { -1, 1,  0, 0 };
         int[]  dc   = {  0, 0, -1, 1 };
@@ -407,10 +360,6 @@ public class OptimalPathController : MinigameBase
                 _dots[i].color = i <= _round ? ACCENT : DOTOFF;
     }
 
-    // ═════════════════════════════════════════════════════════════════════
-    //  PANEL FIN
-    // ═════════════════════════════════════════════════════════════════════
-
     void ShowEnd()
     {
         int extra  = _totalSteps - _totalOptimal;
@@ -423,13 +372,9 @@ public class OptimalPathController : MinigameBase
         _endPanel.SetActive(true);
     }
 
-    // ═════════════════════════════════════════════════════════════════════
-    //  CONSTRUCCION DE UI
-    // ═════════════════════════════════════════════════════════════════════
-
     void BuildUI()
     {
-        // Canvas
+
         GameObject cGO = new GameObject("Canvas");
         cGO.transform.SetParent(transform, false);
         Canvas cv = cGO.AddComponent<Canvas>();
@@ -442,10 +387,8 @@ public class OptimalPathController : MinigameBase
         cGO.AddComponent<GraphicRaycaster>();
         RectTransform R = cGO.GetComponent<RectTransform>();
 
-        // Fondo
         MkImg(R, "BG", BG, V2(0,0), V2(1,1), V2(0,0), V2(0,0));
 
-        // ── Header ──
         RectTransform hdr = MkImg(R, "Hdr", HDR, V2(0,1), V2(1,1), V2(0,-40), V2(0,80));
         MkImg(hdr, "HL", ACCENT, V2(0,0), V2(1,0), V2(0,1.5f), V2(0,3));
 
@@ -453,11 +396,9 @@ public class OptimalPathController : MinigameBase
         ht.fontStyle = FontStyles.Bold;
         ht.alignment = TextAlignmentOptions.MidlineLeft;
 
-        // Indicador de ronda (centro-derecha del header)
         _roundLbl = MkTxt(hdr, "RL", "Ronda 1 / 3", DIM, 26, V2(0.52f,0), V2(0.78f,1));
         _roundLbl.alignment = TextAlignmentOptions.MidlineRight;
 
-        // Dots de ronda (extremo derecho)
         _dots = new Image[ROUNDS];
         for (int i = 0; i < ROUNDS; i++)
         {
@@ -474,12 +415,9 @@ public class OptimalPathController : MinigameBase
             _dots[i].color       = DOTOFF;
         }
 
-        // ── Panel izquierdo – estadisticas ──
         RectTransform lp = MkImg(R, "LP", PANEL, V2(0.01f,0.10f), V2(0.22f,0.91f), V2(0,0), V2(0,0));
         BuildStats(lp);
 
-        // ── Contenedor del grid (derecha, centrado) ──
-        // Centro de la zona derecha: x=0.23..0.99 → 0.61, y=0.10..0.91 → 0.505
         _gridGO = new GameObject("Grid");
         _gridGO.transform.SetParent(R, false);
         RectTransform grt = _gridGO.AddComponent<RectTransform>();
@@ -487,24 +425,21 @@ public class OptimalPathController : MinigameBase
         grt.anchorMax        = new Vector2(0.61f, 0.505f);
         grt.pivot            = new Vector2(0.5f,  0.5f);
         grt.anchoredPosition = Vector2.zero;
-        grt.sizeDelta        = new Vector2(520f, 520f); // tamaño provisional
+        grt.sizeDelta        = new Vector2(520f, 520f);
 
         GridLayoutGroup glg   = _gridGO.AddComponent<GridLayoutGroup>();
         glg.startCorner       = GridLayoutGroup.Corner.UpperLeft;
         glg.startAxis         = GridLayoutGroup.Axis.Horizontal;
         glg.padding           = new RectOffset(0,0,0,0);
         glg.constraint        = GridLayoutGroup.Constraint.FixedColumnCount;
-        glg.constraintCount   = 4; // se actualiza en RebuildCells
+        glg.constraintCount   = 4;
 
-        // ── Barra inferior ──
         RectTransform bot = MkImg(R, "Bot", HDR, V2(0,0), V2(1,0), V2(0,45), V2(0,90));
         MkBtn(bot, "Reiniciar ronda", GREY,   V2(0.04f,0.12f), V2(0.35f,0.88f), () => ResetRound());
         MkBtn(bot, "Volver al menu",  GREY,   V2(0.65f,0.12f), V2(0.96f,0.88f), () => ReturnToGameSelector());
 
-        // ── Panel de transicion entre rondas ──
         BuildTransPanel(R);
 
-        // ── Panel de fin ──
         BuildEndPanel(R);
     }
 
@@ -579,10 +514,6 @@ public class OptimalPathController : MinigameBase
         _endPanel.SetActive(false);
     }
 
-    // ═════════════════════════════════════════════════════════════════════
-    //  GESTION DE CELDAS
-    // ═════════════════════════════════════════════════════════════════════
-
     void CalcCell(out float cell, out float gW, out float gH)
     {
         float sp    = 6f;
@@ -593,30 +524,23 @@ public class OptimalPathController : MinigameBase
         gH   = _rows * cell + (_rows - 1) * sp;
     }
 
-    /// <summary>
-    /// Destruye todas las celdas existentes y crea las nuevas
-    /// para la ronda actual. Actualiza el GridLayoutGroup en el mismo frame.
-    /// </summary>
     void RebuildCells()
     {
-        // Destruir celdas anteriores (DestroyImmediate para que sea instantaneo)
+
         for (int i = _gridGO.transform.childCount - 1; i >= 0; i--)
             DestroyImmediate(_gridGO.transform.GetChild(i).gameObject);
 
         float cell, gW, gH;
         CalcCell(out cell, out gW, out gH);
 
-        // Actualizar tamaño del contenedor
         RectTransform grt = _gridGO.GetComponent<RectTransform>();
         grt.sizeDelta = new Vector2(gW, gH);
 
-        // Actualizar GridLayoutGroup
         GridLayoutGroup glg    = _gridGO.GetComponent<GridLayoutGroup>();
         glg.cellSize           = new Vector2(cell, cell);
         glg.spacing            = new Vector2(6f, 6f);
         glg.constraintCount    = _cols;
 
-        // Crear celdas
         int   total    = _cols * _rows;
         float fontSize = Mathf.Clamp(cell * 0.18f, 11f, 22f);
 
@@ -626,7 +550,7 @@ public class OptimalPathController : MinigameBase
 
         for (int i = 0; i < total; i++)
         {
-            int idx = i;  // captura para el listener
+            int idx = i;
 
             GameObject go = new GameObject("C" + i);
             go.transform.SetParent(_gridGO.transform, false);
@@ -646,7 +570,6 @@ public class OptimalPathController : MinigameBase
             btn.onClick.AddListener(() => TryMove(idx));
             _cellBtn[i] = btn;
 
-            // Label dentro de la celda
             GameObject lGO = new GameObject("L");
             lGO.transform.SetParent(go.transform, false);
             RectTransform lrt = lGO.AddComponent<RectTransform>();
@@ -662,13 +585,8 @@ public class OptimalPathController : MinigameBase
             _cellLbl[i]      = lbl;
         }
 
-        // Forzar recalculo de layout para que las celdas se posicionen
         LayoutRebuilder.ForceRebuildLayoutImmediate(grt);
     }
-
-    // ═════════════════════════════════════════════════════════════════════
-    //  HELPERS UI
-    // ═════════════════════════════════════════════════════════════════════
 
     static Vector2 V2(float x, float y) { return new Vector2(x, y); }
 

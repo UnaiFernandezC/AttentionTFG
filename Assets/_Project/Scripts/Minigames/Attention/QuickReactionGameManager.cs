@@ -2,30 +2,8 @@ using System.Collections;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
-/// <summary>
-/// GameManager del minijuego "Reacción rápida".
-/// Hereda MinigameBase → intro panel automático.
-///
-/// Mecánica:
-///   • Cada ronda: espera aleatoria → aparece estímulo verde → mide reacción.
-///   • Click antes del estímulo → ronda fallada (demasiado pronto).
-///   • Sin click antes del límite → ronda fallada (tiempo agotado).
-///   • Límites de reacción por ronda (en segundos):
-///       Ronda 1 → 3 s
-///       Ronda 2 → 2 s
-///       Ronda 3 → 1 s
-///     (configurable vía el array roundTimeLimits en el Inspector)
-///
-/// Dificultad en Inspector:
-///   Fácil   → waitMin=2.5, waitMax=5.5, rounds=3, roundsToWin=2
-///   Medio   → waitMin=1.5, waitMax=4.5, rounds=4, roundsToWin=3
-///   Difícil → waitMin=0.8, waitMax=6.0, rounds=5, roundsToWin=4
-/// </summary>
 public class QuickReactionGameManager : MinigameBase
 {
-    // ------------------------------------------------------------------ //
-    // Inspector
-    // ------------------------------------------------------------------ //
 
     [Header("Rondas")]
     public int rounds      = 3;
@@ -38,27 +16,17 @@ public class QuickReactionGameManager : MinigameBase
     [Header("Pausa entre rondas (s)")]
     public float pauseBetweenRounds = 1.4f;
 
-    // ------------------------------------------------------------------ //
-    // Componentes
-    // ------------------------------------------------------------------ //
-
     ReactionManager           _reaction;
     QuickReactionInputHandler _input;
     QuickReactionUIController _ui;
-
-    // ------------------------------------------------------------------ //
-    // Estado
-    // ------------------------------------------------------------------ //
 
     int   _currentRound;
     int   _correctCount;
     long  _totalMs;
     int   _validCount;
     float _pulseT;
-    float _currentTimeLimit;   // límite de la ronda en curso (para la UI)
-    bool  _stimulusActive;     // true mientras el estímulo está visible
-
-    // ════════════════════════════════════════════════════════════════════
+    float _currentTimeLimit;
+    bool  _stimulusActive;
 
     protected override string GetIntroDescription() =>
         "Espera a que el círculo se ponga VERDE.\n" +
@@ -94,10 +62,6 @@ public class QuickReactionGameManager : MinigameBase
     protected override void OnMinigameComplete() { }
     protected override void OnMinigameFailed()   { }
 
-    // ════════════════════════════════════════════════════════════════════
-    // Flujo de rondas
-    // ════════════════════════════════════════════════════════════════════
-
     IEnumerator RunRound()
     {
         _stimulusActive = false;
@@ -105,7 +69,6 @@ public class QuickReactionGameManager : MinigameBase
 
         yield return new WaitForSeconds(0.35f);
 
-        // Asignar límite de tiempo para esta ronda
         int limitIdx = Mathf.Clamp(_currentRound, 0, roundTimeLimits.Length - 1);
         _currentTimeLimit            = roundTimeLimits[limitIdx];
         _reaction.ReactionTimeLimit  = _currentTimeLimit;
@@ -196,10 +159,6 @@ public class QuickReactionGameManager : MinigameBase
         return base_ + bonus + speed;
     }
 
-    // ════════════════════════════════════════════════════════════════════
-    // Update — pulso visual + actualización del arco de cuenta atrás
-    // ════════════════════════════════════════════════════════════════════
-
     void Update()
     {
         if (!IsPlaying) return;
@@ -207,14 +166,9 @@ public class QuickReactionGameManager : MinigameBase
         _pulseT += Time.deltaTime;
         _ui.PulseGlow(_pulseT);
 
-        // Alimentar el arco radial mientras el estímulo esté activo
         if (_stimulusActive)
             _ui.UpdateCountdown(_reaction.StimulusElapsed, _currentTimeLimit);
     }
-
-    // ════════════════════════════════════════════════════════════════════
-    // Helper
-    // ════════════════════════════════════════════════════════════════════
 
     static void EnsureEventSystem()
     {

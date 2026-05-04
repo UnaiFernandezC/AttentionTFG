@@ -29,8 +29,8 @@ public class SimonGame : MonoBehaviour
     public AudioClip sonidoAcierto;
     public AudioClip sonidoFallo;
 
-    [Header("Feedback monedas")] // NUEVO
-    public GameObject feedbackMonedas;  // Asignar aquí el panel con imagen + texto "+2"
+    [Header("Feedback monedas")]
+    public GameObject feedbackMonedas;
 
     private List<int> secuencia = new List<int>();
     private List<int> entradaJugador = new List<int>();
@@ -42,11 +42,9 @@ public class SimonGame : MonoBehaviour
         pantalla.SetActive(false);
         foreach (var b in botonesUI) b.gameObject.SetActive(false);
 
-        // Asegurarse que feedback está oculto al inicio
         if (feedbackMonedas != null)
             feedbackMonedas.SetActive(false);
 
-        // Panel de introduccion
         bool _started = false;
         var introCanvas = IntroPanel.Build(
             "Simon Dice",
@@ -99,7 +97,6 @@ public class SimonGame : MonoBehaviour
 
             yield return new WaitForSeconds(duracionColor);
 
-            // Sin espera negra extra entre colores
         }
 
         pantallaRenderer.material.color = Color.black;
@@ -112,7 +109,6 @@ public class SimonGame : MonoBehaviour
     {
         if (!esperandoRespuesta) return;
 
-        // Reproducir sonido del color pulsado
         if (id >= 0 && id < sonidosColores.Length)
         {
             audioSource.PlayOneShot(sonidosColores[id]);
@@ -123,7 +119,7 @@ public class SimonGame : MonoBehaviour
 
         if (entradaJugador[actual] != secuencia[actual])
         {
-            // Fallo: ocultar botones, reproducir sonido fallo y reiniciar la misma ronda
+
             esperandoRespuesta = false;
             audioSource.PlayOneShot(sonidoFallo);
 
@@ -138,13 +134,11 @@ public class SimonGame : MonoBehaviour
         {
             esperandoRespuesta = false;
 
-            // Sumar 2 monedas por ronda correcta
             if (CoinManager2.instance != null)
             {
                 CoinManager2.instance.AddCoins(2);
             }
 
-            // Mostrar feedback visual NUEVO
             if (feedbackMonedas != null)
             {
                 StartCoroutine(MostrarFeedbackMonedas());
@@ -165,7 +159,7 @@ public class SimonGame : MonoBehaviour
         }
     }
 
-    IEnumerator MostrarFeedbackMonedas() // NUEVO
+    IEnumerator MostrarFeedbackMonedas()
     {
         feedbackMonedas.SetActive(true);
         yield return new WaitForSeconds(1.5f);

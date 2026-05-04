@@ -3,12 +3,6 @@ using UnityEngine.UI;
 using System.Collections;
 using TMPro;
 
-/// <summary>
-/// Gestor de UI global. Singleton que persiste entre escenas.
-/// Gestiona el fade de pantalla, overlays de puntuación y mensajes de estado.
-/// Adjunta este componente a un Canvas persistente en la escena GameManager
-/// o en cualquier escena principal.
-/// </summary>
 public class UIManager : MonoBehaviour
 {
     public static UIManager Instance { get; private set; }
@@ -24,10 +18,6 @@ public class UIManager : MonoBehaviour
     [SerializeField] private TextMeshProUGUI statusText;
     [SerializeField] private float statusDisplayDuration = 2f;
 
-    // ------------------------------------------------------------------ //
-    // Lifecycle
-    // ------------------------------------------------------------------ //
-
     private void Awake()
     {
         if (Instance != null && Instance != this)
@@ -38,16 +28,10 @@ public class UIManager : MonoBehaviour
         Instance = this;
         DontDestroyOnLoad(gameObject);
 
-        // Asegurarse de que el fade empieza transparente
         if (fadePanel != null)
             SetFadeAlpha(0f);
     }
 
-    // ------------------------------------------------------------------ //
-    // Fade de pantalla
-    // ------------------------------------------------------------------ //
-
-    /// <summary>Hace fade a negro y luego carga la escena indicada.</summary>
     public void FadeAndLoadScene(string sceneName, float duration = -1f)
     {
         float d = duration < 0 ? defaultFadeDuration : duration;
@@ -84,21 +68,12 @@ public class UIManager : MonoBehaviour
         fadePanel.gameObject.SetActive(alpha > 0f);
     }
 
-    // ------------------------------------------------------------------ //
-    // Puntuación
-    // ------------------------------------------------------------------ //
-
     public void UpdateScoreDisplay(int score)
     {
         if (scoreText != null)
             scoreText.text = score.ToString();
     }
 
-    // ------------------------------------------------------------------ //
-    // Mensajes de estado
-    // ------------------------------------------------------------------ //
-
-    /// <summary>Muestra un mensaje temporal en pantalla.</summary>
     public void ShowStatus(string message)
     {
         if (statusText == null) return;

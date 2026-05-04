@@ -17,7 +17,7 @@ public class ButtonHoverScaler : MonoBehaviour, IPointerEnterHandler, IPointerEx
 
     void Update()
     {
-        // Suaviza la transición
+
         transform.localScale = Vector3.Lerp(transform.localScale, targetScale, Time.deltaTime * scaleSpeed);
     }
 

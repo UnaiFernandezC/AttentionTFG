@@ -4,32 +4,16 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-/// <summary>
-/// Construye toda la UI del minijuego "Consecuencias Emocionales" de forma procedural.
-/// Sin prefabs ni assets externos.
-///
-/// Layout (1920x1080 canvas):
-///   • Header:           Titulo + categoria + progreso + puntuacion
-///   • Phase label:      Instruccion contextual bajo el header
-///   • Tarjeta situacion:Texto de la situacion a resolver
-///   • Panel OPCIONES:   Botones de respuesta (se reconstruyen cada situacion)
-///   • Panel CONSECUENCIA: Resultado de la eleccion con color-coding
-///       Verde  → respuesta adecuada    (+20 pts)
-///       Amarillo → respuesta neutra    (+8 pts)
-///       Rojo   → respuesta poco adecuada (0 pts)
-///   • Barra inferior:   Instruccion + boton Menu
-///   • Panel resultado final (overlay)
-/// </summary>
 public class ConsequencesUIController : MonoBehaviour
 {
-    // ── Paleta (Gestion Emocional: verde/turquesa) ────────────────────────────
+
     static Color C(float r, float g, float b, float a = 1f) => new Color(r, g, b, a);
     static Vector2 V(float x, float y) => new Vector2(x, y);
 
     static readonly Color BG       = C(0.05f, 0.08f, 0.13f);
     static readonly Color HDR      = C(0.03f, 0.06f, 0.11f);
     static readonly Color PANEL    = C(0.07f, 0.11f, 0.20f);
-    static readonly Color ACCENT   = C(0.18f, 0.80f, 0.58f);   // verde emocional
+    static readonly Color ACCENT   = C(0.18f, 0.80f, 0.58f);
     static readonly Color DIM      = C(0.38f, 0.54f, 0.62f);
     static readonly Color SIT_BG   = C(0.07f, 0.12f, 0.22f);
     static readonly Color BTN_IDLE = C(0.10f, 0.16f, 0.27f);
@@ -37,7 +21,6 @@ public class ConsequencesUIController : MonoBehaviour
     static readonly Color CYELLOW  = C(0.96f, 0.82f, 0.20f);
     static readonly Color CRED     = C(0.90f, 0.28f, 0.30f);
 
-    // ── Referencias internas ──────────────────────────────────────────────────
     TextMeshProUGUI _roundLbl;
     TextMeshProUGUI _scoreLbl;
     TextMeshProUGUI _phaseLbl;
@@ -57,17 +40,12 @@ public class ConsequencesUIController : MonoBehaviour
     Action<int>     _onOptionChosen;
     Action          _onNext;
 
-    // ═════════════════════════════════════════════════════════════════════════
-    // Construccion principal
-    // ═════════════════════════════════════════════════════════════════════════
-
     public void BuildUI(Action<int> onOptionChosen, Action onNext,
                         Action onRestart, Action onMenu)
     {
         _onOptionChosen = onOptionChosen;
         _onNext         = onNext;
 
-        // ── Canvas ────────────────────────────────────────────────────────
         var cGO = new GameObject("Canvas_Consequences");
         cGO.transform.SetParent(transform, false);
         var cv = cGO.AddComponent<Canvas>();
@@ -80,12 +58,10 @@ public class ConsequencesUIController : MonoBehaviour
         cGO.AddComponent<GraphicRaycaster>();
         var R = cGO.GetComponent<RectTransform>();
 
-        // Fondo y gradiente
         MkImg(R, "BG",    BG,                             V(0, 0),     V(1, 1),    V(0,0), V(0,0));
         MkImg(R, "GradT", C(0.04f, 0.18f, 0.14f, 0.18f), V(0, 0.50f), V(1, 1),    V(0,0), V(0,0));
         MkImg(R, "GradB", C(0.02f, 0.04f, 0.08f, 0.28f), V(0, 0),     V(1, 0.30f),V(0,0), V(0,0));
 
-        // ── Header ───────────────────────────────────────────────────────
         var hdr = MkImg(R, "Hdr", HDR, V(0,1), V(1,1), V(0,-44), V(0,88));
         MkImg(hdr, "Line", ACCENT, V(0,0),     V(1,0),     V(0, 1.5f), V(0,3));
         MkImg(hdr, "AccL", ACCENT, V(0,0.18f), V(0,0.82f), V(3, 0),    V(6,0));
@@ -109,11 +85,9 @@ public class ConsequencesUIController : MonoBehaviour
         _scoreLbl.fontStyle = FontStyles.Bold;
         _scoreLbl.alignment = TextAlignmentOptions.MidlineRight;
 
-        // ── Phase label ───────────────────────────────────────────────────
         _phaseLbl = MkTxt(R, "Phase", "Elige la mejor reaccion posible",
                           DIM, 20, V(0.08f, 0.882f), V(0.92f, 0.918f));
 
-        // ── Tarjeta de situacion ──────────────────────────────────────────
         var sitCard = MkImg(R, "SitCard", SIT_BG,
                             V(0.06f, 0.668f), V(0.94f, 0.878f), V(0,0), V(0,0));
         MkImg(sitCard, "AccT", ACCENT, V(0,1),      V(1,1),      V(0,-2.5f), V(0,5f));
@@ -128,7 +102,6 @@ public class ConsequencesUIController : MonoBehaviour
         _situationTxt.fontSizeMax    = 30f;
         _situationTxt.overflowMode   = TextOverflowModes.Overflow;
 
-        // ── Contenedor de opciones (se reconstruye cada situacion) ─────────
         var optGO = new GameObject("OptionsContainer");
         optGO.transform.SetParent(R, false);
         _optionsContainer = optGO.AddComponent<RectTransform>();
@@ -139,10 +112,8 @@ public class ConsequencesUIController : MonoBehaviour
         optGO.AddComponent<Image>().color          = Color.clear;
         optGO.GetComponent<Image>().raycastTarget  = false;
 
-        // ── Panel de consecuencia (oculto al inicio) ───────────────────────
         BuildConsequencePanel(R);
 
-        // ── Barra inferior ────────────────────────────────────────────────
         var bot = MkImg(R, "Bot", HDR, V(0,0), V(1,0), V(0,40), V(0,80));
         MkImg(bot, "BotLine", ACCENT, V(0,1), V(1,1), V(0,-1.5f), V(0,3));
         MkTxt(bot, "Instr", "Observa la situacion y selecciona la reaccion mas adecuada",
@@ -151,14 +122,12 @@ public class ConsequencesUIController : MonoBehaviour
         MkImg(bot, "Sep", C(1,1,1,0.10f), V(0.78f, 0.1f), V(0.782f, 0.9f), V(0,0), V(0,0));
         MkBtn(bot, "Menu", C(0.12f, 0.20f, 0.36f), V(0.80f, 0.08f), V(0.99f, 0.92f), onMenu);
 
-        // ── Panel resultado final ──────────────────────────────────────────
         BuildResultPanel(R, onRestart, onMenu);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
     void BuildConsequencePanel(RectTransform R)
     {
-        // Misma area que OptionsContainer
+
         var conGO = new GameObject("ConsequencePanel");
         conGO.transform.SetParent(R, false);
         var conRT = conGO.AddComponent<RectTransform>();
@@ -169,7 +138,6 @@ public class ConsequencesUIController : MonoBehaviour
         conGO.AddComponent<Image>().color = PANEL;
         MkImg(conRT, "Sh", C(1,1,1,0.03f), V(0,0.5f), V(1,1), V(0,0), V(0,0));
 
-        // Barra de calidad (top)
         var qBarGO = new GameObject("QualityBar");
         qBarGO.transform.SetParent(conRT, false);
         var qBarRT = qBarGO.AddComponent<RectTransform>();
@@ -185,7 +153,6 @@ public class ConsequencesUIController : MonoBehaviour
         _qualityLbl.fontStyle       = FontStyles.Bold;
         _qualityLbl.characterSpacing = 2f;
 
-        // Texto de consecuencia
         _consequenceTxt = MkTxt(conRT, "CTxt", "",
             C(0.82f, 0.92f, 0.98f), 26,
             V(0.05f, 0.22f), V(0.95f, 0.88f));
@@ -196,7 +163,6 @@ public class ConsequencesUIController : MonoBehaviour
         _consequenceTxt.overflowMode   = TextOverflowModes.Overflow;
         _consequenceTxt.lineSpacing    = 8f;
 
-        // Boton Siguiente / Ver resultado
         var nextRT = MkImg(conRT, "NextBtn", ACCENT,
                            V(0.25f, 0.04f), V(0.75f, 0.18f), V(0,0), V(0,0));
         MkImg(nextRT, "Sh", C(1,1,1,0.13f), V(0,0.5f), V(1,1), V(0,0), V(0,0));
@@ -244,10 +210,6 @@ public class ConsequencesUIController : MonoBehaviour
         _resultPanel.SetActive(false);
     }
 
-    // ═════════════════════════════════════════════════════════════════════════
-    // API publica
-    // ═════════════════════════════════════════════════════════════════════════
-
     public void UpdateRound(int current, int total)
     {
         if (_roundLbl) _roundLbl.text = "Situacion " + current + "/" + total;
@@ -258,10 +220,6 @@ public class ConsequencesUIController : MonoBehaviour
         if (_scoreLbl) _scoreLbl.text = score + " pts";
     }
 
-    /// <summary>
-    /// Muestra la situacion y construye los botones de opciones dinamicamente.
-    /// Los botones se reconstruyen completamente en cada situacion.
-    /// </summary>
     public void ShowSituation(EmotionalSituation sit, int current, int total)
     {
         _optionsContainer.gameObject.SetActive(true);
@@ -271,11 +229,9 @@ public class ConsequencesUIController : MonoBehaviour
         UpdateRound(current, total);
         _phaseLbl.text = "Elige la mejor reaccion posible";
 
-        // Limpiar botones anteriores
         foreach (Transform ch in _optionsContainer)
             Destroy(ch.gameObject);
 
-        // Altura de boton segun numero de opciones
         int   count = sit.options.Length;
         float gap   = 12f;
         float btnH  = count <= 2 ? 160f : count == 3 ? 142f : 118f;
@@ -288,7 +244,6 @@ public class ConsequencesUIController : MonoBehaviour
             int capturedIdx  = i;
             float y          = startY - i * (btnH + gap);
 
-            // Boton que se estira horizontalmente al 100% del contenedor
             var btnGO = new GameObject("Opt_" + i);
             btnGO.transform.SetParent(_optionsContainer, false);
             var btnRT = btnGO.AddComponent<RectTransform>();
@@ -301,7 +256,6 @@ public class ConsequencesUIController : MonoBehaviour
             var img   = btnGO.AddComponent<Image>();
             img.color = BTN_IDLE;
 
-            // Linea de acento izquierda
             var accGO = new GameObject("Acc");
             accGO.transform.SetParent(btnRT, false);
             var accRT = accGO.AddComponent<RectTransform>();
@@ -311,7 +265,6 @@ public class ConsequencesUIController : MonoBehaviour
             accRT.anchoredPosition = V(3, 0);
             accGO.AddComponent<Image>().color = C(ACCENT.r, ACCENT.g, ACCENT.b, 0.55f);
 
-            // Brillo superior
             var shGO = new GameObject("Sh");
             shGO.transform.SetParent(btnRT, false);
             var shRT = shGO.AddComponent<RectTransform>();
@@ -319,7 +272,6 @@ public class ConsequencesUIController : MonoBehaviour
             shRT.sizeDelta = V(0, 0); shRT.anchoredPosition = V(0, 0);
             shGO.AddComponent<Image>().color = C(1, 1, 1, 0.05f);
 
-            // Texto de la opcion (auto-size)
             var txt = MkTxt(btnRT, "T", opt.text, Color.white, 24,
                             V(0.03f, 0), V(0.97f, 1));
             txt.alignment      = TextAlignmentOptions.MidlineLeft;
@@ -327,7 +279,6 @@ public class ConsequencesUIController : MonoBehaviour
             txt.fontSizeMin    = 16f;
             txt.fontSizeMax    = 26f;
 
-            // Boton interactivo
             var btn = btnGO.AddComponent<Button>();
             btn.targetGraphic = img;
             var cb = btn.colors;
@@ -339,10 +290,6 @@ public class ConsequencesUIController : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Muestra la consecuencia de la opcion elegida con color-coding educativo.
-    /// Verde = adecuada (+20 pts)  |  Amarillo = neutra (+8 pts)  |  Rojo = poco adecuada (0 pts)
-    /// </summary>
     public void ShowConsequence(SituationOption chosen, bool hasNext)
     {
         _optionsContainer.gameObject.SetActive(false);
@@ -394,10 +341,6 @@ public class ConsequencesUIController : MonoBehaviour
         _resultSub.text    = sub;
         _resultPanel.SetActive(true);
     }
-
-    // ═════════════════════════════════════════════════════════════════════════
-    // Helpers
-    // ═════════════════════════════════════════════════════════════════════════
 
     RectTransform MkImg(RectTransform p, string n, Color col,
                         Vector2 am, Vector2 aM, Vector2 pos, Vector2 sd)

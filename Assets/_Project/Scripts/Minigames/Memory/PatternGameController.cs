@@ -3,52 +3,38 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-/// <summary>
-/// Controlador principal del minijuego "Repite el dibujo" (categoría: Memoria).
-///
-/// 3 rondas secuenciales. Si el jugador falla cualquier ronda → derrota.
-/// Si completa las 3 → victoria.
-///
-/// Layout diseñado para resolución landscape 1920×1080.
-/// </summary>
 public class PatternGameController : MinigameBase
 {
-    // ─── Inspector: Ronda 1 ───────────────────────────────────────────────
+
     [Header("Ronda 1 (Facil)")]
     public int   colsRound1    = 3;
     public int   rowsRound1    = 3;
     public int   patternRound1 = 4;
     public float timeRound1    = 4f;
 
-    // ─── Inspector: Ronda 2 ───────────────────────────────────────────────
     [Header("Ronda 2 (Media)")]
     public int   colsRound2    = 4;
     public int   rowsRound2    = 4;
     public int   patternRound2 = 6;
     public float timeRound2    = 3f;
 
-    // ─── Inspector: Ronda 3 ───────────────────────────────────────────────
     [Header("Ronda 3 (Dificil)")]
     public int   colsRound3    = 5;
     public int   rowsRound3    = 5;
     public int   patternRound3 = 9;
     public float timeRound3    = 2f;
 
-    // ─── Estado de rondas ─────────────────────────────────────────────────
     private int       _currentRound = 0;
     private const int TOTAL_ROUNDS  = 3;
     private int       _totalScore   = 0;
     private int       _roundsWon    = 0;
 
-    // ─── Fases de juego ───────────────────────────────────────────────────
     private enum Phase { Memorize, Recall, Result }
     private Phase _phase;
 
-    // ─── Componentes ──────────────────────────────────────────────────────
     private PatternGridManager _grid;
     private RectTransform      _gridContainer;
 
-    // ─── UI: pantalla de juego ────────────────────────────────────────────
     private TMPro.TextMeshProUGUI _instrLabel;
     private TMPro.TextMeshProUGUI _countdownLabel;
     private GameObject            _countdownPanel;
@@ -58,7 +44,6 @@ public class PatternGameController : MinigameBase
     private TMPro.TextMeshProUGUI _roundLabel;
     private Image[]               _roundDots;
 
-    // ─── UI: paneles ──────────────────────────────────────────────────────
     private GameObject            _transPanel;
     private TMPro.TextMeshProUGUI _transTitle;
     private TMPro.TextMeshProUGUI _transSubtitle;
@@ -69,7 +54,6 @@ public class PatternGameController : MinigameBase
     private TMPro.TextMeshProUGUI _statDetail;
     private TMPro.TextMeshProUGUI _statScore;
 
-    // ─── Paleta de colores ────────────────────────────────────────────────
     private static readonly Color C_BG_DARK  = new Color(0.08f, 0.09f, 0.18f);
     private static readonly Color C_PANEL    = new Color(0.13f, 0.14f, 0.26f);
     private static readonly Color C_HEADER   = new Color(0.10f, 0.11f, 0.22f);
@@ -81,8 +65,6 @@ public class PatternGameController : MinigameBase
     private static readonly Color C_BTN_GREY = new Color(0.30f, 0.32f, 0.40f);
     private static readonly Color C_TEXT_DIM = new Color(0.65f, 0.68f, 0.80f);
     private static readonly Color C_DOT_OFF  = new Color(0.25f, 0.27f, 0.45f);
-
-    // ─── MinigameBase ─────────────────────────────────────────────────────
 
     protected override string GetIntroDescription() =>
         "Se te mostrara un patron de casillas iluminadas durante unos segundos.\n" +
@@ -100,17 +82,6 @@ public class PatternGameController : MinigameBase
     protected override void OnMinigameComplete() { }
     protected override void OnMinigameFailed()   { }
 
-    // ─── Configuración de ronda ───────────────────────────────────────────
-
-    /// <summary>
-    /// Devuelve la configuración de la ronda (índice 0-based).
-    /// cellSize y spacing se ajustan automáticamente para que el grid
-    /// quepa bien en pantalla landscape sin solaparse con el resto de la UI.
-    ///
-    ///   Ronda 0 → 3×3, celdas 120px → total grid 384×384
-    ///   Ronda 1 → 4×4, celdas  96px → total grid 414×414
-    ///   Ronda 2 → 5×5, celdas  78px → total grid 430×430
-    /// </summary>
     private void GetRoundConfig(int idx,
                                 out int cols, out int rows,
                                 out int patternCount, out float displayTime,
@@ -135,8 +106,6 @@ public class PatternGameController : MinigameBase
                 break;
         }
     }
-
-    // ─── Gestión de rondas ────────────────────────────────────────────────
 
     private void ResetSession()
     {
@@ -164,7 +133,6 @@ public class PatternGameController : MinigameBase
         _confirmBtn.SetActive(false);
         _countdownPanel.SetActive(false);
 
-        // Destruir grid anterior
         for (int i = _gridContainer.childCount - 1; i >= 0; i--)
             DestroyImmediate(_gridContainer.GetChild(i).gameObject);
 
@@ -180,7 +148,6 @@ public class PatternGameController : MinigameBase
             UpdateSelectionLabel(selected, pc);
         };
 
-        // Inicializar con los tamaños de celda de esta ronda
         _grid.Initialize(_gridContainer, cols, rows, cellSize, spacing);
         _grid.GeneratePattern(patternCount);
         _grid.EnableInput(false);
@@ -188,8 +155,6 @@ public class PatternGameController : MinigameBase
         SetInstructions("Memoriza el patron");
         StartCoroutine(MemorizePhase(patternCount, displayTime));
     }
-
-    // ─── Fase 1: MEMORIZAR ────────────────────────────────────────────────
 
     private IEnumerator MemorizePhase(int patternCount, float displayTime)
     {
@@ -210,8 +175,6 @@ public class PatternGameController : MinigameBase
         StartRecallPhase(patternCount);
     }
 
-    // ─── Fase 2: RESPONDER ────────────────────────────────────────────────
-
     private void StartRecallPhase(int patternCount)
     {
         _phase = Phase.Recall;
@@ -228,8 +191,6 @@ public class PatternGameController : MinigameBase
         _selectionLabel.text  = $"{selected} / {needed} seleccionadas";
         _selectionLabel.color = (selected == needed) ? C_GREEN : C_TEXT_DIM;
     }
-
-    // ─── Fase 3: RESULTADO ────────────────────────────────────────────────
 
     private void HandleConfirm()
     {
@@ -285,22 +246,9 @@ public class PatternGameController : MinigameBase
         StartRound(completedRound + 1);
     }
 
-    // ─── Construcción de UI (layout landscape 1920×1080) ─────────────────
-    //
-    // Distribución vertical (canvas effective height ≈ 1080):
-    //   [0 – 90]    Bottom bar
-    //   [90 – 162]  Confirm button area
-    //   [162 – 650] Grid (center, y=-50 from canvas center)
-    //   [818 – 880] Countdown / Selection panel (top anchor, y=-232)
-    //   [880 – 924] Instrucción (top anchor, y=-156)
-    //   [924 – 962] Round bar (top anchor, y=-118)
-    //   [962 – 1080] Header bar (top anchor, y=-80)
-    //
-    // La separación garantiza que no haya solapamiento en ninguna de las 3 rondas.
-
     private void BuildUI()
     {
-        // ── Canvas ──
+
         var canvasGO = new GameObject("Canvas");
         canvasGO.transform.SetParent(transform, false);
         var canvas = canvasGO.AddComponent<Canvas>();
@@ -308,7 +256,7 @@ public class PatternGameController : MinigameBase
 
         var scaler = canvasGO.AddComponent<CanvasScaler>();
         scaler.uiScaleMode         = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1920f, 1080f);  // landscape
+        scaler.referenceResolution = new Vector2(1920f, 1080f);
         scaler.matchWidthOrHeight  = 0.5f;
         canvasGO.AddComponent<GraphicRaycaster>();
 
@@ -317,10 +265,8 @@ public class PatternGameController : MinigameBase
         root.anchorMax = Vector2.one;
         root.sizeDelta = Vector2.zero;
 
-        // ── Fondo ──
         MakePanel(root, "BG", C_BG_DARK, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
 
-        // ── Header (80px desde arriba) ──
         var header = MakePanel(root, "Header", C_HEADER,
             new Vector2(0f, 1f), new Vector2(1f, 1f),
             new Vector2(0f, -40f), new Vector2(0f, 80f));
@@ -336,7 +282,6 @@ public class PatternGameController : MinigameBase
         title.fontStyle = TMPro.FontStyles.Bold;
         title.alignment = TMPro.TextAlignmentOptions.Center;
 
-        // ── Barra de ronda (38px, debajo del header) ──
         var roundBar = MakePanel(root, "RoundBar", C_HEADER,
             new Vector2(0f, 1f), new Vector2(1f, 1f),
             new Vector2(0f, -99f), new Vector2(0f, 38f));
@@ -362,7 +307,6 @@ public class PatternGameController : MinigameBase
             _roundDots[i].color = C_DOT_OFF;
         }
 
-        // ── Barra de instrucción (40px, debajo de ronda) ──
         var instrBar = MakePanel(root, "InstrBar",
             new Color(0.12f, 0.14f, 0.28f),
             new Vector2(0f, 1f), new Vector2(1f, 1f),
@@ -373,8 +317,6 @@ public class PatternGameController : MinigameBase
             Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
         _instrLabel.alignment = TMPro.TextAlignmentOptions.Center;
 
-        // ── Panel de cuenta atrás (debajo de la instrucción, SIN solapar el grid) ──
-        // Posicionado en top anchor a y=-200 → queda entre la instrucción y el grid
         _countdownPanel = new GameObject("CountdownPanel");
         _countdownPanel.transform.SetParent(root, false);
         var cdRT = _countdownPanel.AddComponent<RectTransform>();
@@ -391,7 +333,6 @@ public class PatternGameController : MinigameBase
         _countdownLabel.alignment = TMPro.TextAlignmentOptions.Center;
         _countdownPanel.SetActive(false);
 
-        // ── Panel de selección (misma posición que countdown, solo en recall) ──
         _selectionPanel = new GameObject("SelectionPanel");
         _selectionPanel.transform.SetParent(root, false);
         var spRT = _selectionPanel.AddComponent<RectTransform>();
@@ -407,9 +348,6 @@ public class PatternGameController : MinigameBase
         _selectionLabel.alignment = TMPro.TextAlignmentOptions.Center;
         _selectionPanel.SetActive(false);
 
-        // ── Contenedor del grid (centrado en pantalla con offset hacia arriba) ──
-        // Offset y=+30 empuja el grid ligeramente por encima del centro,
-        // dejando espacio en la zona inferior para el botón Confirmar.
         var gridGO = new GameObject("GridContainer");
         gridGO.transform.SetParent(root, false);
         _gridContainer = gridGO.AddComponent<RectTransform>();
@@ -419,7 +357,6 @@ public class PatternGameController : MinigameBase
         _gridContainer.anchoredPosition = new Vector2(0f, 30f);
         _gridContainer.sizeDelta        = new Vector2(600f, 600f);
 
-        // ── Botón Confirmar (centrado, por encima de la barra inferior) ──
         _confirmBtn = new GameObject("BtnConfirm");
         _confirmBtn.transform.SetParent(root, false);
         var confirmRT = _confirmBtn.AddComponent<RectTransform>();
@@ -448,7 +385,6 @@ public class PatternGameController : MinigameBase
         cTmp.alignment = TMPro.TextAlignmentOptions.Center;
         _confirmBtn.SetActive(false);
 
-        // ── Barra inferior (90px) ──
         var botBar = MakePanel(root, "BotBar", C_HEADER,
             new Vector2(0f, 0f), new Vector2(1f, 0f),
             new Vector2(0f, 45f), new Vector2(0f, 90f));
@@ -462,14 +398,10 @@ public class PatternGameController : MinigameBase
             new Vector2(0.54f, 0.12f), new Vector2(0.94f, 0.88f), Vector2.zero, Vector2.zero,
             ReturnToGameSelector);
 
-        // ── Panel de transición ──
         BuildTransitionPanel(root);
 
-        // ── Panel de fin ──
         BuildEndPanel(root);
     }
-
-    // ─── Indicador de ronda ───────────────────────────────────────────────
 
     private void UpdateRoundIndicator(int roundIndex)
     {
@@ -477,8 +409,6 @@ public class PatternGameController : MinigameBase
         for (int i = 0; i < _roundDots.Length; i++)
             _roundDots[i].color = i <= roundIndex ? C_ACCENT : C_DOT_OFF;
     }
-
-    // ─── Panel de transición ─────────────────────────────────────────────
 
     private void BuildTransitionPanel(RectTransform root)
     {
@@ -510,8 +440,6 @@ public class PatternGameController : MinigameBase
 
         _transPanel.SetActive(false);
     }
-
-    // ─── Panel de fin ─────────────────────────────────────────────────────
 
     private void BuildEndPanel(RectTransform root)
     {
@@ -596,8 +524,6 @@ public class PatternGameController : MinigameBase
         tmp.text = label; tmp.color = C_TEXT_DIM;
         tmp.fontSize = 22f; tmp.alignment = TMPro.TextAlignmentOptions.MidlineLeft;
     }
-
-    // ─── UI helpers ───────────────────────────────────────────────────────
 
     private void SetInstructions(string text) => _instrLabel.text = text;
 

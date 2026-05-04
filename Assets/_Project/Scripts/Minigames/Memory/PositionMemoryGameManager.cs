@@ -3,34 +3,8 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
-/// <summary>
-/// GameManager del minijuego "Memoria de Posiciones".
-/// Hereda MinigameBase → panel de introduccion automatico.
-///
-/// Mecanica:
-///   1. Fase MEMORIZAR: se iluminan N casillas durante [memorizeTime] segundos.
-///   2. Fase RECORDAR: las casillas se apagan; el jugador selecciona las que recuerda.
-///   3. El jugador pulsa CONFIRMAR (o se agota el tiempo de respuesta).
-///   4. Se muestran verde / naranja / rojo segun aciertos.
-///   5. Se repite [totalRounds] rondas con mas casillas cada vez.
-///
-/// Puntuacion:
-///   Cada casilla correcta → +10 pts
-///   Ronda perfecta (sin errores) → +20 pts bonus
-///
-/// Condicion de victoria:
-///   Ganar [roundsToWin] de [totalRounds] rondas (ronda ganada = cero errores).
-///
-/// Dificultad en Inspector:
-///   Facil   → 4x4, 3 rondas, 3/4/5 casillas, 2.5s memorizar
-///   Medio   → 4x4, 3 rondas, 4/5/6 casillas, 2.0s memorizar
-///   Dificil → 5x5, 4 rondas, 5/6/7/8 casillas, 1.5s memorizar
-/// </summary>
 public class PositionMemoryGameManager : MinigameBase
 {
-    // ------------------------------------------------------------------ //
-    // Inspector
-    // ------------------------------------------------------------------ //
 
     [Header("Tamano de la cuadricula")]
     public int rows = 4;
@@ -46,11 +20,7 @@ public class PositionMemoryGameManager : MinigameBase
     [Header("Tiempos (segundos)")]
     public float memorizeTime  = 2.5f;
     public float feedbackTime  = 1.6f;
-    public float recallTimeout = 20f;    // tiempo maximo para responder
-
-    // ------------------------------------------------------------------ //
-    // Estado
-    // ------------------------------------------------------------------ //
+    public float recallTimeout = 20f;
 
     PositionMemoryUIController _ui;
 
@@ -59,8 +29,6 @@ public class PositionMemoryGameManager : MinigameBase
     int          _roundsWon;
     bool         _confirmed;
     HashSet<int> _currentTargets;
-
-    // ════════════════════════════════════════════════════════════════════
 
     protected override string GetIntroDescription() =>
         "Observa las casillas iluminadas en la cuadricula.\n" +
@@ -95,19 +63,11 @@ public class PositionMemoryGameManager : MinigameBase
     protected override void OnMinigameComplete() { }
     protected override void OnMinigameFailed()   { }
 
-    // ════════════════════════════════════════════════════════════════════
-    // Update — confirmacion por teclado
-    // ════════════════════════════════════════════════════════════════════
-
     void Update()
     {
         if (IsPlaying && Input.GetKeyDown(KeyCode.Space))
             OnConfirm();
     }
-
-    // ════════════════════════════════════════════════════════════════════
-    // Game Loop
-    // ════════════════════════════════════════════════════════════════════
 
     IEnumerator GameLoop()
     {
@@ -121,7 +81,6 @@ public class PositionMemoryGameManager : MinigameBase
 
             _ui.UpdateRound(_currentRound + 1, totalRounds);
 
-            // ── Fase MEMORIZAR ────────────────────────────────────────
             _currentTargets = GenerateTargets(rows * cols, cellCount);
             _ui.SetPhaseLabel("Memoriza", new Color(0.65f, 0.35f, 1.00f));
             _ui.SetInfoLabel("Recuerda " + cellCount + " posiciones · " + memorizeTime + "s");
@@ -129,13 +88,11 @@ public class PositionMemoryGameManager : MinigameBase
 
             yield return new WaitForSeconds(memorizeTime);
 
-            // ── Fase RECORDAR ─────────────────────────────────────────
             _confirmed = false;
             _ui.SetPhaseLabel("¿Cuales eran?", Color.white);
             _ui.SetInfoLabel("Selecciona " + cellCount + " casillas y pulsa CONFIRMAR");
             _ui.ShowRecallPhase();
 
-            // Esperar confirmacion o timeout
             float waited = 0f;
             while (!_confirmed && waited < recallTimeout)
             {
@@ -143,7 +100,6 @@ public class PositionMemoryGameManager : MinigameBase
                 yield return null;
             }
 
-            // ── Evaluar ───────────────────────────────────────────────
             var selected = _ui.GetSelectedIndices();
 
             int correct = 0;
@@ -162,7 +118,6 @@ public class PositionMemoryGameManager : MinigameBase
             _score         += roundScore;
             _ui.UpdateScore(_score);
 
-            // ── Feedback visual ───────────────────────────────────────
             _ui.ShowRoundResult(_currentTargets, selected);
 
             string msg; Color col;
@@ -188,7 +143,6 @@ public class PositionMemoryGameManager : MinigameBase
             yield return new WaitForSeconds(feedbackTime);
         }
 
-        // ── Fin de partida ────────────────────────────────────────────
         yield return new WaitForSeconds(0.3f);
 
         bool won   = _roundsWon >= roundsToWin;
@@ -201,10 +155,6 @@ public class PositionMemoryGameManager : MinigameBase
         _ui.ShowFinalResult(won, sub);
     }
 
-    // ════════════════════════════════════════════════════════════════════
-    // Callbacks
-    // ════════════════════════════════════════════════════════════════════
-
     void OnCellToggled(int idx)
     {
         if (!IsPlaying || _confirmed) return;
@@ -216,10 +166,6 @@ public class PositionMemoryGameManager : MinigameBase
         if (!IsPlaying || _confirmed) return;
         _confirmed = true;
     }
-
-    // ════════════════════════════════════════════════════════════════════
-    // Helpers
-    // ════════════════════════════════════════════════════════════════════
 
     HashSet<int> GenerateTargets(int total, int count)
     {

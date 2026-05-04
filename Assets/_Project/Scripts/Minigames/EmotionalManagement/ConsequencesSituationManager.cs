@@ -1,12 +1,8 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-// ── Tipos de datos compartidos ────────────────────────────────────────────────
-
-/// <summary>Calidad de la respuesta elegida por el jugador.</summary>
 public enum AnswerQuality { Positive, Neutral, Negative }
 
-/// <summary>Una opcion de respuesta con su consecuencia y calidad.</summary>
 public class SituationOption
 {
     public string       text;
@@ -21,7 +17,6 @@ public class SituationOption
     }
 }
 
-/// <summary>Una situacion emocional con sus opciones de respuesta.</summary>
 public class EmotionalSituation
 {
     public string            situation;
@@ -34,27 +29,12 @@ public class EmotionalSituation
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-
-/// <summary>
-/// Gestiona el pool de situaciones emocionales del minijuego.
-///
-/// Para añadir nuevas situaciones:
-///   Añade un nuevo elemento a ALL_SITUATIONS siguiendo la misma estructura:
-///   new EmotionalSituation("Texto de la situacion", new SituationOption[] { ... })
-///   Cada opcion: new SituationOption("Texto opcion", "Consecuencia educativa", AnswerQuality.X)
-///
-/// Para ajustar dificultad:
-///   Facil   → situaciones con una opcion claramente mejor que las demas
-///   Medio   → opciones mas parecidas entre si
-///   Dificil → consecuencias ambiguas, sin una respuesta obvia
-/// </summary>
 public class ConsequencesSituationManager : MonoBehaviour
 {
-    // ── Pool completo de situaciones ─────────────────────────────────────────
+
     static readonly EmotionalSituation[] ALL_SITUATIONS = new EmotionalSituation[]
     {
-        // ── Situacion 1 ──
+
         new EmotionalSituation(
             "Un compañero te empuja sin querer en el pasillo y no se disculpa.",
             new SituationOption[]
@@ -77,7 +57,6 @@ public class ConsequencesSituationManager : MonoBehaviour
                     AnswerQuality.Negative),
             }),
 
-        // ── Situacion 2 ──
         new EmotionalSituation(
             "Sacas una nota muy baja en un examen que preparaste durante dias.",
             new SituationOption[]
@@ -100,7 +79,6 @@ public class ConsequencesSituationManager : MonoBehaviour
                     AnswerQuality.Neutral),
             }),
 
-        // ── Situacion 3 ──
         new EmotionalSituation(
             "Tu mejor amigo no te invita a su fiesta de cumpleaños y te enteras por otros.",
             new SituationOption[]
@@ -123,7 +101,6 @@ public class ConsequencesSituationManager : MonoBehaviour
                     AnswerQuality.Neutral),
             }),
 
-        // ── Situacion 4 ──
         new EmotionalSituation(
             "Estas muy nervioso antes de hacer una presentacion en clase.",
             new SituationOption[]
@@ -146,7 +123,6 @@ public class ConsequencesSituationManager : MonoBehaviour
                     AnswerQuality.Neutral),
             }),
 
-        // ── Situacion 5 ──
         new EmotionalSituation(
             "Un familiar te critica duramente delante de otras personas.",
             new SituationOption[]
@@ -169,7 +145,6 @@ public class ConsequencesSituationManager : MonoBehaviour
                     AnswerQuality.Neutral),
             }),
 
-        // ── Situacion 6 ──
         new EmotionalSituation(
             "Tu equipo pierde un partido importante y estas muy frustrado.",
             new SituationOption[]
@@ -192,7 +167,6 @@ public class ConsequencesSituationManager : MonoBehaviour
                     AnswerQuality.Negative),
             }),
 
-        // ── Situacion 7 ──
         new EmotionalSituation(
             "Alguien en clase se burla de ti delante de todos tus compañeros.",
             new SituationOption[]
@@ -216,25 +190,16 @@ public class ConsequencesSituationManager : MonoBehaviour
             }),
     };
 
-    // ── Estado de la sesion ───────────────────────────────────────────────────
     List<EmotionalSituation> _activeSituations;
 
     public int Total => _activeSituations?.Count ?? 0;
 
-    // ── API publica ───────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Inicializa la sesion seleccionando y mezclando [count] situaciones del pool.
-    /// Las opciones de cada situacion tambien se mezclan para evitar que la
-    /// respuesta correcta siempre este en la misma posicion.
-    /// </summary>
     public void Initialize(int count)
     {
         var pool = new List<EmotionalSituation>(ALL_SITUATIONS);
         Shuffle(pool);
         _activeSituations = pool.GetRange(0, Mathf.Min(count, pool.Count));
 
-        // Mezclar las opciones dentro de cada situacion
         foreach (var sit in _activeSituations)
         {
             var opts = new List<SituationOption>(sit.options);
@@ -250,7 +215,6 @@ public class ConsequencesSituationManager : MonoBehaviour
         return _activeSituations[index];
     }
 
-    // ── Helper ────────────────────────────────────────────────────────────────
     static void Shuffle<T>(List<T> list)
     {
         for (int i = list.Count - 1; i > 0; i--)

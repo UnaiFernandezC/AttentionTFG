@@ -15,7 +15,7 @@ public class Spawner : MonoBehaviour
     public TMP_Text textoEstrellas;
     public float tiempoEntreSpawns = 1.5f;
 
-    public AudioClip sonidoAcierto; // 🔊 Sonido cuando acierta
+    public AudioClip sonidoAcierto;
 
     private AudioSource audioSource;
 
@@ -24,7 +24,7 @@ public class Spawner : MonoBehaviour
 
     void Start()
     {
-        // Configurar AudioSource
+
         audioSource = GetComponent<AudioSource>();
         if (audioSource == null)
         {
@@ -39,21 +39,18 @@ public class Spawner : MonoBehaviour
     {
         List<GameObject> listaObjetos = new List<GameObject>();
 
-        // Agregar 5 de cada objeto
         for (int i = 0; i < 5; i++)
         {
             listaObjetos.Add(objetoA);
             listaObjetos.Add(objetoB);
         }
 
-        // Mezclar lista aleatoriamente (Fisher-Yates shuffle)
         for (int i = listaObjetos.Count - 1; i > 0; i--)
         {
             int rand = Random.Range(0, i + 1);
             (listaObjetos[i], listaObjetos[rand]) = (listaObjetos[rand], listaObjetos[i]);
         }
 
-        // Spawnear de uno en uno
         foreach (var prefab in listaObjetos)
         {
             Spawn(prefab);
@@ -92,7 +89,6 @@ public class Spawner : MonoBehaviour
         estrellas = Mathf.Clamp(estrellas, 0, totalObjetos);
         ActualizarTexto();
 
-        // 🔊 Reproducir sonido de acierto
         if (sonidoAcierto != null && audioSource != null)
         {
             audioSource.PlayOneShot(sonidoAcierto);

@@ -1,15 +1,5 @@
 using UnityEngine;
 
-/// <summary>
-/// Aplica un cambio sutil a uno de los elementos del tablero.
-///
-/// Tipos de cambio según dificultad:
-///   Fácil  → solo COLOR (cambio a un color muy diferente)
-///   Medio  → COLOR sutil o SIZE (±20%)
-///   Difícil→ SIZE sutil (±12%) o POSITION_SWAP
-///
-/// changeSubtlety: 0=obvio  1=sutil  2=muy sutil
-/// </summary>
 public class ChangeManager : MonoBehaviour
 {
     [Header("0=obvio 1=sutil 2=muy sutil")]
@@ -18,7 +8,6 @@ public class ChangeManager : MonoBehaviour
     [Header("0=solo color, 1=color+size, 2=size+swap")]
     public int changeTypeMask = 0;
 
-    // Paleta completa (misma que SceneGenerator para elegir colores distintos)
     static readonly Color[] PALETTE =
     {
         new Color(0.92f, 0.25f, 0.28f), new Color(0.22f, 0.52f, 0.92f),
@@ -29,17 +18,9 @@ public class ChangeManager : MonoBehaviour
         new Color(0.88f, 0.42f, 0.22f), new Color(0.58f, 0.92f, 0.42f),
     };
 
-    // ─── Resultado público ────────────────────────────────────────────────
     public int  ChangedElementId { get; private set; } = -1;
     public string ChangeDescription { get; private set; } = "";
 
-    // ═════════════════════════════════════════════════════════════════════
-
-    /// <summary>
-    /// Selecciona un elemento aleatorio y le aplica el cambio.
-    /// Marca ElementData.IsChanged = true en el elemento modificado.
-    /// Llama a SceneGenerator.ApplyState() para actualizar la visuals.
-    /// </summary>
     public void ApplyChange(ElementData[] elements)
     {
         if (elements == null || elements.Length == 0) return;
@@ -49,7 +30,6 @@ public class ChangeManager : MonoBehaviour
         e.IsChanged = true;
         ChangedElementId = e.Id;
 
-        // Elegir tipo de cambio según máscara
         int type = PickChangeType();
 
         switch (type)
@@ -62,11 +42,9 @@ public class ChangeManager : MonoBehaviour
         SceneGenerator.ApplyState(e);
     }
 
-    // ─── Tipos de cambio ─────────────────────────────────────────────────
-
     void ApplyColorChange(ElementData e)
     {
-        // Elegir un color de la paleta que sea diferente al actual
+
         Color orig = e.CurColor;
         Color next = orig;
         int   tries = 0;
@@ -75,7 +53,7 @@ public class ChangeManager : MonoBehaviour
             next  = PALETTE[Random.Range(0, PALETTE.Length)];
             tries++;
         }
-        // subtlety 2: mezclar ligeramente con el original
+
         if (changeSubtlety == 2)
             next = Color.Lerp(orig, next, 0.40f);
 
@@ -94,7 +72,7 @@ public class ChangeManager : MonoBehaviour
 
     void ApplyPositionSwap(ElementData e, ElementData[] all)
     {
-        // Buscar un vecino distinto para intercambiar posición
+
         int other = Random.Range(0, all.Length);
         if (other == e.Id) other = (other + 1) % all.Length;
         var b = all[other];
@@ -106,13 +84,11 @@ public class ChangeManager : MonoBehaviour
         ChangeDescription = "posición";
     }
 
-    // ─── Helpers ─────────────────────────────────────────────────────────
-
     int PickChangeType()
     {
-        if (changeTypeMask == 0) return 0;                          // solo color
-        if (changeTypeMask == 1) return Random.value > 0.5f ? 0:1; // color o size
-        return Random.value > 0.5f ? 1 : 2;                        // size o swap
+        if (changeTypeMask == 0) return 0;
+        if (changeTypeMask == 1) return Random.value > 0.5f ? 0:1;
+        return Random.value > 0.5f ? 1 : 2;
     }
 
     static float ColorDistance(Color a, Color b)

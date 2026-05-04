@@ -15,8 +15,8 @@ public class MemoryQuestion
 public class MemorySelector : MonoBehaviour
 {
     [Header("Preguntas y opciones")]
-    public List<MemoryQuestion> questions; // Lista original (se mantiene como base)
-    private List<MemoryQuestion> remainingQuestions; // Lista interna sin repetir
+    public List<MemoryQuestion> questions;
+    private List<MemoryQuestion> remainingQuestions;
 
     public TextMeshProUGUI questionTitleText;
     public List<Button> optionButtons;
@@ -29,7 +29,7 @@ public class MemorySelector : MonoBehaviour
 
     IEnumerator Start()
     {
-        // Panel de introduccion
+
         bool _started = false;
         var introCanvas = IntroPanel.Build(
             "Aventura emocional",
@@ -46,7 +46,6 @@ public class MemorySelector : MonoBehaviour
         }
         Object.Destroy(introCanvas);
 
-        // Clonar la lista original para no modificarla directamente
         remainingQuestions = new List<MemoryQuestion>(questions);
         LoadRandomQuestion();
     }
@@ -59,21 +58,18 @@ public class MemorySelector : MonoBehaviour
             return;
         }
 
-        // Escoge una aleatoria de las que quedan
         int randomIndex = Random.Range(0, remainingQuestions.Count);
         currentQuestion = remainingQuestions[randomIndex];
-        remainingQuestions.RemoveAt(randomIndex); // Eliminarla para no repetir
+        remainingQuestions.RemoveAt(randomIndex);
 
-        // Mostrar t�tulo
         if (questionTitleText != null)
             questionTitleText.text = currentQuestion.questionTitle;
 
-        // Mostrar opciones
         for (int i = 0; i < optionTexts.Length; i++)
         {
             optionTexts[i].text = currentQuestion.options[i];
 
-            int index = i; // Capturar variable local
+            int index = i;
             optionButtons[i].onClick.RemoveAllListeners();
             optionButtons[i].onClick.AddListener(() => CheckAnswer(index));
         }
@@ -89,10 +85,9 @@ public class MemorySelector : MonoBehaviour
         else
         {
             Debug.Log("Respuesta incorrecta");
-            // Feedback visual aqu� si quieres
+
         }
 
-        // Cargar siguiente pregunta tras un peque�o delay
         Invoke(nameof(LoadRandomQuestion), 1.2f);
     }
 }

@@ -1,30 +1,14 @@
 using System;
 using UnityEngine;
 
-// ── Tipos compartidos (accesibles desde todos los scripts del minijuego) ─────
-
 public enum RSStimColor { Red, Blue, Green }
 public enum RSRuleType  { ClickRed, ClickBlue, ClickGreen }
 
-/// <summary>Datos de un estímulo: solo color (Easy). Se puede ampliar con Shape para Medium/Hard.</summary>
 public class RSStimData
 {
     public RSStimColor Color;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-
-/// <summary>
-/// Gestiona la regla activa del minijuego "Cambio de regla".
-///
-/// La regla puede cambiar silenciosamente (SwitchRule) durante la partida.
-/// El GameManager decide si avisar o no al jugador; este script NO notifica la UI.
-///
-/// Dificultad (adjusting reglas disponibles):
-///   Fácil   → availableRules = [ClickRed, ClickBlue, ClickGreen]  (solo colores)
-///   Medio   → añadir formas en versiones futuras
-///   Difícil → ídem con más variedad y sin pistas
-/// </summary>
 public class RuleSwitchRuleManager : MonoBehaviour
 {
     [Header("Reglas disponibles para esta dificultad")]
@@ -33,24 +17,13 @@ public class RuleSwitchRuleManager : MonoBehaviour
 
     public RSRuleType CurrentRule { get; private set; }
 
-    /// <summary>
-    /// Disparado cuando la regla cambia.
-    /// El GameManager escucha esto para decidir si actualiza la UI o no.
-    /// </summary>
     public event Action<RSRuleType> OnRuleChanged;
 
-    // ─────────────────────────────────────────────────────────────────
-
-    /// <summary>Establece una regla inicial aleatoria.</summary>
     public void SetInitialRule()
     {
         CurrentRule = availableRules[UnityEngine.Random.Range(0, availableRules.Length)];
     }
 
-    /// <summary>
-    /// Cambia SILENCIOSAMENTE la regla a una diferente de la activa.
-    /// Siempre elige una regla distinta a la actual.
-    /// </summary>
     public void SwitchRule()
     {
         if (availableRules.Length < 2) return;
@@ -67,11 +40,6 @@ public class RuleSwitchRuleManager : MonoBehaviour
         OnRuleChanged?.Invoke(CurrentRule);
     }
 
-    // ─────────────────────────────────────────────────────────────────
-    // Evaluación
-    // ─────────────────────────────────────────────────────────────────
-
-    /// <summary>¿El estímulo coincide con la regla activa?</summary>
     public bool Matches(RSStimData s)
     {
         switch (CurrentRule)
@@ -83,16 +51,8 @@ public class RuleSwitchRuleManager : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// ¿La respuesta del jugador es correcta?
-    /// Correcto si: (coincide Y pulsó) O (no coincide Y no pulsó).
-    /// </summary>
     public bool IsCorrect(RSStimData s, bool playerClicked)
         => Matches(s) == playerClicked;
-
-    // ─────────────────────────────────────────────────────────────────
-    // Helpers de texto y color
-    // ─────────────────────────────────────────────────────────────────
 
     public string GetRuleText(RSRuleType r)
     {
@@ -129,7 +89,6 @@ public class RuleSwitchRuleManager : MonoBehaviour
         }
     }
 
-    /// <summary>Devuelve el color que debe mostrar el dot indicador de la UI para una regla.</summary>
     public static Color GetRuleColor(RSRuleType r)
     {
         switch (r)

@@ -4,26 +4,8 @@ using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using TMPro;
 
-/// <summary>
-/// Minijuego "Manten el equilibrio" — Gestion Emocional.
-///
-/// Un indicador se desplaza solo por la barra emocional usando movimiento
-/// suave (ruido de Perlin). El jugador debe mantenerlo en la zona verde
-/// usando las teclas A/D, las flechas, o los botones de pantalla.
-///
-/// El control tiene inercia: no es instantaneo, sino progresivo y suave.
-///
-/// Gana si acumula <winTime> segundos dentro de la zona segura (verde).
-/// Pierde si permanece <loseTime> segundos consecutivos en la zona roja.
-///
-/// Inspector — Dificultad:
-///   Facil : safeZone=0.40, yellowZone=0.68, driftAmp=0.20, winTime=12, loseTime=6
-///   Medio : safeZone=0.28, yellowZone=0.60, driftAmp=0.32, winTime=15, loseTime=5
-///   Dificil: safeZone=0.18, yellowZone=0.52, driftAmp=0.45, winTime=18, loseTime=4
-/// </summary>
 public class EmotionalBalanceController : MinigameBase
 {
-    // ─── Inspector ────────────────────────────────────────────────────────
 
     [Header("Zona segura (fraccion 0-1 del ancho de la barra)")]
     public float safeZoneWidth   = 0.52f;
@@ -39,31 +21,26 @@ public class EmotionalBalanceController : MinigameBase
     public float damping         = 0.82f;
 
     [Header("Condiciones")]
-    public float winTime         = 10f;      // segundos acumulados en verde
-    public float loseTime        = 9f;       // segundos consecutivos en rojo
+    public float winTime         = 10f;
+    public float loseTime        = 9f;
 
-    // ─── Estado ──────────────────────────────────────────────────────────
+    float _pos;
+    float _vel;
+    float _noiseOff;
+    float _goodTime;
+    float _badTime;
+    bool  _over;
+    bool  _inputEnabled;
 
-    float _pos;          // -1..1 posicion del indicador
-    float _vel;          // velocidad del indicador
-    float _noiseOff;     // offset para ruido de Perlin
-    float _goodTime;     // tiempo acumulado en zona segura
-    float _badTime;      // tiempo consecutivo en zona roja
-    bool  _over;         // juego terminado
-    bool  _inputEnabled; // false hasta que OnMinigameStart() corra
-
-    // Input desde botones de pantalla
     bool _leftHeld;
     bool _rightHeld;
 
-    // ─── UI ──────────────────────────────────────────────────────────────
-
     RectTransform   _indicatorRT;
     Image           _indicatorImg;
-    float           _barHalfWidth;  // unidades canvas
+    float           _barHalfWidth;
 
     const int       STABILITY_SQUARES = 12;
-    Image[]         _stabilitySquares;   // 12 cuadros de progreso
+    Image[]         _stabilitySquares;
     TextMeshProUGUI _timerLbl;
     TextMeshProUGUI _statusLbl;
 
@@ -71,8 +48,6 @@ public class EmotionalBalanceController : MinigameBase
     Image           _endBarImg;
     TextMeshProUGUI _endTitle;
     TextMeshProUGUI _endSub;
-
-    // ─── Colores ─────────────────────────────────────────────────────────
 
     static readonly Color BG      = C(0.06f, 0.10f, 0.16f);
     static readonly Color HDR     = C(0.08f, 0.13f, 0.22f);
@@ -88,10 +63,6 @@ public class EmotionalBalanceController : MinigameBase
     static readonly Color REDBG   = C(0.55f, 0.16f, 0.20f);
 
     static Color C(float r, float g, float b) => new Color(r, g, b);
-
-    // ═════════════════════════════════════════════════════════════════════
-    //  MINIGAME BASE
-    // ═════════════════════════════════════════════════════════════════════
 
     protected override string GetIntroDescription() =>
         "El indicador se mueve solo. Mantelo dentro de la zona verde.\n" +
@@ -109,35 +80,26 @@ public class EmotionalBalanceController : MinigameBase
     protected override void OnMinigameComplete() { }
     protected override void OnMinigameFailed()   { }
 
-    // ═════════════════════════════════════════════════════════════════════
-    //  UPDATE — FISICA Y LOGICA
-    // ═════════════════════════════════════════════════════════════════════
-
     void Update()
     {
         if (!_inputEnabled || !IsPlaying || _over) return;
 
-        // ── Input ──────────────────────────────────────────────────────
         bool kb_left  = Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow);
         bool kb_right = Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow);
         float inputDir = ((kb_right || _rightHeld) ? 1f : 0f)
                        - ((kb_left  || _leftHeld)  ? 1f : 0f);
 
-        // ── Deriva automatica (Perlin noise) ───────────────────────────
         _noiseOff += driftSpeed * Time.deltaTime;
         float drift = (Mathf.PerlinNoise(_noiseOff, 0.3f) - 0.5f) * 2f * driftAmplitude;
 
-        // ── Fisica ─────────────────────────────────────────────────────
         _vel += drift      * Time.deltaTime * 60f;
         _vel += inputDir   * inputForce * Time.deltaTime * 60f;
-        _vel *= Mathf.Pow(damping, Time.deltaTime * 60f);  // damping independiente de fps
+        _vel *= Mathf.Pow(damping, Time.deltaTime * 60f);
         _pos += _vel * Time.deltaTime;
 
-        // Rebotar en los bordes
         if (_pos >  1f) { _pos =  1f; _vel = -Mathf.Abs(_vel) * 0.35f; }
         if (_pos < -1f) { _pos = -1f; _vel =  Mathf.Abs(_vel) * 0.35f; }
 
-        // ── Zonas ──────────────────────────────────────────────────────
         float absP    = Mathf.Abs(_pos);
         bool inSafe   = absP <= safeZoneWidth;
         bool inRed    = absP >  yellowZoneWidth;
@@ -147,7 +109,6 @@ public class EmotionalBalanceController : MinigameBase
         else if (inRed) { _badTime  += Time.deltaTime; }
         else            { _badTime   = 0f; }
 
-        // ── Condiciones ────────────────────────────────────────────────
         if (_goodTime >= winTime)
         {
             _over = true;
@@ -164,21 +125,18 @@ public class EmotionalBalanceController : MinigameBase
             return;
         }
 
-        // ── Actualizar UI ──────────────────────────────────────────────
         UpdateBarUI(inSafe, inRed, inYellow);
     }
 
     void UpdateBarUI(bool inSafe, bool inRed, bool inYellow)
     {
-        // Mover indicador
+
         if (_indicatorRT != null)
             _indicatorRT.anchoredPosition = new Vector2(_pos * _barHalfWidth, 0f);
 
-        // Color del indicador
         if (_indicatorImg != null)
             _indicatorImg.color = inSafe ? CGREEN : (inRed ? CRED : CYELLOW);
 
-        // Cuadros de estabilidad — iluminar los que corresponden al tiempo acumulado
         if (_stabilitySquares != null)
         {
             int lit = Mathf.Min(
@@ -189,11 +147,9 @@ public class EmotionalBalanceController : MinigameBase
                     _stabilitySquares[i].enabled = (i < lit);
         }
 
-        // Timer (segundos acumulados en zona segura)
         if (_timerLbl != null)
             _timerLbl.text = Mathf.FloorToInt(_goodTime).ToString();
 
-        // Estado
         if (_statusLbl != null)
         {
             if (inSafe)
@@ -214,10 +170,6 @@ public class EmotionalBalanceController : MinigameBase
         }
     }
 
-    // ═════════════════════════════════════════════════════════════════════
-    //  PANEL FIN
-    // ═════════════════════════════════════════════════════════════════════
-
     void ShowEnd(bool won)
     {
         _endBarImg.color  = won ? CGREEN : CRED;
@@ -228,13 +180,9 @@ public class EmotionalBalanceController : MinigameBase
         _endPanel.SetActive(true);
     }
 
-    // ═════════════════════════════════════════════════════════════════════
-    //  CONSTRUCCION DE UI
-    // ═════════════════════════════════════════════════════════════════════
-
     void BuildUI()
     {
-        // Canvas
+
         var cGO = new GameObject("Canvas");
         cGO.transform.SetParent(transform, false);
         var cv = cGO.AddComponent<Canvas>();
@@ -247,10 +195,8 @@ public class EmotionalBalanceController : MinigameBase
         cGO.AddComponent<GraphicRaycaster>();
         var R = cGO.GetComponent<RectTransform>();
 
-        // Fondo
         MkImg(R, "BG", BG, V2(0,0), V2(1,1), V2(0,0), V2(0,0));
 
-        // ── Header ──
         var hdr = MkImg(R, "Hdr", HDR, V2(0,1), V2(1,1), V2(0,-40), V2(0,80));
         MkImg(hdr, "HL", ACCENT, V2(0,0), V2(1,0), V2(0,1.5f), V2(0,3));
         var ht = MkTxt(hdr, "T", "Manten el equilibrio", Color.white, 40, V2(0.03f,0), V2(0.60f,1));
@@ -259,66 +205,54 @@ public class EmotionalBalanceController : MinigameBase
         var subT = MkTxt(hdr, "S", "Gestion emocional", DIM, 22, V2(0.60f,0), V2(0.97f,1));
         subT.alignment = TextAlignmentOptions.MidlineRight;
 
-        // ── Instruccion ──
         var instrT = MkTxt(R, "Instr",
             "Mantén el indicador dentro de la zona verde",
             DIM, 28, V2(0.05f,0.86f), V2(0.95f,0.93f));
         instrT.alignment = TextAlignmentOptions.Center;
 
-        // ── Barra emocional ──
         BuildEmotionalBar(R);
 
-        // ── Barra de estabilidad ──
         BuildStabilityBar(R);
 
-        // ── Estado ──
         _statusLbl = MkTxt(R, "Status", "Preparate...", DIM, 34,
             V2(0.05f, 0.30f), V2(0.95f, 0.40f));
         _statusLbl.fontStyle = FontStyles.Bold;
 
-        // ── Botones de control ──
         BuildControlButtons(R);
 
-        // ── Barra inferior ──
         var bot = MkImg(R, "Bot", HDR, V2(0,0), V2(1,0), V2(0,45), V2(0,90));
         MkImg(bot, "BL", ACCENT, V2(0,1), V2(1,1), V2(0,-1.5f), V2(0,3));
         MkBtn(bot, "Volver al menu", GREY, V2(0.30f,0.12f), V2(0.70f,0.88f),
             () => ReturnToGameSelector());
 
-        // ── Panel final ──
         BuildEndPanel(R);
     }
 
     void BuildEmotionalBar(RectTransform R)
     {
-        // Contenedor de la barra (ancho relativo al canvas de referencia)
+
         var barCont = MkImg(R, "BarCont", new Color(0,0,0,0),
             V2(0.06f, 0.52f), V2(0.94f, 0.68f), V2(0,0), V2(0,0));
 
-        // Borde exterior
         MkImg(barCont, "Border", new Color(1,1,1,0.08f),
             V2(0,0), V2(1,1), V2(0,0), V2(0,0));
 
-        // Calculo de zona en anchors: safe zona centrada, yellow entre safe y rojo
         float halfSafe   = safeZoneWidth   * 0.5f;
         float halfYellow = yellowZoneWidth * 0.5f;
 
-        // Zonas rojas (exterior)
         MkImg(barCont, "RedL",  REDBG,   V2(0,         0), V2(0.5f - halfYellow, 1), V2(0,0), V2(0,0));
         MkImg(barCont, "RedR",  REDBG,   V2(0.5f + halfYellow, 0), V2(1, 1), V2(0,0), V2(0,0));
-        // Zonas amarillas
+
         MkImg(barCont, "YelL",  YLWBG,   V2(0.5f - halfYellow, 0), V2(0.5f - halfSafe, 1), V2(0,0), V2(0,0));
         MkImg(barCont, "YelR",  YLWBG,   V2(0.5f + halfSafe, 0), V2(0.5f + halfYellow, 1), V2(0,0), V2(0,0));
-        // Zona verde central
+
         MkImg(barCont, "Green", GREENBG, V2(0.5f - halfSafe, 0), V2(0.5f + halfSafe, 1), V2(0,0), V2(0,0));
 
-        // Etiquetas de zona
         var lG = MkTxt(barCont, "LG", "ZONA SEGURA", CGREEN, 16, V2(0.5f - halfSafe, 0), V2(0.5f + halfSafe, 1));
         lG.fontStyle = FontStyles.Bold;
         var lL = MkTxt(barCont, "LL", "PELIGRO", CRED, 13, V2(0, 0), V2(0.5f - halfYellow, 1));
         var lR = MkTxt(barCont, "LR", "PELIGRO", CRED, 13, V2(0.5f + halfYellow, 0), V2(1, 1));
 
-        // Indicador (hijo de barCont, se mueve por anchoredPosition)
         var indGO = new GameObject("Indicator");
         indGO.transform.SetParent(barCont, false);
         _indicatorRT = indGO.AddComponent<RectTransform>();
@@ -330,20 +264,16 @@ public class EmotionalBalanceController : MinigameBase
         _indicatorImg = indGO.AddComponent<Image>();
         _indicatorImg.color = CGREEN;
 
-        // Calcula el rango en px canvas: el barCont va del 6% al 94% de 1920 = 1689.6 de ancho
-        // pero el indicator se ancla al centro de barCont. El rango max es (barCont.width/2 - indicatorWidth/2)
-        // En referencia 1920x1080: barCont width = (0.94-0.06)*1920 = 1689.6
-        _barHalfWidth = (0.94f - 0.06f) * 1920f * 0.5f - 20f;  // ~824px
+        _barHalfWidth = (0.94f - 0.06f) * 1920f * 0.5f - 20f;
     }
 
     void BuildStabilityBar(RectTransform R)
     {
-        // Etiqueta
+
         var lbl = MkTxt(R, "StabLbl", "Estabilidad acumulada", DIM, 24,
             V2(0.06f, 0.46f), V2(0.55f, 0.52f));
         lbl.alignment = TextAlignmentOptions.MidlineLeft;
 
-        // Timer (tiempo acumulado en zona segura)
         _timerLbl = MkTxt(R, "Timer", "0",
             Color.white, 48, V2(0.72f, 0.40f), V2(0.94f, 0.52f));
         _timerLbl.fontStyle = FontStyles.Bold;
@@ -351,9 +281,6 @@ public class EmotionalBalanceController : MinigameBase
         MkTxt(R, "TimerLbl", "seg", DIM, 22, V2(0.72f, 0.36f), V2(0.94f, 0.42f))
             .alignment = TextAlignmentOptions.MidlineRight;
 
-        // ── 12 cuadros de progreso: rojo → amarillo → verde ──────────────
-        // Area: x 0.06..0.68, y 0.35..0.46
-        // Cada cuadro ocupa 0.048 + 0.004 de gap
         _stabilitySquares = new Image[STABILITY_SQUARES];
         float areaLeft  = 0.06f;
         float squareW   = (0.68f - 0.06f - (STABILITY_SQUARES - 1) * 0.004f) / STABILITY_SQUARES;
@@ -366,15 +293,12 @@ public class EmotionalBalanceController : MinigameBase
             float xLeft  = areaLeft + i * (squareW + gap);
             float xRight = xLeft + squareW;
 
-            // Fondo apagado del cuadro
             var bg = MkImg(R, "SqBg" + i,
                 new Color(0.10f, 0.12f, 0.16f),
                 V2(xLeft, yBot), V2(xRight, yTop), V2(0,0), V2(0,0));
 
-            // Borde sutil
             MkImg(bg, "B", new Color(1,1,1,0.08f), V2(0,0), V2(1,1), V2(0,0), V2(0,0));
 
-            // Cuadro iluminado (encima)
             var fillGO = new GameObject("Sq" + i);
             fillGO.transform.SetParent(bg, false);
             var fillRT = fillGO.AddComponent<RectTransform>();
@@ -384,12 +308,11 @@ public class EmotionalBalanceController : MinigameBase
             fillRT.anchoredPosition = Vector2.zero;
             var img = fillGO.AddComponent<Image>();
             img.color = SquareColor(i, STABILITY_SQUARES);
-            img.enabled = false;   // empieza apagado
+            img.enabled = false;
             _stabilitySquares[i] = img;
         }
     }
 
-    /// <summary>Devuelve el color del cuadro i — rojo en i=0, amarillo en mitad, verde en i=N-1.</summary>
     static Color SquareColor(int i, int total)
     {
         float t = (float)i / (total - 1);
@@ -401,12 +324,11 @@ public class EmotionalBalanceController : MinigameBase
 
     void BuildControlButtons(RectTransform R)
     {
-        // Instruccion de teclas
+
         var hint = MkTxt(R, "KeyHint", "Teclas A / D  o  flechas del teclado  /  botones de abajo",
             DIM, 20, V2(0.05f, 0.25f), V2(0.95f, 0.31f));
         hint.alignment = TextAlignmentOptions.Center;
 
-        // Boton izquierda
         var lBg = MkImg(R, "BtnL", new Color(0.20f,0.25f,0.50f), V2(0.06f,0.13f), V2(0.34f,0.24f), V2(0,0), V2(0,0));
         var lT  = MkTxt(lBg, "T", "Izquierda", Color.white, 32, V2(0,0), V2(1,1));
         lT.fontStyle = FontStyles.Bold;
@@ -414,7 +336,6 @@ public class EmotionalBalanceController : MinigameBase
         lHb.OnDown = () => _leftHeld  = true;
         lHb.OnUp   = () => _leftHeld  = false;
 
-        // Boton derecha
         var rBg = MkImg(R, "BtnR", new Color(0.20f,0.25f,0.50f), V2(0.66f,0.13f), V2(0.94f,0.24f), V2(0,0), V2(0,0));
         var rT  = MkTxt(rBg, "T", "Derecha", Color.white, 32, V2(0,0), V2(1,1));
         rT.fontStyle = FontStyles.Bold;
@@ -450,7 +371,7 @@ public class EmotionalBalanceController : MinigameBase
             _vel          = 0;
             _noiseOff     = Random.value * 100f;
             _inputEnabled = true;
-            IsPlaying     = true;   // reactivar tras FailMinigame/CompleteMinigame
+            IsPlaying     = true;
             if (_stabilitySquares != null)
                 for (int i = 0; i < STABILITY_SQUARES; i++)
                     if (_stabilitySquares[i] != null)
@@ -461,10 +382,6 @@ public class EmotionalBalanceController : MinigameBase
 
         _endPanel.SetActive(false);
     }
-
-    // ═════════════════════════════════════════════════════════════════════
-    //  HELPERS UI
-    // ═════════════════════════════════════════════════════════════════════
 
     static Vector2 V2(float x, float y) => new Vector2(x, y);
 
@@ -527,7 +444,6 @@ public class EmotionalBalanceController : MinigameBase
     }
 }
 
-// ── Helper para botones de mantener pulsado ───────────────────────────────
 public class HoldButtonHandler : MonoBehaviour, IPointerDownHandler, IPointerUpHandler
 {
     public System.Action OnDown;

@@ -6,21 +6,18 @@ using System.Collections;
 public class MonedaUIManager : MonoBehaviour
 {
     [Header("Contador Total")]
-    public TextMeshProUGUI contadorMonedasTMP; // Texto tipo "6/10"
+    public TextMeshProUGUI contadorMonedasTMP;
 
     [Header("Mensaje Temporal +X")]
-    public GameObject mensajeGO;               // Panel central con texto + icono
-    public TextMeshProUGUI mensajeTMP;         // Texto tipo "+2"
-    public Image iconoMoneda;                  // Icono de moneda (puedes animarlo si deseas)
+    public GameObject mensajeGO;
+    public TextMeshProUGUI mensajeTMP;
+    public Image iconoMoneda;
 
     private int monedas = 0;
     private int metaMonedas = 10;
 
     private Coroutine mensajeCoroutine;
 
-    /// <summary>
-    /// Llama este método desde otro script para mostrar ganancia y actualizar contador.
-    /// </summary>
     public void AgregarMonedas(int cantidad)
     {
         monedas += cantidad;
@@ -49,7 +46,6 @@ public class MonedaUIManager : MonoBehaviour
         float tiempoAnim = 0.3f;
         float elapsed = 0f;
 
-        // Animación simple de escala
         while (elapsed < tiempoAnim)
         {
             float t = elapsed / tiempoAnim;
@@ -65,7 +61,6 @@ public class MonedaUIManager : MonoBehaviour
         mensajeGO.SetActive(false);
     }
 
-    // Por si quieres reiniciar las monedas (opcional)
     public void Reiniciar()
     {
         monedas = 0;

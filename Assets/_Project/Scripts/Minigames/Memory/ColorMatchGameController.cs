@@ -3,20 +3,9 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-/// <summary>
-/// Controlador principal del minijuego "Parejas de Colores".
-/// Construye toda la UI por código y orquesta el tablero.
-///
-/// Hereda de MinigameBase para integrarse con GameManager y SceneLoader.
-///
-/// Dificultad:
-///   Easy   → 4 pares / 8  cartas / sin tiempo
-///   Medium → 6 pares / 12 cartas / sin tiempo
-///   Hard   → 8 pares / 16 cartas / 90 segundos
-/// </summary>
 public class ColorMatchGameController : MinigameBase
 {
-    // ─── Inspector ────────────────────────────────────────────────────────
+
     [Header("Pares por dificultad")]
     public int pairsEasy   = 4;
     public int pairsMedium = 6;
@@ -25,7 +14,6 @@ public class ColorMatchGameController : MinigameBase
     [Header("Tiempo limite en Hard (0 = sin limite)")]
     public float timeLimitHard = 90f;
 
-    // ─── Paleta UI ────────────────────────────────────────────────────────
     private static readonly Color C_BG_DARK   = new Color(0.07f, 0.08f, 0.18f);
     private static readonly Color C_BG_MID    = new Color(0.10f, 0.07f, 0.22f);
     private static readonly Color C_PANEL     = new Color(0.11f, 0.12f, 0.26f);
@@ -39,7 +27,6 @@ public class ColorMatchGameController : MinigameBase
     private static readonly Color C_WHITE_DIM = new Color(1f, 1f, 1f, 0.65f);
     private static readonly Color C_SEPARATOR = new Color(1f, 1f, 1f, 0.08f);
 
-    // ─── Estado ───────────────────────────────────────────────────────────
     private int   _attempts    = 0;
     private float _elapsed     = 0f;
     private bool  _gameOver    = false;
@@ -47,7 +34,6 @@ public class ColorMatchGameController : MinigameBase
     private float _timeLimit   = 0f;
     private int   _targetPairs = 4;
 
-    // ─── Referencias UI ───────────────────────────────────────────────────
     private BoardManager  _boardManager;
     private RectTransform _boardContainer;
     private TextMeshProUGUI _attemptsLabel;
@@ -58,10 +44,6 @@ public class ColorMatchGameController : MinigameBase
     private TextMeshProUGUI _statsAttempts;
     private TextMeshProUGUI _statsTime;
     private TextMeshProUGUI _statsScore;
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // MinigameBase
-    // ═══════════════════════════════════════════════════════════════════════
 
     protected override string GetIntroDescription() =>
         "Encuentra todas las parejas de cartas del mismo color.\n" +
@@ -94,10 +76,6 @@ public class ColorMatchGameController : MinigameBase
     protected override void OnMinigameComplete() { _gameOver = true; ShowResultPanel(won: true); }
     protected override void OnMinigameFailed()   { _gameOver = true; ShowResultPanel(won: false); }
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // Update
-    // ═══════════════════════════════════════════════════════════════════════
-
     private void Update()
     {
         if (_gameOver) return;
@@ -117,13 +95,9 @@ public class ColorMatchGameController : MinigameBase
         }
     }
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // Construcción de la UI
-    // ═══════════════════════════════════════════════════════════════════════
-
     private void BuildUI()
     {
-        // ── Canvas ────────────────────────────────────────────────────────
+
         var cGO = new GameObject("Canvas"); cGO.transform.SetParent(transform, false);
         var canvas  = cGO.AddComponent<Canvas>();
         canvas.renderMode = RenderMode.ScreenSpaceOverlay;
@@ -133,16 +107,13 @@ public class ColorMatchGameController : MinigameBase
         scaler.matchWidthOrHeight  = 0.5f;
         cGO.AddComponent<GraphicRaycaster>();
 
-        // ── Fondo ─────────────────────────────────────────────────────────
         var root  = MakePanel(cGO.transform, "Root", C_BG_DARK, Stretch());
-        // gradiente inferior sutil
+
         var grad  = MakePanel(root.transform, "Grad", C_BG_MID, AnchorRect(0,0,1,0.45f));
         grad.color = new Color(C_BG_MID.r, C_BG_MID.g, C_BG_MID.b, 0.60f);
 
-        // ── Header ────────────────────────────────────────────────────────
         BuildHeader(root.transform);
 
-        // ── Zona del tablero ──────────────────────────────────────────────
         var boardZone = new GameObject("BoardZone");
         boardZone.transform.SetParent(root.transform, false);
         var bzRT = boardZone.AddComponent<RectTransform>();
@@ -159,32 +130,24 @@ public class ColorMatchGameController : MinigameBase
         _boardContainer.pivot            = new Vector2(0.5f, 0.5f);
         _boardContainer.anchoredPosition = Vector2.zero;
 
-        // ── Barra inferior con botones ─────────────────────────────────────
         BuildBottomBar(root.transform);
 
-        // ── Panel de resultado (oculto) ────────────────────────────────────
         BuildResultPanel(root.transform);
     }
-
-    // ─── Header ───────────────────────────────────────────────────────────
 
     private void BuildHeader(Transform parent)
     {
         var hdr = MakePanel(parent, "Header", C_PANEL, AnchorRect(0, 1, 1, 1, 0, -148f, 0, 0));
 
-        // Línea de acento arriba del header
         var line = MakePanel(hdr.transform, "AccentLine", C_ACCENT, AnchorRect(0, 1, 1, 1, 0, -3f, 0, 0));
 
-        // Título
         var title = MakeLabel(hdr.transform, "Title", "Parejas de Colores",
             C_WHITE, 50f, FontStyles.Bold);
         PlaceRT(title.gameObject, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
                 new Vector2(0f, -52f), new Vector2(800f, 64f));
 
-        // Línea separadora
         var sep = MakePanel(hdr.transform, "Sep", C_SEPARATOR, AnchorRect(0.05f, 0, 0.95f, 0, 0, 1f, 0, 2f));
 
-        // Stats HUD
         _attemptsLabel = MakeLabel(hdr.transform, "Attempts", "Intentos: 0",
             C_ACCENT, 28f, FontStyles.Normal);
         PlaceRT(_attemptsLabel.gameObject, new Vector2(0.28f, 0.5f), new Vector2(0.28f, 0.5f),
@@ -195,18 +158,14 @@ public class ColorMatchGameController : MinigameBase
         PlaceRT(_timerLabel.gameObject, new Vector2(0.72f, 0.5f), new Vector2(0.72f, 0.5f),
                 new Vector2(0f, -90f), new Vector2(200f, 36f));
 
-        // Separador vertical central
         var vsep = MakePanel(hdr.transform, "VSep", C_SEPARATOR,
             AnchorRect(0.5f, 0.5f, 0.5f, 0.5f, -0.5f, -50f, 0.5f, -36f));
     }
-
-    // ─── Barra inferior ───────────────────────────────────────────────────
 
     private void BuildBottomBar(Transform parent)
     {
         var bar = MakePanel(parent, "BottomBar", C_PANEL, AnchorRect(0, 0, 1, 0.11f));
 
-        // Línea separadora arriba
         MakePanel(bar.transform, "TopLine", C_SEPARATOR, AnchorRect(0, 1, 1, 1, 0, -1f, 0, 0));
 
         MakeButton(bar.transform, "BtnRestart", "Reiniciar",
@@ -218,33 +177,26 @@ public class ColorMatchGameController : MinigameBase
             () => ReturnToGameSelector());
     }
 
-    // ─── Panel de resultado ───────────────────────────────────────────────
-
     private void BuildResultPanel(Transform parent)
     {
-        // Overlay oscuro de pantalla completa
+
         _winPanel = MakePanel(parent, "ResultPanel",
             new Color(0f, 0f, 0f, 0.85f), Stretch()).gameObject;
 
-        // Tarjeta central
         var card = MakePanel(_winPanel.transform, "Card", C_PANEL,
             CenterRect(760f, 600f)).gameObject;
 
-        // Borde superior de color (cambia según resultado)
         var topBorder = MakePanel(card.transform, "TopBorder", C_GREEN,
             AnchorRect(0, 1, 1, 1, 0, -5f, 0, 0));
 
-        // Título
         _winTitle = MakeLabel(card.transform, "Title", "Ganaste",
             C_GREEN, 64f, FontStyles.Bold);
         PlaceRT(_winTitle.gameObject, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
                 new Vector2(0f, -80f), new Vector2(680f, 80f));
 
-        // Separador
         MakePanel(card.transform, "Sep1", new Color(1f, 1f, 1f, 0.10f),
             AnchorRect(0.08f, 1f, 0.92f, 1f, 0, -118f, 0, -116f));
 
-        // Bloque de estadísticas (4 filas)
         float sy = -148f;
         float sh = 46f;
         float sgap = 8f;
@@ -258,11 +210,9 @@ public class ColorMatchGameController : MinigameBase
         _statsScore = MakeStatRow(card.transform, "SS", "Puntuacion", "--",
             new Vector2(0f, sy));
 
-        // Separador antes de botones
         MakePanel(card.transform, "Sep2", new Color(1f, 1f, 1f, 0.10f),
             AnchorRect(0.08f, 0f, 0.92f, 0f, 0, 116f, 0, 118f));
 
-        // Botones
         MakeButton(card.transform, "BtnAgain", "Jugar de nuevo",
             C_BTN_BLUE, new Vector2(-190f, 70f), new Vector2(330f, 72f),
             () => RestartMinigame());
@@ -274,12 +224,10 @@ public class ColorMatchGameController : MinigameBase
         _winPanel.SetActive(false);
     }
 
-    // ─── Fila de estadística ──────────────────────────────────────────────
-
     private TextMeshProUGUI MakeStatRow(Transform parent, string id, string label, string value,
                                  Vector2 yOffset)
     {
-        // Fondo de fila
+
         var row = MakePanel(parent, id + "_Row", C_PANEL2,
             new RectTransformCfg
             {
@@ -289,7 +237,6 @@ public class ColorMatchGameController : MinigameBase
                 offsetMax = new Vector2(0f, yOffset.y + 23f)
             });
 
-        // Etiqueta izquierda
         var lbl = new GameObject(id + "_Lbl");
         lbl.transform.SetParent(row.transform, false);
         var lblRT = lbl.AddComponent<RectTransform>();
@@ -301,7 +248,6 @@ public class ColorMatchGameController : MinigameBase
         lblTmp.fontSize  = 27f;
         lblTmp.alignment = TextAlignmentOptions.MidlineLeft;
 
-        // Valor derecho
         var val = new GameObject(id + "_Val");
         val.transform.SetParent(row.transform, false);
         var valRT = val.AddComponent<RectTransform>();
@@ -316,10 +262,6 @@ public class ColorMatchGameController : MinigameBase
 
         return valTmp;
     }
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // Lógica del juego
-    // ═══════════════════════════════════════════════════════════════════════
 
     private void StartBoard()
     {
@@ -351,22 +293,18 @@ public class ColorMatchGameController : MinigameBase
         return _targetPairs * 100 + bonus * 10;
     }
 
-    // ─── Panel de resultado ───────────────────────────────────────────────
-
     private void ShowResultPanel(bool won)
     {
-        // Actualizar datos
+
         if (_statsPairs)    _statsPairs.text    = $"{_targetPairs}/{_targetPairs}";
         if (_statsAttempts) _statsAttempts.text = $"{_attempts}";
         if (_statsTime)     _statsTime.text     = FormatTime(_elapsed);
         if (_statsScore)    _statsScore.text    = won ? $"{Score} pts" : "---";
 
-        // Cambiar título y color de borde según resultado
         if (won)
         {
             if (_winTitle) { _winTitle.text = "¡Ganaste!"; _winTitle.color = C_GREEN; }
 
-            // Borde superior verde
             var border = _winPanel?.transform.Find("Card/TopBorder")?.GetComponent<Image>();
             if (border) border.color = C_GREEN;
         }
@@ -381,10 +319,6 @@ public class ColorMatchGameController : MinigameBase
 
         if (_winPanel) _winPanel.SetActive(true);
     }
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // Helpers de construcción UI
-    // ═══════════════════════════════════════════════════════════════════════
 
     private Image MakePanel(Transform parent, string name, Color color, RectTransformCfg cfg)
     {
@@ -432,7 +366,6 @@ public class ColorMatchGameController : MinigameBase
         btn.colors = bc;
         btn.onClick.AddListener(() => cb?.Invoke());
 
-        // Texto interior
         var tGO = new GameObject("Label");
         tGO.transform.SetParent(go.transform, false);
         var tRT = tGO.AddComponent<RectTransform>();
@@ -443,8 +376,6 @@ public class ColorMatchGameController : MinigameBase
         tmp.fontSize = 29f; tmp.fontStyle = FontStyles.Bold;
         tmp.alignment = TextAlignmentOptions.Center;
     }
-
-    // ─── Helpers de layout ────────────────────────────────────────────────
 
     private static void PlaceRT(GameObject go, Vector2 anchorMin, Vector2 anchorMax,
                                 Vector2 pos, Vector2 size)
@@ -483,8 +414,6 @@ public class ColorMatchGameController : MinigameBase
             go.AddComponent<UnityEngine.EventSystems.StandaloneInputModule>();
         }
     }
-
-    // ─── Struct auxiliar ──────────────────────────────────────────────────
 
     private struct RectTransformCfg
     {

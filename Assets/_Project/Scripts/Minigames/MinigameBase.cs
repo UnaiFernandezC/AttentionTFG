@@ -3,16 +3,8 @@ using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using TMPro;
 
-/// <summary>
-/// Clase base abstracta para todos los minijuegos de la plataforma.
-/// Muestra automaticamente un panel de introduccion antes de iniciar el juego.
-/// El jugador puede pulsar ESPACIO o el boton "Comenzar" para arrancar.
-/// </summary>
 public abstract class MinigameBase : MonoBehaviour
 {
-    // ------------------------------------------------------------------ //
-    // Propiedades
-    // ------------------------------------------------------------------ //
 
     [Header("Configuracion del minijuego")]
     [SerializeField] protected string minigameName = "Minijuego";
@@ -21,16 +13,8 @@ public abstract class MinigameBase : MonoBehaviour
     public int Score { get; protected set; } = 0;
     public bool IsPlaying { get; protected set; } = false;
 
-    // ------------------------------------------------------------------ //
-    // Intro panel
-    // ------------------------------------------------------------------ //
-
     bool        _gameStarted;
     GameObject  _introCvGO;
-
-    // ------------------------------------------------------------------ //
-    // Unity lifecycle
-    // ------------------------------------------------------------------ //
 
     protected virtual void Start()
     {
@@ -47,10 +31,6 @@ public abstract class MinigameBase : MonoBehaviour
             yield return null;
         }
     }
-
-    // ------------------------------------------------------------------ //
-    // Intro panel — construccion
-    // ------------------------------------------------------------------ //
 
     void LaunchGame()
     {
@@ -70,18 +50,11 @@ public abstract class MinigameBase : MonoBehaviour
             LaunchGame);
     }
 
-    /// <summary>
-    /// Descripcion que aparece en el panel de introduccion.
-    /// Sobreescribir en cada minijuego para dar contexto especifico.
-    /// </summary>
     protected virtual string GetIntroDescription()
     {
         return "Sigue las instrucciones para completar el minijuego.";
     }
 
-    /// <summary>
-    /// Convierte el enum de categoria en el nombre de cadena para IntroPanel.
-    /// </summary>
     static string CategoryName(MinigameCategory cat)
     {
         switch (cat)
@@ -95,17 +68,9 @@ public abstract class MinigameBase : MonoBehaviour
         }
     }
 
-    // ------------------------------------------------------------------ //
-    // Metodos abstractos — implementar en cada minijuego
-    // ------------------------------------------------------------------ //
-
     protected abstract void OnMinigameStart();
     protected abstract void OnMinigameComplete();
     protected abstract void OnMinigameFailed();
-
-    // ------------------------------------------------------------------ //
-    // Metodos de ayuda para las subclases
-    // ------------------------------------------------------------------ //
 
     protected void CompleteMinigame(int finalScore = 0)
     {

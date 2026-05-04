@@ -27,8 +27,8 @@ public class CoinManager2 : MonoBehaviour
 
         if (coinCount >= totalCoins)
         {
-            Debug.Log("¡Has recogido todas las monedas!");
-            // Aquí puedes poner animaciones, pantalla de victoria, etc.
+            Debug.Log("ï¿½Has recogido todas las monedas!");
+
         }
     }
 

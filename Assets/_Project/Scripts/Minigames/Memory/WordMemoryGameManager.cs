@@ -3,38 +3,8 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
-/// <summary>
-/// GameManager del minijuego "Palabras Fugaces".
-/// Hereda MinigameBase → panel de introduccion automatico.
-///
-/// Mecanica:
-///   1. Fase MEMORIZAR: se muestran N palabras durante [memorizeTime] segundos.
-///   2. Fase ELEGIR: aparece una lista mayor (targets + distractoras) mezclada.
-///      El jugador selecciona las palabras que recuerda haber visto.
-///   3. El jugador pulsa CONFIRMAR (o [ESPACIO]).
-///   4. Feedback visual: verde / naranja / rojo por palabra.
-///   5. Se repite [totalRounds] rondas con mas palabras cada vez.
-///
-/// Puntuacion:
-///   Cada palabra correctamente seleccionada  → +15 pts
-///   Cada palabra incorrectamente seleccionada→  -8 pts
-///   Ronda perfecta (0 errores, 0 omisiones)  → +25 pts bonus
-///
-/// Condicion de victoria:
-///   Ganar [roundsToWin] de [totalRounds] rondas.
-///   Una ronda es "ganada" si el jugador acierta al menos el 75% de las palabras objetivo
-///   sin seleccionar mas de 1 distractor.
-///
-/// Dificultad:
-///   Facil   → 3 rondas, 4/5/6 palabras objetivo, distractoras = objetivo * 1.5
-///   Medio   → 3 rondas, 5/6/7 palabras, distractoras = objetivo * 1.5
-///   Dificil → 4 rondas, 6/7/8/9 palabras, distractoras = objetivo * 2
-/// </summary>
 public class WordMemoryGameManager : MinigameBase
 {
-    // ------------------------------------------------------------------ //
-    // Inspector
-    // ------------------------------------------------------------------ //
 
     [Header("Rondas")]
     public int totalRounds = 3;
@@ -52,10 +22,6 @@ public class WordMemoryGameManager : MinigameBase
     [Header("Tiempo de feedback tras confirmar (s)")]
     public float feedbackTime = 2.0f;
 
-    // ------------------------------------------------------------------ //
-    // Pool de palabras (espanol, sin acentos para evitar problemas de encoding)
-    // ------------------------------------------------------------------ //
-
     static readonly string[] WORD_POOL = new string[]
     {
         "PERRO",    "GATO",     "CASA",     "ARBOL",    "LUNA",
@@ -70,10 +36,6 @@ public class WordMemoryGameManager : MinigameBase
         "ZAPATO",   "RELOJ",    "LAMPARA",  "VENTANA",  "PUERTA"
     };
 
-    // ------------------------------------------------------------------ //
-    // Estado interno
-    // ------------------------------------------------------------------ //
-
     WordMemoryUIController _ui;
 
     int          _currentRound;
@@ -81,11 +43,9 @@ public class WordMemoryGameManager : MinigameBase
     int          _roundsWon;
     bool         _confirmed;
 
-    List<string> _currentTargets;    // palabras a memorizar esta ronda
-    List<string> _allWordsShown;     // targets + distractoras mezcladas
-    HashSet<int> _targetIndices;     // indices dentro de _allWordsShown que son objetivo
-
-    // ════════════════════════════════════════════════════════════════════
+    List<string> _currentTargets;
+    List<string> _allWordsShown;
+    HashSet<int> _targetIndices;
 
     protected override string GetIntroDescription() =>
         "Apareceran varias palabras en pantalla durante unos segundos.\n" +
@@ -119,19 +79,11 @@ public class WordMemoryGameManager : MinigameBase
     protected override void OnMinigameComplete() { }
     protected override void OnMinigameFailed()   { }
 
-    // ════════════════════════════════════════════════════════════════════
-    // Update — confirmacion por teclado
-    // ════════════════════════════════════════════════════════════════════
-
     void Update()
     {
         if (IsPlaying && Input.GetKeyDown(KeyCode.Space))
             OnConfirm();
     }
-
-    // ════════════════════════════════════════════════════════════════════
-    // Game Loop
-    // ════════════════════════════════════════════════════════════════════
 
     IEnumerator GameLoop()
     {
@@ -147,15 +99,12 @@ public class WordMemoryGameManager : MinigameBase
 
             _ui.UpdateRound(_currentRound + 1, totalRounds);
 
-            // ── Generar palabras ──────────────────────────────────────
             BuildWordLists(targetCount, distractorCount);
 
-            // ── Fase MEMORIZAR ────────────────────────────────────────
             _ui.SetPhaseLabel("Memoriza", new Color(0.58f, 0.28f, 0.92f));
             _ui.SetInfoLabel(targetCount + " palabras · " + memorizeTime + " segundos");
             _ui.ShowMemorizePhase(_currentTargets);
 
-            // Countdown visual
             float elapsed = 0f;
             while (elapsed < memorizeTime)
             {
@@ -164,13 +113,11 @@ public class WordMemoryGameManager : MinigameBase
                 yield return null;
             }
 
-            // ── Fase ELEGIR ───────────────────────────────────────────
             _confirmed = false;
             _ui.SetPhaseLabel("¿Cuales viste?", Color.white);
             _ui.SetInfoLabel("Selecciona " + targetCount + " palabras y confirma");
             _ui.ShowChoosePhase(_allWordsShown);
 
-            // Esperar confirmacion
             float waitMax = 30f;
             float waited  = 0f;
             while (!_confirmed && waited < waitMax)
@@ -179,7 +126,6 @@ public class WordMemoryGameManager : MinigameBase
                 yield return null;
             }
 
-            // ── Evaluar ───────────────────────────────────────────────
             var selected = _ui.GetSelectedIndices();
             int correct  = 0;
             int wrong    = 0;
@@ -191,17 +137,15 @@ public class WordMemoryGameManager : MinigameBase
             }
             int missed = _currentTargets.Count - correct;
 
-            // Ronda ganada: >= 75% aciertos y <= 1 distractor seleccionado
             bool roundWon = (correct >= Mathf.CeilToInt(targetCount * 0.75f)) && (wrong <= 1);
             if (roundWon) _roundsWon++;
 
             int roundScore = correct * 15 - wrong * 8;
-            if (correct == targetCount && wrong == 0) roundScore += 25; // bonus perfecto
+            if (correct == targetCount && wrong == 0) roundScore += 25;
             roundScore = Mathf.Max(0, roundScore);
             _score    += roundScore;
             _ui.UpdateScore(_score);
 
-            // ── Feedback visual ───────────────────────────────────────
             _ui.ShowWordResult(_targetIndices, selected);
 
             string msg; Color col;
@@ -227,7 +171,6 @@ public class WordMemoryGameManager : MinigameBase
             yield return new WaitForSeconds(feedbackTime);
         }
 
-        // ── Fin de partida ────────────────────────────────────────────
         yield return new WaitForSeconds(0.3f);
 
         bool won = _roundsWon >= roundsToWin;
@@ -239,10 +182,6 @@ public class WordMemoryGameManager : MinigameBase
 
         _ui.ShowFinalResult(won, sub);
     }
-
-    // ════════════════════════════════════════════════════════════════════
-    // Callbacks
-    // ════════════════════════════════════════════════════════════════════
 
     void OnWordToggled(int idx)
     {
@@ -256,13 +195,9 @@ public class WordMemoryGameManager : MinigameBase
         _confirmed = true;
     }
 
-    // ════════════════════════════════════════════════════════════════════
-    // Generacion de palabras
-    // ════════════════════════════════════════════════════════════════════
-
     void BuildWordLists(int targetCount, int distractorCount)
     {
-        // Mezclar el pool
+
         var pool = new List<string>(WORD_POOL);
         Shuffle(pool);
 
@@ -277,12 +212,10 @@ public class WordMemoryGameManager : MinigameBase
         for (int i = targetCount; i < Mathf.Min(needed, pool.Count); i++)
             distractors.Add(pool[i]);
 
-        // Mezclar targets + distractoras
         _allWordsShown = new List<string>(_currentTargets);
         _allWordsShown.AddRange(distractors);
         Shuffle(_allWordsShown);
 
-        // Calcular indices de los targets en la lista mezclada
         _targetIndices = new HashSet<int>();
         var targetSet  = new HashSet<string>(_currentTargets);
         for (int i = 0; i < _allWordsShown.Count; i++)

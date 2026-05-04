@@ -12,7 +12,7 @@ public class PlataformaBalanza : MonoBehaviour
 
     void Start()
     {
-        // Guardamos la rotación inicial
+
         rotacionInicial = transform.localRotation;
     }
 
@@ -28,7 +28,6 @@ public class PlataformaBalanza : MonoBehaviour
 
         anguloActual = Mathf.Clamp(anguloActual + rotacion, -anguloMax, anguloMax);
 
-        // ✅ Inclinación sobre el eje LOCAL, usando transform.right (hacia adelante y atrás)
         transform.localRotation = rotacionInicial * Quaternion.AngleAxis(anguloActual, transform.right);
     }
 }

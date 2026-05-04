@@ -5,39 +5,12 @@ using UnityEngine.UI;
 using TMPro;
 using static InverseResponseStimulusManager;
 
-/// <summary>
-/// Construye toda la UI de "Respuesta Inversa" de forma procedural.
-/// Sin prefabs ni assets externos.
-///
-/// LAYOUT (1920×1080, tres zonas bien separadas verticalmente):
-///
-///  ┌─────────────────────────────────────────────────┐  y=1080
-///  │  HEADER  (88px)  Titulo │ Categoria │ Puntos    │
-///  ├─────────────────────────────────────────────────┤  y=992
-///  │                                                  │
-///  │   ZONA A – FLECHA (y≈62%)                        │
-///  │        Círculo 240px + flecha blanca              │
-///  │                                                  │
-///  │   ZONA B – REGLA (y≈43%)                         │
-///  │      Panel "INVERSA / IGUAL" + descripcion       │
-///  │                                                  │
-///  │   ZONA C – BOTONES (y≈24%)                       │
-///  │       Cruz de 4 botones compactos (80px cada uno)│
-///  │                                                  │
-///  ├─────────────────────────────────────────────────┤  y=80
-///  │  FOOTER (80px)  Instruccion │ Menu               │
-///  └─────────────────────────────────────────────────┘  y=0
-///
-///  Lateral izquierdo: barra de tiempo (y: 10%–90%)
-///  La flecha se dibuja proceduralmente con 3 rectángulos rotados.
-/// </summary>
 public class InverseResponseUIController : MonoBehaviour
 {
-    // ── Helpers ───────────────────────────────────────────────────────────
+
     static Vector2 V(float x, float y) => new Vector2(x, y);
     static Color   C(float r, float g, float b, float a = 1f) => new Color(r, g, b, a);
 
-    // ── Paleta ────────────────────────────────────────────────────────────
     static readonly Color BG      = C(0.05f, 0.07f, 0.13f);
     static readonly Color HDR     = C(0.03f, 0.04f, 0.09f);
     static readonly Color PANEL   = C(0.07f, 0.10f, 0.20f);
@@ -48,17 +21,15 @@ public class InverseResponseUIController : MonoBehaviour
     static readonly Color CYELLOW = C(0.96f, 0.80f, 0.15f);
     static readonly Color CARROW  = C(0.92f, 0.92f, 0.96f);
 
-    // ── Refs publicas ─────────────────────────────────────────────────────
     public InverseResponseInputHandler InputHandler { get; private set; }
 
-    // ── Refs internas ─────────────────────────────────────────────────────
     RectTransform    _arrowParent;
     Image[]          _arrowParts;
     Image            _arrowBg;
 
-    TextMeshProUGUI  _ruleName;     // "INVERSA" / "IGUAL"
-    TextMeshProUGUI  _ruleDesc;     // descripcion de la regla
-    Image            _rulePanelBg;  // fondo del panel de regla (cambia de color)
+    TextMeshProUGUI  _ruleName;
+    TextMeshProUGUI  _ruleDesc;
+    Image            _rulePanelBg;
 
     TextMeshProUGUI  _scoreText;
     TextMeshProUGUI  _feedbackText;
@@ -69,16 +40,11 @@ public class InverseResponseUIController : MonoBehaviour
     TextMeshProUGUI  _resultTitle;
     TextMeshProUGUI  _resultSub;
 
-    // ═════════════════════════════════════════════════════════════════════
-    // Construccion principal
-    // ═════════════════════════════════════════════════════════════════════
-
     public void BuildUI(int totalStimuli, Action onRestart, Action onMenu,
                         InverseResponseInputHandler inputHandler)
     {
         InputHandler = inputHandler;
 
-        // ── Canvas ──────────────────────────────────────────────────────
         var cGO = new GameObject("Canvas_InverseResp");
         cGO.transform.SetParent(transform, false);
         var cv = cGO.AddComponent<Canvas>();
@@ -91,31 +57,23 @@ public class InverseResponseUIController : MonoBehaviour
         cGO.AddComponent<GraphicRaycaster>();
         var R = cGO.GetComponent<RectTransform>();
 
-        // ── Fondo ────────────────────────────────────────────────────────
         MkImg(R, "BG", BG, V(0,0), V(1,1), V(0,0), V(0,0));
 
-        // ── Header ──────────────────────────────────────────────────────
         BuildHeader(R, totalStimuli);
 
-        // ── Barra lateral de tiempo ──────────────────────────────────────
         BuildTimerBar(R);
 
-        // ── ZONA A: Flecha grande ────────────────────────────────────────
         BuildArrowZone(R);
 
-        // ── ZONA B: Banner de regla ──────────────────────────────────────
         BuildRuleBanner(R);
 
-        // ── Texto de feedback (entre banner y botones) ────────────────────
         _feedbackText = MkTxt(R, "Feedback", "", CGREEN, 32,
                               V(0.15f, 0.40f), V(0.85f, 0.47f));
         _feedbackText.fontStyle = FontStyles.Bold;
         _feedbackText.alignment = TextAlignmentOptions.Center;
 
-        // ── ZONA C: Botones de direccion ─────────────────────────────────
         BuildDirectionButtons(R);
 
-        // ── Flash de impacto ─────────────────────────────────────────────
         var flashGO = new GameObject("Flash");
         flashGO.transform.SetParent(R, false);
         var fRT = flashGO.AddComponent<RectTransform>();
@@ -125,7 +83,6 @@ public class InverseResponseUIController : MonoBehaviour
         _flashOverlay.color = C(0,0,0,0);
         flashGO.SetActive(false);
 
-        // ── Footer ──────────────────────────────────────────────────────
         var bot = MkImg(R, "Bot", HDR, V(0,0), V(1,0), V(0,40), V(0,80));
         MkImg(bot, "LineT", ACCENT, V(0,1), V(1,1), V(0,-1.5f), V(0,3));
         MkTxt(bot, "Info",
@@ -135,13 +92,9 @@ public class InverseResponseUIController : MonoBehaviour
         MkImg(bot, "Sep", C(1,1,1,0.08f), V(0.78f,0.1f), V(0.782f,0.9f), V(0,0), V(0,0));
         MkBtn(bot, "Menu", C(0.12f,0.18f,0.32f), V(0.80f,0.08f), V(0.99f,0.92f), onMenu);
 
-        // ── Panel de resultado ───────────────────────────────────────────
         BuildResultPanel(R, onRestart, onMenu);
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // ZONA HEADER
-    // ─────────────────────────────────────────────────────────────────────
     void BuildHeader(RectTransform R, int totalStimuli)
     {
         var hdr = MkImg(R, "Hdr", HDR, V(0,1), V(1,1), V(0,-44), V(0,88));
@@ -163,17 +116,13 @@ public class InverseResponseUIController : MonoBehaviour
         _scoreText.alignment = TextAlignmentOptions.MidlineRight;
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // BARRA LATERAL DE TIEMPO
-    // ─────────────────────────────────────────────────────────────────────
     void BuildTimerBar(RectTransform R)
     {
-        // Contenedor estrecho pegado al borde izquierdo
+
         var panel = MkImg(R, "TimerPanel", C(0.04f,0.07f,0.14f,0.90f),
                           V(0,0.10f), V(0,0.90f), V(26f,0), V(20f,0));
         MkImg(panel, "R", ACCENT, V(1,0), V(1,1), V(-1f,0), V(2,0));
 
-        // Fondo oscuro de la barra
         var barBG = MkImg(panel, "BarBG", C(0.02f,0.04f,0.09f),
                           V(0.15f,0.04f), V(0.85f,0.96f), V(0,0), V(0,0));
 
@@ -186,19 +135,15 @@ public class InverseResponseUIController : MonoBehaviour
         _timerBar.color       = CGREEN;
         _timerBar.type        = Image.Type.Filled;
         _timerBar.fillMethod  = Image.FillMethod.Vertical;
-        _timerBar.fillOrigin  = 1; // de arriba a abajo (se vacia)
+        _timerBar.fillOrigin  = 1;
         _timerBar.fillAmount  = 1f;
 
         MkTxt(panel, "Lbl", "T", DIM, 10, V(0,-0.04f), V(1,0.04f));
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // ZONA A: FLECHA GRANDE
-    // y≈62% de la pantalla (bien por encima del centro)
-    // ─────────────────────────────────────────────────────────────────────
     void BuildArrowZone(RectTransform R)
     {
-        // Circulo de fondo
+
         var bgGO = new GameObject("ArrowBG");
         bgGO.transform.SetParent(R, false);
         var bgRT = bgGO.AddComponent<RectTransform>();
@@ -210,7 +155,6 @@ public class InverseResponseUIController : MonoBehaviour
         _arrowBg.sprite = MakeCircleSprite(128);
         _arrowBg.color  = C(0.10f, 0.14f, 0.26f);
 
-        // Contenedor de la flecha (rotamos solo este)
         var arrowGO = new GameObject("Arrow");
         arrowGO.transform.SetParent(R, false);
         _arrowParent = arrowGO.AddComponent<RectTransform>();
@@ -222,13 +166,9 @@ public class InverseResponseUIController : MonoBehaviour
         _arrowParts = BuildArrowShape(_arrowParent, CARROW);
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // ZONA B: BANNER DE REGLA
-    // y≈44% — claramente separado de la flecha (arriba) y los botones (abajo)
-    // ─────────────────────────────────────────────────────────────────────
     void BuildRuleBanner(RectTransform R)
     {
-        // Panel de fondo del banner
+
         var panelGO = new GameObject("RulePanel");
         panelGO.transform.SetParent(R, false);
         var panelRT = panelGO.AddComponent<RectTransform>();
@@ -239,7 +179,6 @@ public class InverseResponseUIController : MonoBehaviour
         _rulePanelBg = panelGO.AddComponent<Image>();
         _rulePanelBg.color = C(0.08f, 0.12f, 0.24f);
 
-        // Linea de acento a la izquierda
         var accL = new GameObject("AccL");
         accL.transform.SetParent(panelGO.transform, false);
         var aRT = accL.AddComponent<RectTransform>();
@@ -247,13 +186,11 @@ public class InverseResponseUIController : MonoBehaviour
         aRT.sizeDelta = V(5,0); aRT.anchoredPosition = V(3,0);
         accL.AddComponent<Image>().color = CYELLOW;
 
-        // Nombre de la regla (grande, a la izquierda)
         _ruleName = MkTxt(panelRT, "RuleName", "INVERSA", CYELLOW, 30,
                           V(0.04f, 0.45f), V(0.42f, 0.98f));
         _ruleName.fontStyle = FontStyles.Bold;
         _ruleName.alignment = TextAlignmentOptions.MidlineLeft;
 
-        // Separador vertical
         var sepGO = new GameObject("Sep");
         sepGO.transform.SetParent(panelGO.transform, false);
         var sepRT = sepGO.AddComponent<RectTransform>();
@@ -261,7 +198,6 @@ public class InverseResponseUIController : MonoBehaviour
         sepRT.sizeDelta = sepRT.anchoredPosition = Vector2.zero;
         sepGO.AddComponent<Image>().color = C(1,1,1,0.12f);
 
-        // Descripcion de la regla (derecha del separador)
         _ruleDesc = MkTxt(panelRT, "RuleDesc", "Pulsa la direccion CONTRARIA",
                           C(0.75f, 0.85f, 0.90f), 20,
                           V(0.44f, 0.05f), V(0.98f, 0.95f));
@@ -270,19 +206,14 @@ public class InverseResponseUIController : MonoBehaviour
         _ruleDesc.enableWordWrapping = false;
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // ZONA C: BOTONES DE DIRECCION
-    // Cruz de 4 botones en y≈22%, tamaño 80px, separación 100px
-    // ─────────────────────────────────────────────────────────────────────
     void BuildDirectionButtons(RectTransform R)
     {
-        // Centro de la cruz en coordenadas de referencia: (960, 230) → fraccion (0.5, 0.213)
-        // Separación centro a centro: 100px → 100/1080=0.0926 vertical, 100/1920=0.0521 horizontal
+
         const float CY    = 0.285f;
         const float CX    = 0.500f;
-        const float VSEP  = 100f / 1080f;  // separacion vertical
-        const float HSEP  = 100f / 1920f;  // separacion horizontal
-        const float BSIZE = 80f;           // tamaño del boton
+        const float VSEP  = 100f / 1080f;
+        const float HSEP  = 100f / 1920f;
+        const float BSIZE = 80f;
 
         var layout = new (float ax, float ay, ArrowDirection dir)[]
         {
@@ -302,7 +233,7 @@ public class InverseResponseUIController : MonoBehaviour
     void BuildDirButton(RectTransform R, float ax, float ay,
                         float size, ArrowDirection dir)
     {
-        // Fondo del boton (circulo)
+
         var btnGO = new GameObject("DirBtn_" + dir);
         btnGO.transform.SetParent(R, false);
         var btnRT = btnGO.AddComponent<RectTransform>();
@@ -315,7 +246,6 @@ public class InverseResponseUIController : MonoBehaviour
         btnImg.sprite = MakeCircleSprite(64);
         btnImg.color  = C(0.12f, 0.16f, 0.28f);
 
-        // Componente Button
         var btn = btnGO.AddComponent<Button>();
         btn.targetGraphic = btnImg;
         var cb = btn.colors;
@@ -325,7 +255,6 @@ public class InverseResponseUIController : MonoBehaviour
         btn.colors = cb;
         btn.onClick.AddListener(() => InputHandler?.PressDirection(dir));
 
-        // Mini flecha dentro del boton
         var miniGO = new GameObject("Mini");
         miniGO.transform.SetParent(btnGO.transform, false);
         var miniRT = miniGO.AddComponent<RectTransform>();
@@ -336,7 +265,6 @@ public class InverseResponseUIController : MonoBehaviour
         miniRT.localRotation = Quaternion.Euler(0, 0, DirectionToDeg(dir));
         BuildArrowShape(miniRT, CARROW);
 
-        // Etiqueta de tecla debajo del boton
         string key = dir == ArrowDirection.Up   ? "W / ↑"
                    : dir == ArrowDirection.Down  ? "S / ↓"
                    : dir == ArrowDirection.Left  ? "A / ←"
@@ -345,9 +273,9 @@ public class InverseResponseUIController : MonoBehaviour
         lblGO.transform.SetParent(R, false);
         var lblRT = lblGO.AddComponent<RectTransform>();
         lblRT.anchorMin = lblRT.anchorMax = V(ax, ay);
-        lblRT.pivot     = V(0.5f, 1.0f);                     // anclado por la parte superior
+        lblRT.pivot     = V(0.5f, 1.0f);
         lblRT.sizeDelta = V(120f, 28f);
-        lblRT.anchoredPosition = V(0f, -(size * 0.5f + 6f)); // justo debajo del boton
+        lblRT.anchoredPosition = V(0f, -(size * 0.5f + 6f));
         var lbl = lblGO.AddComponent<TextMeshProUGUI>();
         lbl.text      = key;
         lbl.color     = DIM;
@@ -356,9 +284,6 @@ public class InverseResponseUIController : MonoBehaviour
         lbl.overflowMode = TextOverflowModes.Overflow;
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // PANEL DE RESULTADO
-    // ─────────────────────────────────────────────────────────────────────
     void BuildResultPanel(RectTransform R, Action onRestart, Action onMenu)
     {
         _resultPanel = new GameObject("ResultPanel");
@@ -391,20 +316,14 @@ public class InverseResponseUIController : MonoBehaviour
         _resultPanel.SetActive(false);
     }
 
-    // ═════════════════════════════════════════════════════════════════════
-    // API PUBLICA
-    // ═════════════════════════════════════════════════════════════════════
-
     public void ShowArrow(ArrowDirection dir, GameRule rule)
     {
-        // Rotar la flecha
+
         _arrowParent.localRotation = Quaternion.Euler(0, 0, DirectionToDeg(dir));
 
-        // Tinte del circulo segun regla
         bool inv = rule == GameRule.Inverse;
         _arrowBg.color = inv ? C(0.12f, 0.08f, 0.24f) : C(0.08f, 0.20f, 0.14f);
 
-        // Banner de regla
         _rulePanelBg.color = inv ? C(0.10f, 0.08f, 0.22f) : C(0.06f, 0.16f, 0.10f);
 
         if (inv)
@@ -420,7 +339,6 @@ public class InverseResponseUIController : MonoBehaviour
             _ruleDesc.text  = "Pulsa la misma direccion";
         }
 
-        // Hacer visible la flecha
         foreach (var p in _arrowParts) if (p) p.color = CARROW;
     }
 
@@ -480,10 +398,6 @@ public class InverseResponseUIController : MonoBehaviour
         _resultPanel.SetActive(true);
     }
 
-    // ═════════════════════════════════════════════════════════════════════
-    // HELPERS INTERNOS
-    // ═════════════════════════════════════════════════════════════════════
-
     IEnumerator ClearFeedback(float delay)
     {
         yield return new WaitForSeconds(delay);
@@ -511,10 +425,6 @@ public class InverseResponseUIController : MonoBehaviour
         _flashOverlay.gameObject.SetActive(false);
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // Angulo de rotacion: la flecha base apunta a la DERECHA (→)
-    //   Derecha → 0°    Arriba → 90°    Izquierda → 180°    Abajo → 270°
-    // ─────────────────────────────────────────────────────────────────────
     static float DirectionToDeg(ArrowDirection d)
     {
         switch (d)
@@ -522,23 +432,18 @@ public class InverseResponseUIController : MonoBehaviour
             case ArrowDirection.Right: return   0f;
             case ArrowDirection.Up:    return  90f;
             case ArrowDirection.Left:  return 180f;
-            default:                   return 270f; // Down
+            default:                   return 270f;
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // Flecha procedural: tallo + 2 brazos de punta, apuntando a la derecha.
-    // El padre se rota para las otras direcciones.
-    // ─────────────────────────────────────────────────────────────────────
     Image[] BuildArrowShape(RectTransform parent, Color col)
     {
-        // Factor de escala relativo al tamaño del contenedor
+
         float w = parent.sizeDelta.x;
-        float scale = w / 200f;   // 200 = tamaño de referencia
+        float scale = w / 200f;
 
         var parts = new Image[3];
 
-        // Tallo
         var sGO = new GameObject("S");
         sGO.transform.SetParent(parent, false);
         var sRT = sGO.AddComponent<RectTransform>();
@@ -548,7 +453,6 @@ public class InverseResponseUIController : MonoBehaviour
         parts[0] = sGO.AddComponent<Image>();
         parts[0].color = col;
 
-        // Brazo superior
         var tGO = new GameObject("T");
         tGO.transform.SetParent(parent, false);
         var tRT = tGO.AddComponent<RectTransform>();
@@ -559,7 +463,6 @@ public class InverseResponseUIController : MonoBehaviour
         parts[1] = tGO.AddComponent<Image>();
         parts[1].color = col;
 
-        // Brazo inferior
         var bGO = new GameObject("B");
         bGO.transform.SetParent(parent, false);
         var bRT = bGO.AddComponent<RectTransform>();
@@ -573,9 +476,6 @@ public class InverseResponseUIController : MonoBehaviour
         return parts;
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // Sprite circular procedural
-    // ─────────────────────────────────────────────────────────────────────
     public static Sprite MakeCircleSprite(int res = 128)
     {
         var tex = new Texture2D(res, res, TextureFormat.RGBA32, false);
@@ -595,11 +495,6 @@ public class InverseResponseUIController : MonoBehaviour
         return Sprite.Create(tex, new Rect(0,0,res,res), V(0.5f,0.5f));
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // Constructores de UI
-    // ─────────────────────────────────────────────────────────────────────
-
-    // Imagen con anclas estiradas (anchor min/max distintos)
     RectTransform MkImg(RectTransform p, string n, Color col,
                         Vector2 am, Vector2 aM, Vector2 pos, Vector2 sd)
     {
@@ -613,7 +508,6 @@ public class InverseResponseUIController : MonoBehaviour
         return rt;
     }
 
-    // Imagen con ancla en punto fijo + tamaño absoluto
     RectTransform MkImgFixed(RectTransform p, string n, Color col,
                              Vector2 anchor, Vector2 pos, Vector2 sd)
     {

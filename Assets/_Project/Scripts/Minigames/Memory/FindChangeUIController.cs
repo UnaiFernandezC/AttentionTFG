@@ -3,13 +3,9 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-/// <summary>
-/// Construye y gestiona toda la UI del minijuego "Cambios sutiles".
-/// Devuelve el gameArea RectTransform donde SceneGenerator colocará los elementos.
-/// </summary>
 public class FindChangeUIController : MonoBehaviour
 {
-    // ─── Refs dinámicas ──────────────────────────────────────────────────
+
     TextMeshProUGUI _timerLbl;
     TextMeshProUGUI _phaseLbl;
     Image           _bgPanel;
@@ -19,7 +15,6 @@ public class FindChangeUIController : MonoBehaviour
     TextMeshProUGUI _resultTitle;
     TextMeshProUGUI _resultSub;
 
-    // ─── Paleta ──────────────────────────────────────────────────────────
     static Color C(float r,float g,float b,float a=1f) => new Color(r,g,b,a);
     static readonly Color BG      = C(0.10f, 0.12f, 0.18f);
     static readonly Color HDR     = C(0.07f, 0.09f, 0.16f);
@@ -30,10 +25,6 @@ public class FindChangeUIController : MonoBehaviour
     static readonly Color CGREEN  = C(0.28f, 0.88f, 0.52f);
     static readonly Color CRED    = C(0.90f, 0.28f, 0.32f);
     static Vector2 V(float x,float y) => new Vector2(x,y);
-
-    // ═════════════════════════════════════════════════════════════════════
-    //  BUILD
-    // ═════════════════════════════════════════════════════════════════════
 
     public RectTransform BuildUI(Action onRestart, Action onMenu)
     {
@@ -49,12 +40,10 @@ public class FindChangeUIController : MonoBehaviour
         cGO.AddComponent<GraphicRaycaster>();
         var R = cGO.GetComponent<RectTransform>();
 
-        // Fondo
         _bgPanel = MkImg(R,"BG",BG,V(0,0),V(1,1),V(0,0),V(0,0)).img;
-        // Grid sutil de fondo (decorativo)
+
         BuildGridDecor(R);
 
-        // Header
         var hdr = MkImg(R,"Hdr",HDR,V(0,1),V(1,1),V(0,-44),V(0,88)).rt;
         MkImg(hdr,"Line",ACCENT,V(0,0),V(1,0),V(0,1.5f),V(0,3f));
         MkImg(hdr,"AccL",ACCENT,V(0,0.18f),V(0,0.82f),V(3,0),V(6,0));
@@ -63,26 +52,21 @@ public class FindChangeUIController : MonoBehaviour
         MkTxt(hdr,"Cat","MEMORIA",DIM2,16,V(0.60f,0.12f),V(0.97f,0.88f))
             .alignment = TextAlignmentOptions.MidlineRight;
 
-        // Label de fase (MEMORIZA / ENCUENTRA)
         _phaseLbl = MkTxt(R,"Phase","",ACCENT,30,V(0.05f,0.84f),V(0.60f,0.92f));
         _phaseLbl.fontStyle = FontStyles.Bold;
         _phaseLbl.alignment = TextAlignmentOptions.MidlineLeft;
         _phaseLbl.characterSpacing = 3f;
 
-        // Temporizador
         _timerLbl = MkTxt(R,"Timer","",Color.white,42,V(0.72f,0.84f),V(0.97f,0.94f));
         _timerLbl.fontStyle = FontStyles.Bold;
         _timerLbl.alignment = TextAlignmentOptions.MidlineRight;
 
-        // Zona de juego (grid de elementos)
         var gameArea = MkImg(R,"GameArea",C(0,0,0,0),V(0.05f,0.10f),V(0.95f,0.84f),V(0,0),V(0,0)).rt;
         gameArea.GetComponent<Image>().raycastTarget = false;
 
-        // Flash de transición (overlay negro que parpadea)
         _overlayFlash = MkImg(R,"Flash",C(0,0,0,0),V(0,0),V(1,1),V(0,0),V(0,0)).img;
         _overlayFlash.raycastTarget = false;
 
-        // Barra inferior
         var bot = MkImg(R,"Bot",HDR,V(0,0),V(1,0),V(0,40),V(0,80)).rt;
         MkImg(bot,"BotLine",ACCENT,V(0,1),V(1,1),V(0,-1.5f),V(0,3));
         MkTxt(bot,"Instr","Observa la escena y haz clic en el elemento que haya cambiado.",
@@ -91,7 +75,6 @@ public class FindChangeUIController : MonoBehaviour
         MkImg(bot,"Sep",C(1,1,1,0.10f),V(0.78f,0.1f),V(0.782f,0.9f),V(0,0),V(0,0));
         MkBtn(bot,"Menu",C(0.12f,0.20f,0.36f),V(0.80f,0.08f),V(0.99f,0.92f),onMenu);
 
-        // Panel resultado
         BuildResultPanel(R, onRestart, onMenu);
 
         return gameArea;
@@ -99,7 +82,7 @@ public class FindChangeUIController : MonoBehaviour
 
     void BuildGridDecor(RectTransform R)
     {
-        // Líneas verticales y horizontales muy tenues
+
         for (int i = 1; i < 5; i++)
         {
             float x = i * 0.2f;
@@ -136,10 +119,6 @@ public class FindChangeUIController : MonoBehaviour
         _resultPanel.SetActive(false);
     }
 
-    // ═════════════════════════════════════════════════════════════════════
-    //  API PÚBLICA
-    // ═════════════════════════════════════════════════════════════════════
-
     public void SetPhase(string label, Color col)
     {
         if (_phaseLbl) { _phaseLbl.text = label; _phaseLbl.color = col; }
@@ -163,7 +142,7 @@ public class FindChangeUIController : MonoBehaviour
     public void HighlightCorrect(ElementData e)
     {
         if (e?.Go == null) return;
-        // Contorno verde (añadir imagen alrededor)
+
         var hGO = new GameObject("Highlight");
         hGO.transform.SetParent(e.RT, false);
         var hRT = hGO.AddComponent<RectTransform>();
@@ -171,15 +150,15 @@ public class FindChangeUIController : MonoBehaviour
         hRT.sizeDelta = new Vector2(12f, 12f);
         hRT.anchoredPosition = Vector2.zero;
         hGO.AddComponent<Image>().color = CGREEN;
-        // Traer al frente del elemento (detrás del brillo)
+
         hGO.transform.SetAsFirstSibling();
     }
 
     public void HighlightWrong(ElementData wrong, ElementData correct)
     {
-        // Rojo en el pulsado
+
         if (wrong?.Img  != null) wrong.Img.color  = new Color(0.85f, 0.22f, 0.22f);
-        // Verde en el correcto
+
         HighlightCorrect(correct);
     }
 
@@ -190,10 +169,6 @@ public class FindChangeUIController : MonoBehaviour
         _resultSub.text    = sub;
         _resultPanel.SetActive(true);
     }
-
-    // ═════════════════════════════════════════════════════════════════════
-    //  HELPERS
-    // ═════════════════════════════════════════════════════════════════════
 
     struct UIR { public RectTransform rt; public Image img; }
     UIR MkImg(RectTransform p,string n,Color col,Vector2 amin,Vector2 amax,Vector2 pos,Vector2 sd)

@@ -3,20 +3,9 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-/// <summary>
-/// Controlador del minijuego "Orden correcto" (categoría: Planificación).
-///
-/// El juego se divide en 3 rondas secuenciales:
-///   Ronda 1 → numbersRound1 números, timeLimitRound1 segundos
-///   Ronda 2 → numbersRound2 números, timeLimitRound2 segundos
-///   Ronda 3 → numbersRound3 números, timeLimitRound3 segundos
-///
-/// Si el jugador completa las 3 rondas → victoria.
-/// Si se le acaba el tiempo en cualquier ronda → derrota.
-/// </summary>
 public class OrderGameController : MinigameBase
 {
-    // ─── Configuración por ronda (editable en el Inspector) ───────────────
+
     [Header("Ronda 1")]
     public int   numbersRound1   = 4;
     public float timeLimitRound1 = 15f;
@@ -29,23 +18,19 @@ public class OrderGameController : MinigameBase
     public int   numbersRound3   = 10;
     public float timeLimitRound3 = 30f;
 
-    // ─── Componentes de juego ─────────────────────────────────────────────
     private OrderManager _orderManager;
 
-    // ─── Estado de rondas ─────────────────────────────────────────────────
-    private int   _currentRound   = 0;       // 0-based (0, 1, 2)
+    private int   _currentRound   = 0;
     private const int TOTAL_ROUNDS = 3;
     private int   _totalErrors     = 0;
     private float _totalTime       = 0f;
     private int   _totalScore      = 0;
 
-    // Estado de la ronda actual
     private bool  _roundRunning    = false;
     private float _timeRemaining   = 0f;
     private float _roundElapsed    = 0f;
     private int   _roundErrors     = 0;
 
-    // ─── UI: pantalla de juego ────────────────────────────────────────────
     private Canvas                    _canvas;
     private TMPro.TextMeshProUGUI     _errorsLabel;
     private TMPro.TextMeshProUGUI     _timerLabel;
@@ -53,16 +38,13 @@ public class OrderGameController : MinigameBase
     private GameObject                _nextPanel;
     private RectTransform             _gridContainer;
 
-    // Indicador de ronda
     private TMPro.TextMeshProUGUI     _roundLabel;
     private Image[]                   _roundDots;
 
-    // ─── UI: panel de transición entre rondas ─────────────────────────────
     private GameObject                _transPanel;
     private TMPro.TextMeshProUGUI     _transTitle;
     private TMPro.TextMeshProUGUI     _transSubtitle;
 
-    // ─── UI: panel de fin ─────────────────────────────────────────────────
     private GameObject                _endPanel;
     private TMPro.TextMeshProUGUI     _endTitle;
     private TMPro.TextMeshProUGUI     _statRounds;
@@ -71,7 +53,6 @@ public class OrderGameController : MinigameBase
     private TMPro.TextMeshProUGUI     _statScore;
     private Image                     _endAccentBar;
 
-    // ─── Paleta de colores ────────────────────────────────────────────────
     private static readonly Color C_BG_DARK  = new Color(0.08f, 0.09f, 0.18f);
     private static readonly Color C_PANEL    = new Color(0.13f, 0.14f, 0.26f);
     private static readonly Color C_ACCENT   = new Color(0.25f, 0.55f, 1.00f);
@@ -81,8 +62,6 @@ public class OrderGameController : MinigameBase
     private static readonly Color C_BTN_GREY = new Color(0.30f, 0.32f, 0.40f);
     private static readonly Color C_TEXT_DIM = new Color(0.65f, 0.68f, 0.80f);
     private static readonly Color C_DOT_OFF  = new Color(0.25f, 0.27f, 0.45f);
-
-    // ─── MinigameBase ─────────────────────────────────────────────────────
 
     protected override string GetIntroDescription() =>
         "Apareceran numeros desordenados en pantalla.\n" +
@@ -100,8 +79,6 @@ public class OrderGameController : MinigameBase
     protected override void OnMinigameComplete() { }
     protected override void OnMinigameFailed()   { }
 
-    // ─── Lógica de rondas ─────────────────────────────────────────────────
-
     private void ResetTotals()
     {
         _currentRound = 0;
@@ -117,35 +94,27 @@ public class OrderGameController : MinigameBase
         _roundElapsed  = 0f;
         _roundRunning  = true;
 
-        // Configurar tiempo y número de elementos de esta ronda
         int   count;
         float limit;
         GetRoundConfig(roundIndex, out count, out limit);
         _timeRemaining = limit;
 
-        // UI: actualizar indicador de ronda
         UpdateRoundIndicator(roundIndex);
 
-        // UI: indicador "Siguiente" (solo en rondas 1 y 2)
         bool showNext = roundIndex < 2;
         _nextPanel.SetActive(showNext);
         if (showNext && _nextLabel != null)
             _nextLabel.text = "Siguiente: 1";
 
-        // UI: temporizador
         _errorsLabel.text = "Errores: 0";
         UpdateTimerUI();
 
-        // Ocultar paneles de transición y fin
         _transPanel.SetActive(false);
         _endPanel.SetActive(false);
 
-        // Destruir todos los botones del grid anterior de forma inmediata
-        // (Destroy() es diferido; DestroyImmediate elimina antes de que se rendericen los nuevos)
         for (int i = _gridContainer.childCount - 1; i >= 0; i--)
             DestroyImmediate(_gridContainer.GetChild(i).gameObject);
 
-        // Destruir el OrderManager anterior
         if (_orderManager != null)
         {
             Destroy(_orderManager.gameObject);
@@ -173,8 +142,6 @@ public class OrderGameController : MinigameBase
         }
     }
 
-    // ─── Handlers de OrderManager ─────────────────────────────────────────
-
     private void HandleCorrect(int nextExpected)
     {
         bool showNext = _currentRound < 2;
@@ -199,7 +166,6 @@ public class OrderGameController : MinigameBase
         _roundRunning = false;
         _totalTime   += _roundElapsed;
 
-        // Puntuación de esta ronda
         int count; float limit;
         GetRoundConfig(_currentRound, out count, out limit);
         int roundScore = Mathf.Max(0, count * 100 - _roundErrors * 15 +
@@ -210,27 +176,26 @@ public class OrderGameController : MinigameBase
 
         if (isLastRound)
         {
-            // Todas las rondas completadas
+
             CompleteMinigame(_totalScore);
             ShowEndPanel(won: true);
         }
         else
         {
-            // Mostrar transición y avanzar a la siguiente ronda
+
             StartCoroutine(RoundTransition(_currentRound));
         }
     }
 
     private IEnumerator RoundTransition(int completedRound)
     {
-        // Mostrar panel de transición
+
         _transPanel.SetActive(true);
         _transTitle.text    = $"Ronda {completedRound + 1} completada!";
         _transSubtitle.text = "Preparate para la siguiente...";
 
         yield return new WaitForSeconds(0.6f);
 
-        // Cuenta atrás visual: 3 – 2 – 1
         for (int i = 3; i >= 1; i--)
         {
             _transSubtitle.text = $"Siguiente ronda en {i}...";
@@ -240,8 +205,6 @@ public class OrderGameController : MinigameBase
         _transPanel.SetActive(false);
         StartRound(completedRound + 1);
     }
-
-    // ─── Update (temporizador) ────────────────────────────────────────────
 
     private void Update()
     {
@@ -260,11 +223,9 @@ public class OrderGameController : MinigameBase
         }
     }
 
-    // ─── Construcción de UI ───────────────────────────────────────────────
-
     private void BuildUI()
     {
-        // ── Canvas ──
+
         var canvasGO = new GameObject("Canvas");
         canvasGO.transform.SetParent(transform, false);
         _canvas = canvasGO.AddComponent<Canvas>();
@@ -282,36 +243,30 @@ public class OrderGameController : MinigameBase
         root.anchorMax = Vector2.one;
         root.sizeDelta = Vector2.zero;
 
-        // ── Fondo ──
         MakePanel(root, "BG", C_BG_DARK, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
 
-        // ── Barra superior ──
         var headerBar = MakePanel(root, "HeaderBar",
             new Color(0.10f, 0.11f, 0.22f),
             new Vector2(0f, 1f), new Vector2(1f, 1f),
             new Vector2(0f, -110f), new Vector2(0f, 110f));
         var headerRT = headerBar.GetComponent<RectTransform>();
 
-        // Franja accent inferior del header
         MakePanel(headerRT, "Accent", C_ACCENT,
             new Vector2(0f, 0f), new Vector2(1f, 0f),
             new Vector2(0f, 3f), new Vector2(0f, 3f));
 
-        // Título
         var titleLbl = MakeLabel(headerRT, "Title", "Orden correcto",
             Color.white, 50f,
             new Vector2(0.12f, 0f), new Vector2(0.88f, 1f), Vector2.zero, Vector2.zero);
         titleLbl.fontStyle = TMPro.FontStyles.Bold;
         titleLbl.alignment = TMPro.TextAlignmentOptions.Center;
 
-        // Errores (izquierda)
         _errorsLabel = MakeLabel(headerRT, "Errors", "Errores: 0",
             C_TEXT_DIM, 34f,
             new Vector2(0f, 0f), new Vector2(0.35f, 1f),
             new Vector2(24f, 0f), new Vector2(0f, 0f));
         _errorsLabel.alignment = TMPro.TextAlignmentOptions.MidlineLeft;
 
-        // Temporizador (derecha)
         _timerLabel = MakeLabel(headerRT, "Timer", "0:15",
             C_ACCENT, 44f,
             new Vector2(0.65f, 0f), new Vector2(1f, 1f),
@@ -319,10 +274,8 @@ public class OrderGameController : MinigameBase
         _timerLabel.fontStyle = TMPro.FontStyles.Bold;
         _timerLabel.alignment = TMPro.TextAlignmentOptions.MidlineRight;
 
-        // ── Indicador de ronda ──
         BuildRoundIndicator(root);
 
-        // ── Franja de instrucción ──
         var instrBar = MakePanel(root, "InstrBar",
             new Color(0.12f, 0.14f, 0.28f),
             new Vector2(0f, 1f), new Vector2(1f, 1f),
@@ -333,7 +286,6 @@ public class OrderGameController : MinigameBase
             Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
         instrLbl.alignment = TMPro.TextAlignmentOptions.Center;
 
-        // ── Panel "Siguiente: X" ──
         _nextPanel = new GameObject("NextPanel");
         _nextPanel.transform.SetParent(root, false);
         var nextRT = _nextPanel.AddComponent<RectTransform>();
@@ -351,7 +303,6 @@ public class OrderGameController : MinigameBase
         _nextLabel.alignment = TMPro.TextAlignmentOptions.Center;
         _nextPanel.SetActive(true);
 
-        // ── Contenedor del grid ──
         var gridGO = new GameObject("GridContainer");
         gridGO.transform.SetParent(root, false);
         _gridContainer = gridGO.AddComponent<RectTransform>();
@@ -361,7 +312,6 @@ public class OrderGameController : MinigameBase
         _gridContainer.anchoredPosition = new Vector2(0f, 30f);
         _gridContainer.sizeDelta        = new Vector2(600f, 400f);
 
-        // ── Barra inferior ──
         var botBar = MakePanel(root, "BotBar",
             new Color(0.10f, 0.11f, 0.22f),
             new Vector2(0f, 0f), new Vector2(1f, 0f),
@@ -376,29 +326,25 @@ public class OrderGameController : MinigameBase
             new Vector2(0.52f, 0.12f), new Vector2(0.92f, 0.88f), Vector2.zero, Vector2.zero,
             ReturnToGameSelector);
 
-        // ── Panel de transición entre rondas ──
         BuildTransitionPanel(root);
 
-        // ── Panel de fin ──
         BuildEndPanel(root);
     }
 
     private void BuildRoundIndicator(RectTransform root)
     {
-        // Franja contenedora
+
         var bar = MakePanel(root, "RoundBar",
             new Color(0.10f, 0.11f, 0.22f),
             new Vector2(0f, 1f), new Vector2(1f, 1f),
             new Vector2(0f, -148f), new Vector2(0f, 38f));
         var barRT = bar.GetComponent<RectTransform>();
 
-        // Texto "Ronda X / 3"
         _roundLabel = MakeLabel(barRT, "RoundLbl", "Ronda 1 / 3",
             new Color(0.60f, 0.64f, 0.88f), 30f,
             new Vector2(0.05f, 0f), new Vector2(0.50f, 1f), Vector2.zero, Vector2.zero);
         _roundLabel.alignment = TMPro.TextAlignmentOptions.MidlineLeft;
 
-        // Puntos de progreso
         _roundDots = new Image[TOTAL_ROUNDS];
         for (int i = 0; i < TOTAL_ROUNDS; i++)
         {
@@ -502,8 +448,6 @@ public class OrderGameController : MinigameBase
         _endPanel.SetActive(false);
     }
 
-    // ─── Panel de fin ─────────────────────────────────────────────────────
-
     private void ShowEndPanel(bool won)
     {
         _endPanel.SetActive(true);
@@ -516,8 +460,6 @@ public class OrderGameController : MinigameBase
         _statTime.text   = FormatTime(_totalTime);
         _statScore.text  = $"{_totalScore}";
     }
-
-    // ─── UI helpers ───────────────────────────────────────────────────────
 
     private void UpdateRoundIndicator(int roundIndex)
     {
@@ -621,8 +563,6 @@ public class OrderGameController : MinigameBase
         tmp.fontSize = 38f; tmp.fontStyle = TMPro.FontStyles.Bold;
         tmp.alignment = TMPro.TextAlignmentOptions.Center;
     }
-
-    // ─── Utilidades ───────────────────────────────────────────────────────
 
     private static string FormatTime(float seconds)
     {

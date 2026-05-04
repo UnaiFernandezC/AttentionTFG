@@ -56,7 +56,6 @@ public class JuegoMemoria : MonoBehaviour
         rotacionInicial = camaraPrincipal.rotation;
         panelBotones.SetActive(false);
 
-        // Panel de introduccion
         bool _started = false;
         var introCanvas = IntroPanel.Build(
             "Algo no cuadra",
@@ -80,33 +79,26 @@ public class JuegoMemoria : MonoBehaviour
     {
         while (rondaActual <= 3)
         {
-            // 1️⃣ Observación inicial
+
             yield return StartCoroutine(Contador(tiempoObservacionInicial));
 
-            // 2️⃣ Mover cámara al punto de observación
             yield return StartCoroutine(MoverCamara(puntoObservacion.position, puntoObservacion.rotation));
             yield return new WaitForSeconds(tiempoEnPunto);
 
-            // 3️⃣ Eliminar objetos
             EliminarObjetosAleatorios(objetosADesaparecer);
 
-            // 4️⃣ Volver a posición inicial
             yield return StartCoroutine(MoverCamara(posicionInicial, rotacionInicial));
 
-            // 5️⃣ Observación final
             yield return StartCoroutine(Contador(tiempoObservacionFinal));
 
-            // 6️⃣ Rotar cámara 180° para mostrar botones
             yield return StartCoroutine(RotarCamara180());
 
-            // 7️⃣ Preparar selección múltiple
             panelBotones.SetActive(true);
             aciertosNecesarios = objetosEliminados.Count;
             aciertosActuales = 0;
             respondio = false;
             aciertoRonda = false;
 
-            // Asignar listeners
             foreach (var par in botonesObjetos)
             {
                 par.botonUI.onClick.RemoveAllListeners();
@@ -117,7 +109,7 @@ public class JuegoMemoria : MonoBehaviour
                 {
                     if (objetosEliminados.Contains(par.objetoEscena))
                     {
-                        // ✅ Selección correcta
+
                         par.botonUI.interactable = false;
                         par.botonUI.image.color = Color.green;
                         aciertosActuales++;
@@ -130,7 +122,7 @@ public class JuegoMemoria : MonoBehaviour
                     }
                     else
                     {
-                        // ❌ Selección incorrecta
+
                         par.botonUI.image.color = Color.red;
                         aciertoRonda = false;
                         respondio = true;
@@ -138,10 +130,8 @@ public class JuegoMemoria : MonoBehaviour
                 });
             }
 
-            // Esperar a que el jugador responda
             yield return new WaitUntil(() => respondio);
 
-            // 8️⃣ Sonido y monedas
             int monedasGanadas = 0;
 
             if (aciertoRonda)
@@ -159,11 +149,9 @@ public class JuegoMemoria : MonoBehaviour
 
             monedaUIManager.AgregarMonedas(monedasGanadas);
 
-            // 9️⃣ Ocultar botones y restaurar objetos
             panelBotones.SetActive(false);
             RestaurarObjetos();
 
-            // 🔄 10️⃣ Girar cámara a posición original
             yield return StartCoroutine(RotarCamara180());
         }
 

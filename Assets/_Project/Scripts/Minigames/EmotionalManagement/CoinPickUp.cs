@@ -9,10 +9,9 @@ public class CoinPickup : MonoBehaviour
     {
         if (other.CompareTag("Player"))
         {
-            // Añadir moneda al contador
+
             CoinManager.instance.AddCoin();
 
-            // Instanciar el prefab del AudioSource y reproducir el sonido
             if (pickupSound != null && audioSourcePrefab != null)
             {
                 GameObject audioObj = Instantiate(audioSourcePrefab, transform.position, Quaternion.identity);
@@ -33,7 +32,6 @@ public class CoinPickup : MonoBehaviour
                 Debug.LogWarning("pickupSound o audioSourcePrefab no asignados");
             }
 
-            // Destruir la moneda
             Destroy(gameObject);
         }
     }

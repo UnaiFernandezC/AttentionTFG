@@ -1,16 +1,12 @@
 using System;
 using UnityEngine;
 
-/// <summary>
-/// Detecta si el cursor está sobre el objeto en movimiento.
-/// Usa distancia en coordenadas canvas, no eventos UI (más fiable con objetos que se mueven).
-/// </summary>
 public class TrackingDetector : MonoBehaviour
 {
-    // Asignados por GameManager tras BuildUI
+
     [HideInInspector] public RectTransform CanvasRT;
     [HideInInspector] public RectTransform ObjectRT;
-    [HideInInspector] public float         TrackRadius = 55f;   // radio de detección (px canvas)
+    [HideInInspector] public float         TrackRadius = 55f;
 
     public bool IsTracking { get; private set; }
     public bool Active     { get; set; } = false;
@@ -19,9 +15,7 @@ public class TrackingDetector : MonoBehaviour
     public event Action OnTrackingLost;
 
     bool _wasTracking;
-    Camera _cam;   // null para ScreenSpaceOverlay
-
-    // ═════════════════════════════════════════════════════════════════════
+    Camera _cam;
 
     void Update()
     {

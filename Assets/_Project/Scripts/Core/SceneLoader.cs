@@ -1,66 +1,44 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-/// <summary>
-/// Sistema centralizado de carga de escenas.
-/// Soporta carga directa y carga con fade (si se conecta a UIManager).
-/// Todas las navegaciones del proyecto deben pasar por aquí.
-/// </summary>
 public static class SceneLoader
 {
-    // ------------------------------------------------------------------ //
-    // Constantes de nombres de escena
-    // Actualiza aquí si renombras escenas en el futuro.
-    // ------------------------------------------------------------------ //
 
-    // --- Menús principales ---
     public const string MAIN_MENU          = "PrimeraPantalla";
     public const string DIFFICULTY_SELECTOR = "DifficultySelector";
 
-    // --- Selectores de juego por dificultad ---
     public const string GAME_SELECTOR_EASY   = "GameSelector";
     public const string GAME_SELECTOR_MEDIUM = "GameSelector2";
     public const string GAME_SELECTOR_HARD   = "GameSelector3";
 
-    // --- Minijuegos: Memoria ---
-    public const string MEMORY_COLOR_MATCH    = "Memory_ColorMatch";          // ← Parejas de Colores
-    public const string MEMORY_PATTERN_RECALL = "Memory_PatternRecall";       // ← Repite el dibujo
+    public const string MEMORY_COLOR_MATCH    = "Memory_ColorMatch";
+    public const string MEMORY_PATTERN_RECALL = "Memory_PatternRecall";
     public const string MEMORY_SIMON_SAYS     = "SimonSays";
     public const string MEMORY_ALGO_NO_CUADRA = "¡Algo no cuadra!";
-    public const string MEMORY_FIND_CHANGE      = "Memory_FindChange_Easy";     // ← Cambios sutiles
-    public const string MEMORY_POSITION_MEMORY  = "Memory_PositionMemory_Easy"; // ← Memoria de posiciones
-    public const string MEMORY_WORD_MEMORY      = "Memory_WordMemory_Easy";      // ← Palabras Fugaces
+    public const string MEMORY_FIND_CHANGE      = "Memory_FindChange_Easy";
+    public const string MEMORY_POSITION_MEMORY  = "Memory_PositionMemory_Easy";
+    public const string MEMORY_WORD_MEMORY      = "Memory_WordMemory_Easy";
 
-    // --- Minijuegos: Gestión Emocional ---
     public const string EMOTION_AVENTURA      = "Aventura emocional";
-    public const string EMOTION_BALANCE       = "Emotional_Balance";            // ← Manten el equilibrio
-    public const string EMOTION_CONSEQUENCES           = "Emotional_Consequences_Easy";          // ← Consecuencias emocionales
-    public const string EMOTION_PROGRESSIVE_REGULATION = "Emotional_ProgressiveRegulation_Easy"; // ← Regulacion progresiva
-    public const string EMOTION_ATTRACTION_CONTROL     = "Emotional_AttractionControl_Easy";      // ← Atraccion emocional
-    // --- Minijuegos: Control de impulsos ---
-    public const string IMPULSE_DONT_PRESS_YET   = "Impulse_DontPressYet_Easy";    // ← No pulses todavia
-    public const string IMPULSE_INVERSE_RESPONSE  = "Impulse_InverseResponse_Easy"; // ← Respuesta Inversa
+    public const string EMOTION_BALANCE       = "Emotional_Balance";
+    public const string EMOTION_CONSEQUENCES           = "Emotional_Consequences_Easy";
+    public const string EMOTION_PROGRESSIVE_REGULATION = "Emotional_ProgressiveRegulation_Easy";
+    public const string EMOTION_ATTRACTION_CONTROL     = "Emotional_AttractionControl_Easy";
 
-    // --- Minijuegos: Atención ---
+    public const string IMPULSE_DONT_PRESS_YET   = "Impulse_DontPressYet_Easy";
+    public const string IMPULSE_INVERSE_RESPONSE  = "Impulse_InverseResponse_Easy";
+    public const string IMPULSE_STOP_AND_GO       = "Impulse_StopAndGo_Easy";
+
     public const string ATTENTION_SCENE            = "Attention";
-    public const string ATTENTION_OBJECT_TRACKING  = "Attention_ObjectTracking_Easy"; // ← Seguimiento de objeto
-    public const string ATTENTION_QUICK_REACTION   = "Attention_QuickReaction_Easy";  // ← Reacción rápida
-    public const string ATTENTION_RULE_SWITCH      = "Attention_RuleSwitch_Easy";      // ← Cambio de regla
+    public const string ATTENTION_OBJECT_TRACKING  = "Attention_ObjectTracking_Easy";
+    public const string ATTENTION_QUICK_REACTION   = "Attention_QuickReaction_Easy";
+    public const string ATTENTION_RULE_SWITCH      = "Attention_RuleSwitch_Easy";
 
-    // --- Minijuegos: Planificación ---
-    public const string PLANNING_ORDEN_CORRECTO      = "Planning_OrdenCorrecto";       // ← Orden correcto
-    public const string PLANNING_RESOURCE_MANAGEMENT = "Planning_ResourceManagement";  // ← Gestión de recursos
-    public const string PLANNING_OPTIMAL_PATH        = "Planning_OptimalPath";          // ← Ruta optima
-    public const string PLANNING_ACTION_SEQUENCE     = "Planning_ActionSequence";       // ← Secuencia de acciones
+    public const string PLANNING_ORDEN_CORRECTO      = "Planning_OrdenCorrecto";
+    public const string PLANNING_RESOURCE_MANAGEMENT = "Planning_ResourceManagement";
+    public const string PLANNING_OPTIMAL_PATH        = "Planning_OptimalPath";
+    public const string PLANNING_ACTION_SEQUENCE     = "Planning_ActionSequence";
 
-    // --- Slots vacíos para los 25 minijuegos futuros ---
-    // Añade aquí las constantes de cada nuevo minijuego
-
-    // ------------------------------------------------------------------ //
-    // API pública
-    // ------------------------------------------------------------------ //
-
-    /// <summary>Carga una escena por su nombre de forma inmediata.</summary>
     public static void LoadScene(string sceneName)
     {
         if (string.IsNullOrEmpty(sceneName))
@@ -72,7 +50,6 @@ public static class SceneLoader
         SceneManager.LoadScene(sceneName);
     }
 
-    /// <summary>Carga el selector de juego apropiado según la dificultad activa.</summary>
     public static void LoadGameSelector()
     {
         if (GameManager.Instance == null)
@@ -91,13 +68,11 @@ public static class SceneLoader
         }
     }
 
-    /// <summary>Recarga la escena actualmente activa.</summary>
     public static void ReloadCurrentScene()
     {
         LoadScene(SceneManager.GetActiveScene().name);
     }
 
-    /// <summary>Vuelve al menú principal.</summary>
     public static void GoToMainMenu()
     {
         if (GameManager.Instance != null)

@@ -1,34 +1,8 @@
 using UnityEngine;
 
-/// <summary>
-/// Gestiona el estado emocional y las acciones disponibles en
-/// "Regulacion Progresiva".
-///
-/// Nivel emocional: 0-∞  (empieza en 100 = muy alterado)
-/// Objetivo: bajar a <= 10
-///
-/// MECANICA CENTRAL — REGENERACION AUTOMATICA:
-///   Al comienzo de cada turno, ANTES de que el jugador actue,
-///   el nivel sube automaticamente +RegenerationPerTurn.
-///   Esto convierte las acciones debiles en contraproducentes:
-///
-///     Respirar (-22)         →  neto -14 ✓
-///     Hablar (-18)           →  neto -10 ✓
-///     Caminar (-16)          →  neto  -8 ✓
-///     Pensar (-12)           →  neto  -4 (apenas ayuda)
-///     Ignorar (-2)           →  neto  +6  ← EMPEORA
-///     Reaccionar (+15)       →  neto +23  ← DESASTRE
-///
-/// COOLDOWN (2 turnos):
-///   Tras usar una accion, queda bloqueada 2 turnos.
-///   Junto con la regeneracion, obliga a seleccionar
-///   cuidadosamente para no quedarse sin acciones utiles.
-/// </summary>
 public class RegulationEmotionManager
 {
     public const int COOLDOWN_TURNS = 2;
-
-    // ── Definicion de acciones ────────────────────────────────────────────
 
     public class EmotionAction
     {
@@ -83,12 +57,10 @@ public class RegulationEmotionManager
             "El nivel sube muchisimo: evita esta accion a toda costa.")
     };
 
-    // ── Estado ────────────────────────────────────────────────────────────
-
     public float CurrentLevel         { get; private set; }
     public int   StepsTaken           { get; private set; }
     public float RegenerationPerTurn  { get; private set; }
-    public float LastRegenAmount      { get; private set; }   // para mostrar en UI
+    public float LastRegenAmount      { get; private set; }
     public bool  IsWon                => CurrentLevel <= 10f;
 
     private int[] _cooldowns;
@@ -114,25 +86,17 @@ public class RegulationEmotionManager
         return _cooldowns[index];
     }
 
-    /// <summary>
-    /// Aplica la accion indicada (si no esta en cooldown).
-    /// Primero aplica la regeneracion automatica, luego el efecto de la accion.
-    /// Devuelve null si la accion esta bloqueada.
-    /// </summary>
     public EmotionAction ApplyAction(int index)
     {
         if (!CanUseAction(index)) return null;
 
         var action = ACTIONS[index];
 
-        // 1. Regeneracion automatica (la tension siempre sube)
         LastRegenAmount = RegenerationPerTurn;
-        CurrentLevel   += RegenerationPerTurn;   // sin tope superior: puede superar 100
+        CurrentLevel   += RegenerationPerTurn;
 
-        // 2. Efecto de la accion
         CurrentLevel = Mathf.Max(0f, CurrentLevel + action.impact);
 
-        // 3. Actualizar cooldowns
         _cooldowns[index] = COOLDOWN_TURNS + 1;
         for (int i = 0; i < _cooldowns.Length; i++)
             if (_cooldowns[i] > 0) _cooldowns[i]--;
@@ -141,7 +105,6 @@ public class RegulationEmotionManager
         return action;
     }
 
-    /// <summary>Puntuacion: base 200, -10 por cada paso sobre el optimo (8).</summary>
     public int CalculateScore()
     {
         return Mathf.Max(0, 200 - Mathf.Max(0, StepsTaken - 8) * 10);

@@ -3,34 +3,9 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
-/// <summary>
-/// GameManager del minijuego "Atraccion Emocional".
-/// Hereda MinigameBase → panel de introduccion automatico.
-///
-/// FLUJO DE JUEGO:
-///   1. IntroPanel (MinigameBase) → jugador pulsa Comenzar
-///   2. OnMinigameStart() → construye UI, crea estimulos, inicializa cursor
-///   3. Update()          → actualiza cursor, comprueba colisiones y zona segura
-///   4a. safeTime >= targetSafeTime  → victoria
-///   4b. lives <= 0                  → derrota
-///
-/// MECANICA:
-///   El cursor mostrado = posicion raton + offset de atraccion.
-///   Los estimulos negativos (circulos rojos) atraen el cursor hacia ellos.
-///   El jugador debe mover el raton para mantener el cursor dentro de la
-///   zona segura (circulo verde central) durante [targetSafeTime] segundos.
-///   Cada contacto con un estimulo resta una vida y aplica invulnerabilidad breve.
-///
-/// AJUSTE DE DIFICULTAD (Inspector):
-///   targetSafeTime:     15s (F) / 20s (M) / 25s (D)
-///   startLives:         3   (F) / 3   (M) / 2   (D)
-///   attractionStrength: 160 (F) / 260 (M) / 360 (D)
-///   influenceRadius:    320 (F) / 380 (M) / 430 (D)
-///   stimulusCount:      3   (F) / 4   (M) / 5   (D)
-/// </summary>
 public class AttractionGameManager : MinigameBase
 {
-    // ── Inspector ─────────────────────────────────────────────────────────
+
     [Header("Condicion de victoria")]
     public float targetSafeTime = 15f;
 
@@ -52,18 +27,14 @@ public class AttractionGameManager : MinigameBase
     [Header("Inestabilidad de zona (0 = desactivado)")]
     public float instabilityStrength = 110f;
 
-    // ── Componentes ───────────────────────────────────────────────────────
     AttractionController    _attraction;
     AttractionCursorController _cursor;
     AttractionUIController  _ui;
 
-    // ── Estado ────────────────────────────────────────────────────────────
     float _safeTime;
     int   _lives;
     bool  _invulnerable;
     const float INVULN_DURATION = 1.2f;
-
-    // ═════════════════════════════════════════════════════════════════════
 
     protected override string GetIntroDescription() =>
         "Los circulos rojos atraen tu cursor hacia ellos.\n" +
@@ -79,22 +50,18 @@ public class AttractionGameManager : MinigameBase
         _cursor     = GetComponent<AttractionCursorController>();
         _ui         = GetComponent<AttractionUIController>();
 
-        // 1. Construir UI y obtener referencias de canvas
         _ui.BuildUI(safeZoneRadius, () => RestartMinigame(), () => ReturnToGameSelector());
 
-        // 2. Crear estimulos en el canvas del juego
         var positions = GetStimulusPositions(stimulusCount);
         _attraction.BuildStimuli(_ui.GameAreaRT, positions,
                                  attractionStrength, influenceRadius, contactRadius);
 
-        // 3. Inicializar cursor
         _cursor.damping             = dampingFactor;
         _cursor.maxPullOffset       = 380f;
         _cursor.cursorRadius        = 18f;
         _cursor.instabilityStrength = instabilityStrength;
         _cursor.Initialize(_ui.CanvasRT, _ui.CursorRT, _attraction);
 
-        // 4. Estado inicial
         _safeTime    = 0f;
         _lives       = startLives;
         _invulnerable = false;
@@ -106,21 +73,15 @@ public class AttractionGameManager : MinigameBase
     protected override void OnMinigameComplete() { }
     protected override void OnMinigameFailed()   { }
 
-    // ═════════════════════════════════════════════════════════════════════
-    // Bucle de juego
-    // ═════════════════════════════════════════════════════════════════════
-
     void Update()
     {
         if (!IsPlaying) return;
 
-        // Actualizar cursor (fisica de atraccion)
         _cursor.Tick();
 
         bool inSafe   = _cursor.IsInSafeZone(safeZoneRadius);
         bool touching = !_invulnerable && _cursor.IsTouchingStimulus();
 
-        // Acumular tiempo seguro
         if (inSafe)
         {
             _safeTime += Time.deltaTime;
@@ -132,10 +93,8 @@ public class AttractionGameManager : MinigameBase
             _ui.SetSafeZoneActive(false);
         }
 
-        // Actualizar indicador de peligro en UI
         _ui.UpdateDangerIndicator(_cursor.DangerLevel, inSafe);
 
-        // Contacto con estimulo
         if (touching)
         {
             _lives--;
@@ -150,16 +109,11 @@ public class AttractionGameManager : MinigameBase
             }
         }
 
-        // Victoria
         if (_safeTime >= targetSafeTime)
         {
             EndGame(won: true);
         }
     }
-
-    // ═════════════════════════════════════════════════════════════════════
-    // Fin de juego
-    // ═════════════════════════════════════════════════════════════════════
 
     void EndGame(bool won)
     {
@@ -175,22 +129,16 @@ public class AttractionGameManager : MinigameBase
         _invulnerable = false;
     }
 
-    // ═════════════════════════════════════════════════════════════════════
-    // Posiciones de estimulos segun cantidad
-    // ═════════════════════════════════════════════════════════════════════
-
     static List<Vector2> GetStimulusPositions(int count)
     {
-        // Distribuidos a ~340-380 canvas units del centro.
-        // Mas cerca que antes para que SIEMPRE ejerzan fuerza sobre el cursor,
-        // incluso cuando el jugador esta en la zona segura central.
+
         var all = new List<Vector2>
         {
-            new Vector2(-370f,    0f),   // izquierda
-            new Vector2( 370f,    0f),   // derecha
-            new Vector2(   0f,  310f),   // arriba
-            new Vector2(   0f, -310f),   // abajo
-            new Vector2(-280f,  240f),   // diagonal superior-izq
+            new Vector2(-370f,    0f),
+            new Vector2( 370f,    0f),
+            new Vector2(   0f,  310f),
+            new Vector2(   0f, -310f),
+            new Vector2(-280f,  240f),
         };
 
         var result = new List<Vector2>();
@@ -199,7 +147,6 @@ public class AttractionGameManager : MinigameBase
         return result;
     }
 
-    // ═════════════════════════════════════════════════════════════════════
     static void EnsureEventSystem()
     {
         if (FindObjectOfType<EventSystem>() == null)

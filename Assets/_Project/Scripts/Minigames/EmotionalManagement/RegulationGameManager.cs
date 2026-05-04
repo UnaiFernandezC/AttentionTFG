@@ -1,23 +1,6 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
 
-/// <summary>
-/// GameManager de "Regulacion Progresiva".
-///
-/// MECANICA CLAVE — REGENERACION AUTOMATICA:
-///   Antes de cada accion, el nivel sube +regenerationPerTurn.
-///   Esto hace que las acciones debiles sean contraproducentes:
-///
-///     Respirar (-22)   neto -14  ✓  muy efectiva
-///     Hablar   (-18)   neto -10  ✓  muy efectiva
-///     Caminar  (-16)   neto  -8  ✓  efectiva
-///     Pensar   (-12)   neto  -4  △  apenas ayuda
-///     Ignorar   (-2)   neto  +6  ✗  empeora la situacion
-///     Ira      (+15)   neto +23  ✗  desastre garantizado
-///
-/// El jugador DEBE rotar las tres primeras acciones de forma eficiente.
-/// Cualquier accion inutil puede costar la partida.
-/// </summary>
 public class RegulationGameManager : MinigameBase
 {
     [Header("Nivel emocional inicial")]
@@ -31,8 +14,6 @@ public class RegulationGameManager : MinigameBase
 
     RegulationEmotionManager _emotionMgr;
     RegulationUIController   _ui;
-
-    // ════════════════════════════════════════════════════════════════════
 
     protected override string GetIntroDescription() =>
         "Tu nivel emocional esta muy alto. Debes regularlo.\n\n" +
@@ -58,8 +39,6 @@ public class RegulationGameManager : MinigameBase
 
     protected override void OnMinigameComplete() { }
     protected override void OnMinigameFailed()   { }
-
-    // ════════════════════════════════════════════════════════════════════
 
     void HandleAction(int actionIndex)
     {

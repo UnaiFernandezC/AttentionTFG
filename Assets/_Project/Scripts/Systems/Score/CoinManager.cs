@@ -6,7 +6,7 @@ public class CoinManager : MonoBehaviour
     public static CoinManager instance;
 
     public int coinCount = 0;
-    public int totalCoins = 10; // Cambia este valor si tienes más monedas en la escena
+    public int totalCoins = 10;
     public TextMeshProUGUI coinText;
 
     private void Awake()
@@ -24,8 +24,8 @@ public class CoinManager : MonoBehaviour
 
         if (coinCount >= totalCoins)
         {
-            Debug.Log("¡Has recogido todas las monedas!");
-            // Aquí puedes activar una animación, pantalla de victoria, etc.
+            Debug.Log("ï¿½Has recogido todas las monedas!");
+
         }
     }
 

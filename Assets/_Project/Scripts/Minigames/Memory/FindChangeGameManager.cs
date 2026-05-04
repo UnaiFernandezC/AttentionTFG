@@ -2,22 +2,9 @@ using System.Collections;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
-/// <summary>
-/// GameManager principal del minijuego "Cambios sutiles".
-/// Hereda MinigameBase (intro panel automático).
-///
-/// Fases:
-///   OBSERVE   → Muestra la escena original. Countdown [observeTime] seg.
-///   TRANSITION→ Flash negro breve [transitionTime] seg.
-///   FIND      → Muestra la escena modificada. El jugador hace clic.
-///   RESULT    → Muestra feedback y panel de resultado.
-///
-/// Configuración Inspector (Easy por defecto):
-///   columns=3, rows=2, observeTime=5, rounds=3 (win si >= 2)
-/// </summary>
 public class FindChangeGameManager : MinigameBase
 {
-    // ─── Inspector ────────────────────────────────────────────────────────
+
     [Header("Tiempo de observación (segundos)")]
     public float observeTime     = 5f;
     [Header("Duración del flash de transición")]
@@ -27,13 +14,11 @@ public class FindChangeGameManager : MinigameBase
     [Header("Rondas necesarias para ganar")]
     public int   roundsToWin     = 2;
 
-    // ─── Componentes hermanos ─────────────────────────────────────────────
     SceneGenerator         _gen;
     ChangeManager          _change;
     FindChangeInputHandler _input;
     FindChangeUIController _ui;
 
-    // ─── Estado ──────────────────────────────────────────────────────────
     ElementData[]  _elements;
     RectTransform  _gameArea;
     int            _currentRound;
@@ -42,10 +27,6 @@ public class FindChangeGameManager : MinigameBase
 
     enum Phase { Observe, Transition, Find, Result }
     Phase _phase;
-
-    // ═════════════════════════════════════════════════════════════════════
-    //  MINIGAME BASE
-    // ═════════════════════════════════════════════════════════════════════
 
     protected override string GetIntroDescription() =>
         "Se mostrará una escena con formas de colores.\n" +
@@ -73,21 +54,15 @@ public class FindChangeGameManager : MinigameBase
     protected override void OnMinigameComplete() { }
     protected override void OnMinigameFailed()   { }
 
-    // ═════════════════════════════════════════════════════════════════════
-    //  COROUTINE DE RONDA
-    // ═════════════════════════════════════════════════════════════════════
-
     IEnumerator RunRound()
     {
         _roundOver = false;
         _currentRound++;
 
-        // ── Limpiar ronda anterior ────────────────────────────────────
         if (_elements != null)
             foreach (var e in _elements)
                 if (e.Go != null) Destroy(e.Go);
 
-        // ── Generar nueva escena ──────────────────────────────────────
         _elements = _gen.Generate(_gameArea);
         _input.RegisterElements(_elements);
         _input.AcceptInput = false;
@@ -95,7 +70,6 @@ public class FindChangeGameManager : MinigameBase
         _input.OnElementClicked -= OnElementClicked;
         _input.OnElementClicked += OnElementClicked;
 
-        // ── FASE OBSERVE ──────────────────────────────────────────────
         _phase = Phase.Observe;
         _ui.SetPhase("MEMORIZA", new Color(0.40f, 0.70f, 1.00f));
         _ui.SetFlash(0f);
@@ -109,11 +83,9 @@ public class FindChangeGameManager : MinigameBase
         }
         _ui.HideTimer();
 
-        // ── FASE TRANSITION ───────────────────────────────────────────
         _phase = Phase.Transition;
         _ui.SetPhase("...", new Color(0.60f, 0.60f, 0.60f));
 
-        // Fade to black
         float half = transitionTime * 0.5f;
         for (float ft = 0f; ft < half; ft += Time.deltaTime)
         {
@@ -121,12 +93,10 @@ public class FindChangeGameManager : MinigameBase
             yield return null;
         }
 
-        // Aplicar cambio con elementos ocultos
         _change.ApplyChange(_elements);
 
         yield return new WaitForSeconds(0.05f);
 
-        // Fade back
         for (float ft = 0f; ft < half; ft += Time.deltaTime)
         {
             _ui.SetFlash(1f - ft / half);
@@ -134,13 +104,11 @@ public class FindChangeGameManager : MinigameBase
         }
         _ui.SetFlash(0f);
 
-        // ── FASE FIND ─────────────────────────────────────────────────
         _phase = Phase.Find;
         _ui.SetPhase("¿QUÉ CAMBIÓ?", new Color(0.96f, 0.82f, 0.22f));
         _input.SetElementsInteractable(_elements, true);
         _input.AcceptInput = true;
 
-        // Esperar respuesta del jugador (o timeout de 10s)
         float findTimeout = 10f;
         while (!_roundOver && findTimeout > 0f)
         {
@@ -148,13 +116,8 @@ public class FindChangeGameManager : MinigameBase
             yield return null;
         }
 
-        // Timeout = fallo automático
         if (!_roundOver) OnElementClicked(-1);
     }
-
-    // ═════════════════════════════════════════════════════════════════════
-    //  RESPUESTA DEL JUGADOR
-    // ═════════════════════════════════════════════════════════════════════
 
     void OnElementClicked(int clickedId)
     {
@@ -189,7 +152,7 @@ public class FindChangeGameManager : MinigameBase
 
         if (!moreRounds || (!correct && _correctCount < roundsToWin && (rounds - _currentRound) < (roundsToWin - _correctCount)))
         {
-            // Partida terminada — evaluar resultado final
+
             bool won = _correctCount >= roundsToWin;
             if (won)
             {
@@ -208,7 +171,7 @@ public class FindChangeGameManager : MinigameBase
         }
         else if (moreRounds)
         {
-            // Siguiente ronda
+
             string msg = correct
                 ? "¡Bien! Ronda " + _currentRound + "/" + rounds
                 : "Fallaste. Ronda " + _currentRound + "/" + rounds;
@@ -217,10 +180,6 @@ public class FindChangeGameManager : MinigameBase
             StartCoroutine(RunRound());
         }
     }
-
-    // ═════════════════════════════════════════════════════════════════════
-    //  HELPERS
-    // ═════════════════════════════════════════════════════════════════════
 
     int CalculateScore()
     {

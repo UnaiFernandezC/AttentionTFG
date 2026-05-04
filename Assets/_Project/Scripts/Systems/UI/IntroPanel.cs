@@ -3,23 +3,9 @@ using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using TMPro;
 
-/// <summary>
-/// Utilidad estatica que construye el panel de introduccion de cualquier minijuego.
-/// Devuelve el GameObject del canvas creado; destruyelo cuando el juego comience.
-///
-/// Uso desde un MonoBehaviour cualquiera:
-///
-///   bool _started = false;
-///   var cv = IntroPanel.Build("Mi juego", "Memoria", ..., "Descripcion...", () => _started = true);
-///   while (!_started) {
-///       if (Input.GetKeyDown(KeyCode.Space)) _started = true;
-///       yield return null;
-///   }
-///   Destroy(cv);
-/// </summary>
 public static class IntroPanel
 {
-    // ── Paleta de colores por categoria ──────────────────────────────────
+
     public static Color CategoryColor(string cat)
     {
         switch (cat)
@@ -33,16 +19,10 @@ public static class IntroPanel
         }
     }
 
-    // ── Metodo principal ─────────────────────────────────────────────────
-
-    /// <summary>
-    /// Construye el panel de introduccion y lo devuelve.
-    /// onStart se llama al pulsar el boton "Comenzar".
-    /// </summary>
     public static GameObject Build(string title, string categoryName,
                                    string description, System.Action onStart)
     {
-        // EventSystem
+
         if (Object.FindObjectOfType<EventSystem>() == null)
         {
             var esGO = new GameObject("EventSystem");
@@ -52,7 +32,6 @@ public static class IntroPanel
 
         Color catCol = CategoryColor(categoryName);
 
-        // Canvas raiz
         var cvGO = new GameObject("IntroCanvas");
         var cv = cvGO.AddComponent<Canvas>();
         cv.renderMode   = RenderMode.ScreenSpaceOverlay;
@@ -64,30 +43,24 @@ public static class IntroPanel
         cvGO.AddComponent<GraphicRaycaster>();
         var R = cvGO.GetComponent<RectTransform>();
 
-        // ── Fondo oscuro ──
         Img(R, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero,
             new Color(0.03f, 0.05f, 0.12f, 0.97f));
 
-        // ── Tarjeta central ──
         var card = Img(R,
             new Vector2(0.5f,0.5f), new Vector2(0.5f,0.5f),
             Vector2.zero, new Vector2(1060f, 590f),
             new Color(0.10f, 0.13f, 0.24f));
 
-        // Borde lateral izquierdo (color de categoria)
         Img(card, new Vector2(0,0), new Vector2(0,1),
             new Vector2(4,0), new Vector2(8,0), catCol);
 
-        // Barra superior del color de categoria
         Img(card, new Vector2(0,1), new Vector2(1,1),
             Vector2.zero, new Vector2(0,5), catCol);
 
-        // Sombra interna sutil arriba
         Img(card, new Vector2(0,1), new Vector2(1,1),
             new Vector2(0,-18), new Vector2(0,36),
             new Color(0,0,0,0.18f));
 
-        // ── Badge de categoria (arriba derecha) ──
         var badge = Img(card,
             new Vector2(1f,1f), new Vector2(1f,1f),
             new Vector2(-80f,-22f), new Vector2(140f, 30f),
@@ -97,19 +70,16 @@ public static class IntroPanel
         badgeTxt.fontStyle = FontStyles.Bold;
         badgeTxt.characterSpacing = 2f;
 
-        // ── Titulo ──
         var titleT = Txt(card, title, Color.white, 60,
             new Vector2(0.05f, 0.72f), new Vector2(0.95f, 0.96f));
         titleT.fontStyle  = FontStyles.Bold;
         titleT.alignment  = TextAlignmentOptions.MidlineLeft;
         titleT.overflowMode = TextOverflowModes.Overflow;
 
-        // ── Linea separadora ──
         Img(card, new Vector2(0.05f, 0.68f), new Vector2(0.95f, 0.68f),
             Vector2.zero, new Vector2(0, 2),
             new Color(1,1,1,0.10f));
 
-        // ── Descripcion ──
         var descT = Txt(card, description,
             new Color(0.72f, 0.80f, 0.96f), 28,
             new Vector2(0.06f, 0.34f), new Vector2(0.94f, 0.67f));
@@ -117,7 +87,6 @@ public static class IntroPanel
         descT.overflowMode  = TextOverflowModes.Overflow;
         descT.lineSpacing   = 6f;
 
-        // ── Icono de teclado + hint ──
         var hintBg = Img(card,
             new Vector2(0.06f,0.18f), new Vector2(0.94f,0.32f),
             Vector2.zero, Vector2.zero,
@@ -128,12 +97,10 @@ public static class IntroPanel
             Vector2.zero, Vector2.one);
         hintT.overflowMode = TextOverflowModes.Overflow;
 
-        // ── Boton COMENZAR ──
         var btnBg = Img(card,
             new Vector2(0.28f, 0.04f), new Vector2(0.72f, 0.16f),
             Vector2.zero, Vector2.zero, catCol);
 
-        // Capa brillante sobre el boton
         Img(btnBg, new Vector2(0,0.5f), new Vector2(1,1),
             Vector2.zero, Vector2.zero,
             new Color(1,1,1,0.12f));
@@ -153,8 +120,6 @@ public static class IntroPanel
 
         return cvGO;
     }
-
-    // ── Helpers ──────────────────────────────────────────────────────────
 
     static RectTransform Img(RectTransform p, Vector2 amin, Vector2 amax,
                               Vector2 pos, Vector2 sd, Color col)

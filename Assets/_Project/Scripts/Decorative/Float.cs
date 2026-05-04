@@ -2,8 +2,8 @@ using UnityEngine;
 
 public class FloatingLogo : MonoBehaviour
 {
-    public float floatAmplitude = 10f; // Altura máxima del movimiento
-    public float floatFrequency = 1f;  // Velocidad del movimiento
+    public float floatAmplitude = 10f;
+    public float floatFrequency = 1f;
 
     private Vector3 startPos;
 
@@ -18,4 +18,3 @@ public class FloatingLogo : MonoBehaviour
         transform.localPosition = startPos + new Vector3(0f, yOffset, 0f);
     }
 }
-

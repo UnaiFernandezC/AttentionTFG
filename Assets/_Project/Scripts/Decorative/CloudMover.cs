@@ -8,10 +8,9 @@ public class CloudMover : MonoBehaviour
 
     void Update()
     {
-        // Mover hacia la derecha
+
         transform.Translate(Vector3.right * speed * Time.deltaTime);
 
-        // Si sale por la derecha, vuelve por la izquierda, manteniendo la misma altura (Y)
         if (transform.position.x > screenLimitRight)
         {
             transform.position = new Vector3(screenLimitLeft, transform.position.y, transform.position.z);

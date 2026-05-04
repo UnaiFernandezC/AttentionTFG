@@ -4,24 +4,9 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-/// <summary>
-/// Construye toda la UI de "No pulses todavia" de forma procedural.
-/// Sin prefabs ni assets externos.
-///
-/// Layout (1920x1080, CanvasScaler ScaleWithScreenSize):
-///   Header:        Titulo + categoria + indicadores de ronda
-///   Centro:        Boton grande (280x280), halo, texto de estado
-///   Panel lateral: Instruccion permanente + barra de cuenta atras
-///   Footer:        Boton Menu
-///   ResultPanel:   Overlay de victoria/derrota (por ronda y final)
-///
-/// La clase expone referencias publicas al GameManager:
-///   ButtonCtrl  → DontPressButtonController conectado al boton visual
-///   MainButton  → Button de Unity para registrar clicks
-/// </summary>
 public class DontPressUIController : MonoBehaviour
 {
-    // ── Helpers de color/vector ───────────────────────────────────────────
+
     static Vector2 V(float x, float y) => new Vector2(x, y);
     static Color   C(float r, float g, float b, float a = 1f) => new Color(r, g, b, a);
 
@@ -34,28 +19,22 @@ public class DontPressUIController : MonoBehaviour
     static readonly Color CGREEN  = C(0.22f, 0.86f, 0.54f);
     static readonly Color CYELLOW = C(0.95f, 0.80f, 0.15f);
 
-    // ── Refs publicas ─────────────────────────────────────────────────────
     public DontPressButtonController ButtonCtrl  { get; private set; }
     public Button                    MainButton  { get; private set; }
 
-    // ── Refs internas ─────────────────────────────────────────────────────
     Image[]          _roundDots;
-    TextMeshProUGUI  _statusText;    // texto grande bajo el boton
-    TextMeshProUGUI  _instrText;     // instruccion permanente en panel lateral
-    Image            _countdownBar;  // fill horizontal de cuenta atras
+    TextMeshProUGUI  _statusText;
+    TextMeshProUGUI  _instrText;
+    Image            _countdownBar;
     Image            _flashOverlay;
 
     GameObject       _resultPanel;
     TextMeshProUGUI  _resultTitle;
     TextMeshProUGUI  _resultSub;
 
-    // ═════════════════════════════════════════════════════════════════════
-    // Construccion
-    // ═════════════════════════════════════════════════════════════════════
-
     public void BuildUI(int rounds, Action onRestart, Action onMenu)
     {
-        // ── Canvas ──────────────────────────────────────────────────────
+
         var cGO = new GameObject("Canvas_DontPress");
         cGO.transform.SetParent(transform, false);
         var cv = cGO.AddComponent<Canvas>();
@@ -68,12 +47,10 @@ public class DontPressUIController : MonoBehaviour
         cGO.AddComponent<GraphicRaycaster>();
         var R = cGO.GetComponent<RectTransform>();
 
-        // ── Fondo ────────────────────────────────────────────────────────
         MkImg(R, "BG",   BG,                           V(0,0), V(1,1), V(0,0), V(0,0));
         MkImg(R, "Grad", C(0.00f,0.08f,0.18f,0.30f),  V(0,0), V(1,1), V(0,0), V(0,0));
         BuildGrid(R);
 
-        // ── Header ──────────────────────────────────────────────────────
         var hdr = MkImg(R, "Hdr", HDR, V(0,1), V(1,1), V(0,-44), V(0,88));
         MkImg(hdr, "LineB", ACCENT,  V(0,0), V(1,0), V(0,1.5f), V(0,3));
         MkImg(hdr, "AccL",  ACCENT,  V(0,0.18f), V(0,0.82f), V(3,0), V(6,0));
@@ -87,23 +64,18 @@ public class DontPressUIController : MonoBehaviour
         MkTxt(hdr, "Cat", "CONTROL DE IMPULSOS", DIM, 15,
               V(0.52f,0.12f), V(0.72f,0.88f)).alignment = TextAlignmentOptions.MidlineRight;
 
-        // Indicadores de ronda (puntos)
         _roundDots = BuildRoundDots(hdr, rounds);
 
-        // ── Panel instruccion (lateral izquierdo) ─────────────────────────
         BuildInstructionPanel(R);
 
-        // ── Boton central ────────────────────────────────────────────────
         BuildMainButton(R);
 
-        // ── Texto de estado (bajo el boton) ──────────────────────────────
         _statusText = MkTxt(R, "StatusTxt",
                             "Espera a que cambie a verde...",
                             DIM, 28, V(0.20f, 0.28f), V(0.80f, 0.38f));
         _statusText.alignment = TextAlignmentOptions.Center;
         _statusText.fontStyle = FontStyles.Italic;
 
-        // ── Flash de impacto ─────────────────────────────────────────────
         var flashGO = new GameObject("Flash");
         flashGO.transform.SetParent(R, false);
         var fRT = flashGO.AddComponent<RectTransform>();
@@ -113,7 +85,6 @@ public class DontPressUIController : MonoBehaviour
         _flashOverlay.color = C(0,0,0,0);
         flashGO.SetActive(false);
 
-        // ── Footer ──────────────────────────────────────────────────────
         var bot = MkImg(R, "Bot", HDR, V(0,0), V(1,0), V(0,40), V(0,80));
         MkImg(bot, "LineT", ACCENT, V(0,1), V(1,1), V(0,-1.5f), V(0,3));
         MkTxt(bot, "Info",
@@ -123,11 +94,9 @@ public class DontPressUIController : MonoBehaviour
         MkImg(bot, "Sep", C(1,1,1,0.10f), V(0.78f,0.1f), V(0.782f,0.9f), V(0,0), V(0,0));
         MkBtn(bot, "Menu", C(0.12f,0.18f,0.32f), V(0.80f,0.08f), V(0.99f,0.92f), onMenu);
 
-        // ── Panel resultado ──────────────────────────────────────────────
         BuildResultPanel(R, onRestart, onMenu);
     }
 
-    // ─────────────────────────────────────────────────────────────────────
     void BuildGrid(RectTransform R)
     {
         for (int i = 1; i < 6; i++)
@@ -138,7 +107,6 @@ public class DontPressUIController : MonoBehaviour
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────
     Image[] BuildRoundDots(RectTransform hdr, int rounds)
     {
         var dots = new Image[rounds];
@@ -162,7 +130,6 @@ public class DontPressUIController : MonoBehaviour
         return dots;
     }
 
-    // ─────────────────────────────────────────────────────────────────────
     void BuildInstructionPanel(RectTransform R)
     {
         var panel = MkImg(R, "InstrPanel", C(0.04f,0.07f,0.14f,0.88f),
@@ -181,7 +148,6 @@ public class DontPressUIController : MonoBehaviour
         MkTxt(panel, "D2", "¡Pulsa ya!", DIM, 16,
               V(0.1f,0.20f), V(0.9f,0.36f));
 
-        // Barra de cuenta atras (fill horizontal)
         MkImg(panel, "BarBG", C(0.02f,0.04f,0.08f), V(0.1f,0.06f), V(0.9f,0.16f), V(0,0), V(0,0));
         var fillGO = new GameObject("CDFill");
         fillGO.transform.SetParent(panel, false);
@@ -196,10 +162,9 @@ public class DontPressUIController : MonoBehaviour
         _countdownBar.fillAmount  = 0f;
     }
 
-    // ─────────────────────────────────────────────────────────────────────
     void BuildMainButton(RectTransform R)
     {
-        // Halo exterior (anillo difuso)
+
         var glowGO = new GameObject("Glow");
         glowGO.transform.SetParent(R, false);
         var glowRT = glowGO.AddComponent<RectTransform>();
@@ -211,7 +176,6 @@ public class DontPressUIController : MonoBehaviour
         glowImg.sprite = MakeCircleSprite(128);
         glowImg.color  = C(0.80f, 0.18f, 0.22f, 0.22f);
 
-        // Boton principal
         var btnGO = new GameObject("MainBtn");
         btnGO.transform.SetParent(R, false);
         var btnRT = btnGO.AddComponent<RectTransform>();
@@ -232,7 +196,6 @@ public class DontPressUIController : MonoBehaviour
         cb.pressedColor     = C(0.70f, 0.70f, 0.70f);
         MainButton.colors   = cb;
 
-        // Texto del boton
         var btnTxtGO = new GameObject("BtnTxt");
         btnTxtGO.transform.SetParent(btnGO.transform, false);
         var tRT = btnTxtGO.AddComponent<RectTransform>();
@@ -246,7 +209,6 @@ public class DontPressUIController : MonoBehaviour
         btnTxt.alignment = TextAlignmentOptions.Center;
         btnTxt.overflowMode = TextOverflowModes.Overflow;
 
-        // Anillo del borde del boton
         var ringGO = new GameObject("BtnRing");
         ringGO.transform.SetParent(R, false);
         var ringRT = ringGO.AddComponent<RectTransform>();
@@ -257,9 +219,8 @@ public class DontPressUIController : MonoBehaviour
         var ringImg = ringGO.AddComponent<Image>();
         ringImg.sprite = MakeCircleSprite(256);
         ringImg.color  = C(1f, 1f, 1f, 0.08f);
-        ringGO.transform.SetAsFirstSibling(); // detras del boton
+        ringGO.transform.SetAsFirstSibling();
 
-        // Conectar ButtonController
         ButtonCtrl            = btnGO.AddComponent<DontPressButtonController>();
         ButtonCtrl.ButtonImage = btnImg;
         ButtonCtrl.GlowImage   = glowImg;
@@ -267,7 +228,6 @@ public class DontPressUIController : MonoBehaviour
         ButtonCtrl.SetIdle();
     }
 
-    // ─────────────────────────────────────────────────────────────────────
     void BuildResultPanel(RectTransform R, Action onRestart, Action onMenu)
     {
         _resultPanel = new GameObject("ResultPanel");
@@ -300,20 +260,14 @@ public class DontPressUIController : MonoBehaviour
         _resultPanel.SetActive(false);
     }
 
-    // ═════════════════════════════════════════════════════════════════════
-    // API publica de actualizacion
-    // ═════════════════════════════════════════════════════════════════════
-
-    /// <summary>Actualiza el estado del indicador de ronda (punto vacio/correcto/fallido).</summary>
     public void SetRoundDot(int index, bool? correct)
     {
         if (_roundDots == null || index >= _roundDots.Length) return;
-        _roundDots[index].color = correct == null  ? C(0.25f,0.30f,0.40f)   // pendiente
-                                : correct == true  ? CGREEN                   // correcto
-                                                   : CRED;                    // fallido
+        _roundDots[index].color = correct == null  ? C(0.25f,0.30f,0.40f)
+                                : correct == true  ? CGREEN
+                                                   : CRED;
     }
 
-    /// <summary>Muestra el texto de estado bajo el boton.</summary>
     public void SetStatusText(string txt, Color col)
     {
         if (_statusText == null) return;
@@ -321,10 +275,6 @@ public class DontPressUIController : MonoBehaviour
         _statusText.color = col;
     }
 
-    /// <summary>
-    /// Actualiza la barra de cuenta atras mientras el boton esta activo.
-    /// elapsed / window → relleno de derecha a izquierda (el tiempo se acaba).
-    /// </summary>
     public void UpdateCountdown(float elapsed, float window)
     {
         if (_countdownBar == null) return;
@@ -333,14 +283,12 @@ public class DontPressUIController : MonoBehaviour
         _countdownBar.color = Color.Lerp(CRED, CGREEN, frac);
     }
 
-    /// <summary>Oculta la barra de cuenta atras (cuando el boton no esta activo).</summary>
     public void HideCountdown()
     {
         if (_countdownBar != null)
             _countdownBar.fillAmount = 0f;
     }
 
-    /// <summary>Flash de color sobre toda la pantalla.</summary>
     public void Flash(Color col)
     {
         if (_flashOverlay == null) return;
@@ -362,7 +310,6 @@ public class DontPressUIController : MonoBehaviour
         _flashOverlay.gameObject.SetActive(false);
     }
 
-    /// <summary>Muestra el panel de resultado final.</summary>
     public void ShowFinalResult(bool won, int correct, int total, int score)
     {
         string title = won ? "¡Control total!" : "El impulso ganó";
@@ -383,10 +330,6 @@ public class DontPressUIController : MonoBehaviour
         _resultPanel.SetActive(true);
     }
 
-    // ═════════════════════════════════════════════════════════════════════
-    // Generacion de sprite circular (reutilizado de AttractionUIController)
-    // ═════════════════════════════════════════════════════════════════════
-
     public static Sprite MakeCircleSprite(int res = 128)
     {
         var tex    = new Texture2D(res, res, TextureFormat.RGBA32, false);
@@ -405,10 +348,6 @@ public class DontPressUIController : MonoBehaviour
         tex.Apply();
         return Sprite.Create(tex, new Rect(0,0,res,res), V(0.5f,0.5f));
     }
-
-    // ═════════════════════════════════════════════════════════════════════
-    // Helpers de construccion UI
-    // ═════════════════════════════════════════════════════════════════════
 
     RectTransform MkImg(RectTransform p, string n, Color col,
                         Vector2 am, Vector2 aM, Vector2 pos, Vector2 sd)

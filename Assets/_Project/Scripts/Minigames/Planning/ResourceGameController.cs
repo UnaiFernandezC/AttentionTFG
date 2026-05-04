@@ -6,21 +6,8 @@ using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using TMPro;
 
-/// <summary>
-/// Minijuego "Gestión de recursos" (categoría: Planificación).
-///
-/// Pensado para niños. El jugador tiene "estrellas" (energía) y debe
-/// llenar una barra de progreso al 100% eligiendo acciones.
-/// Cada acción cuesta estrellas y da progreso.
-///
-/// Valores por defecto MUY fáciles. Desde el Inspector se puede:
-///   - Reducir estrellas para mayor dificultad
-///   - Cambiar coste/ganancia de cada acción
-///   - Añadir o quitar acciones
-/// </summary>
 public class ResourceGameController : MinigameBase
 {
-    // ─── Datos de acción (configurable en Inspector) ──────────────────────
 
     [Serializable]
     public class ActionData
@@ -41,8 +28,6 @@ public class ResourceGameController : MinigameBase
         public Color buttonColor = Color.black;
     }
 
-    // ─── Inspector ────────────────────────────────────────────────────────
-
     [Header("=== ESTRELLAS (energia) ===")]
     [Tooltip("Estrellas en dificultad facil (para ninos: generoso)")]
     public int starsEasy = 20;
@@ -61,15 +46,11 @@ public class ResourceGameController : MinigameBase
     [Tooltip("Lista de acciones. Por defecto 3 acciones faciles de entender.")]
     public List<ActionData> actions = new List<ActionData>();
 
-    // ─── Estado ───────────────────────────────────────────────────────────
-
     private int   _maxStars;
     private int   _stars;
     private float _progress;
     private float _displayProg;
     private bool  _ended;
-
-    // ─── UI refs ──────────────────────────────────────────────────────────
 
     private RectTransform   _starsFill;
     private Image           _starsFillImg;
@@ -86,8 +67,6 @@ public class ResourceGameController : MinigameBase
     private TextMeshProUGUI      _endSub;
     private Image                _endBar;
 
-    // ─── Colores ──────────────────────────────────────────────────────────
-
     static readonly Color BG       = new Color(0.14f, 0.16f, 0.28f);
     static readonly Color PANEL    = new Color(0.18f, 0.20f, 0.35f);
     static readonly Color HEADER   = new Color(0.12f, 0.13f, 0.24f);
@@ -101,16 +80,12 @@ public class ResourceGameController : MinigameBase
     static readonly Color BTN_OFF  = new Color(0.22f, 0.24f, 0.34f);
 
     static readonly Color[] AUTO_COLORS = {
-        new Color(0.30f, 0.60f, 1.00f),  // azul
-        new Color(0.92f, 0.45f, 0.20f),  // naranja
-        new Color(0.60f, 0.32f, 0.95f),  // violeta
-        new Color(0.20f, 0.75f, 0.55f),  // verde
-        new Color(0.90f, 0.30f, 0.50f),  // rosa
+        new Color(0.30f, 0.60f, 1.00f),
+        new Color(0.92f, 0.45f, 0.20f),
+        new Color(0.60f, 0.32f, 0.95f),
+        new Color(0.20f, 0.75f, 0.55f),
+        new Color(0.90f, 0.30f, 0.50f),
     };
-
-    // ═══════════════════════════════════════════════════════════════════════
-    //  MINIGAME BASE
-    // ═══════════════════════════════════════════════════════════════════════
 
     protected override string GetIntroDescription() =>
         "Tienes estrellas de energia limitadas. Elige las acciones correctas\n" +
@@ -160,10 +135,6 @@ public class ResourceGameController : MinigameBase
         if (d == DifficultyLevel.Hard)   return starsHard;
         return starsEasy;
     }
-
-    // ═══════════════════════════════════════════════════════════════════════
-    //  LÓGICA
-    // ═══════════════════════════════════════════════════════════════════════
 
     private void DoAction(int i)
     {
@@ -219,10 +190,6 @@ public class ResourceGameController : MinigameBase
         Refresh();
     }
 
-    // ═══════════════════════════════════════════════════════════════════════
-    //  REFRESH UI
-    // ═══════════════════════════════════════════════════════════════════════
-
     private void Refresh()
     {
         float r = Mathf.Clamp01((float)_stars / _maxStars);
@@ -277,13 +244,9 @@ public class ResourceGameController : MinigameBase
         return AUTO_COLORS[i % AUTO_COLORS.Length];
     }
 
-    // ═══════════════════════════════════════════════════════════════════════
-    //  BUILD UI
-    // ═══════════════════════════════════════════════════════════════════════
-
     private void BuildUI()
     {
-        // Canvas
+
         GameObject cGO = new GameObject("Canvas");
         cGO.transform.SetParent(transform, false);
         Canvas cv = cGO.AddComponent<Canvas>();
@@ -296,10 +259,8 @@ public class ResourceGameController : MinigameBase
         cGO.AddComponent<GraphicRaycaster>();
         RectTransform R = cGO.GetComponent<RectTransform>();
 
-        // Fondo
         Img(R, "BG", BG, V(0,0), V(1,1), V(0,0), V(0,0));
 
-        // ── HEADER ──
         RectTransform hdr = Img(R, "Hdr", HEADER, V(0,1), V(1,1), V(0,-44), V(0,88));
         Img(hdr, "Line", ACCENT, V(0,0), V(1,0), V(0,1.5f), V(0,3));
 
@@ -310,28 +271,22 @@ public class ResourceGameController : MinigameBase
         TextMeshProUGUI t2 = Txt(hdr, "I", "Usa tus estrellas para llegar al 100%", DIM, 24, V(0.45f,0), V(0.98f,1));
         t2.alignment = TextAlignmentOptions.MidlineRight;
 
-        // ── ZONA SUPERIOR: barras (y: 0.60 – 0.88) ──
         RectTransform topP = Img(R, "TopP", PANEL, V(0.03f,0.58f), V(0.97f,0.88f), V(0,0), V(0,0));
         BuildBars(topP);
 
-        // ── ZONA INFERIOR: botones de acción (y: 0.12 – 0.55) ──
         RectTransform botP = Img(R, "BotP", PANEL, V(0.03f,0.12f), V(0.97f,0.55f), V(0,0), V(0,0));
         BuildActions(botP);
 
-        // ── BARRA INFERIOR ──
         RectTransform bar = Img(R, "Bar", HEADER, V(0,0), V(1,0), V(0,45), V(0,90));
         MkBtn(bar, "Reiniciar", new Color(0.32f,0.34f,0.44f), V(0.06f,0.12f), V(0.46f,0.88f), () => Reset());
         MkBtn(bar, "Volver al menu", ACCENT, V(0.54f,0.12f), V(0.94f,0.88f), () => ReturnToGameSelector());
 
-        // ── PANEL FIN ──
         BuildEnd(R);
     }
 
-    // ── Barras de estrellas y progreso ─────────────────────────────────────
-
     private void BuildBars(RectTransform p)
     {
-        // ─ Estrellas (mitad izquierda) ─
+
         TextMeshProUGUI sT = Txt(p, "ST", "ESTRELLAS", YELLOW, 28, V(0.03f,0.70f), V(0.30f,0.95f));
         sT.fontStyle = FontStyles.Bold; sT.alignment = TextAlignmentOptions.MidlineLeft;
 
@@ -347,11 +302,9 @@ public class ResourceGameController : MinigameBase
         _starsFillImg = sf.AddComponent<Image>();
         _starsFillImg.color = YELLOW;
 
-        // Texto indicador "Cuantas estrellas te quedan"
         TextMeshProUGUI sH = Txt(p, "SH", "Cuantas estrellas te quedan", DIM, 19, V(0.03f,0.06f), V(0.48f,0.34f));
         sH.alignment = TextAlignmentOptions.Center;
 
-        // ─ Progreso (mitad derecha) ─
         TextMeshProUGUI pT = Txt(p, "PT", "PROGRESO", GREEN, 28, V(0.53f,0.70f), V(0.76f,0.95f));
         pT.fontStyle = FontStyles.Bold; pT.alignment = TextAlignmentOptions.MidlineLeft;
 
@@ -371,8 +324,6 @@ public class ResourceGameController : MinigameBase
         _progPct.alignment = TextAlignmentOptions.Center;
     }
 
-    // ── Botones de acción ─────────────────────────────────────────────────
-
     private void BuildActions(RectTransform p)
     {
         TextMeshProUGUI at = Txt(p, "AT", "Elige una accion:", Color.white, 28, V(0.03f,0.88f), V(0.97f,1f));
@@ -381,7 +332,6 @@ public class ResourceGameController : MinigameBase
         int n = Mathf.Min(actions.Count, 5);
         _btns.Clear(); _btnBgs.Clear(); _btnGroups.Clear();
 
-        // Botones distribuidos en horizontal
         float margin = 0.03f;
         float gap = 0.02f;
         float total = 1f - margin * 2f;
@@ -396,7 +346,6 @@ public class ResourceGameController : MinigameBase
             float xL = margin + (w + gap) * i;
             float xR = xL + w;
 
-            // Contenedor del botón
             RectTransform brt = Img(p, "A" + i, col, V(xL, 0.04f), V(xR, 0.85f), V(0,0), V(0,0));
             CanvasGroup cg = brt.gameObject.AddComponent<CanvasGroup>();
 
@@ -411,12 +360,10 @@ public class ResourceGameController : MinigameBase
             btn.colors = cb;
             btn.onClick.AddListener(() => DoAction(idx));
 
-            // Nombre grande centrado
             TextMeshProUGUI nm = Txt(brt, "Nm", a.actionName, Color.white, 34, V(0.04f,0.38f), V(0.96f,0.95f));
             nm.fontStyle = FontStyles.Bold;
             nm.alignment = TextAlignmentOptions.Center;
 
-            // Coste y ganancia
             RectTransform infoBg = Img(brt, "Info", new Color(0,0,0,0.25f), V(0.06f,0.04f), V(0.94f,0.34f), V(0,0), V(0,0));
 
             TextMeshProUGUI costT = Txt(infoBg, "C", "-" + a.cost + " E", YELLOW, 22, V(0,0.5f), V(1,1));
@@ -430,8 +377,6 @@ public class ResourceGameController : MinigameBase
             _btnGroups.Add(cg);
         }
     }
-
-    // ── Panel fin ─────────────────────────────────────────────────────────
 
     private void BuildEnd(RectTransform R)
     {
@@ -468,10 +413,6 @@ public class ResourceGameController : MinigameBase
             : "Necesitas planificar mejor.\nIntentalo de nuevo!";
         _endPanel.SetActive(true);
     }
-
-    // ═══════════════════════════════════════════════════════════════════════
-    //  HELPERS
-    // ═══════════════════════════════════════════════════════════════════════
 
     private static Vector2 V(float x, float y) { return new Vector2(x, y); }
 

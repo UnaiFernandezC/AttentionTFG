@@ -3,17 +3,12 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-/// <summary>
-/// Construye toda la UI del minijuego "Seguimiento de objeto".
-/// Devuelve el RectTransform del canvas y del objeto móvil.
-/// </summary>
 public class TrackingUIController : MonoBehaviour
 {
-    // Refs públicas para que GameManager las pase a otros scripts
+
     public RectTransform CanvasRT  { get; private set; }
     public RectTransform ObjectRT  { get; private set; }
 
-    // Capas visuales del objeto
     Image   _objGlow1, _objGlow2, _objCore, _objShine;
     Image   _progressFill;
     TextMeshProUGUI _progressPct, _statusLbl;
@@ -30,8 +25,6 @@ public class TrackingUIController : MonoBehaviour
     static readonly Color CRED   = C(0.90f,0.28f,0.30f);
     static Vector2 V(float x,float y)=>new Vector2(x,y);
 
-    // ═════════════════════════════════════════════════════════════════════
-
     public void BuildUI(Action onRestart, Action onMenu)
     {
         var cGO = new GameObject("Canvas_Tracking");
@@ -46,12 +39,10 @@ public class TrackingUIController : MonoBehaviour
         cGO.AddComponent<GraphicRaycaster>();
         CanvasRT = cGO.GetComponent<RectTransform>();
 
-        // Fondo
         MkImg(CanvasRT,"BG",BG,V(0,0),V(1,1),V(0,0),V(0,0));
-        // Gradiente esquina superior
+
         MkImg(CanvasRT,"GradT",C(0.10f,0.20f,0.38f,0.30f),V(0,0.70f),V(1,1),V(0,0),V(0,0));
 
-        // Header
         var hdr = MkImg(CanvasRT,"Hdr",HDR,V(0,1),V(1,1),V(0,-44),V(0,88));
         MkImg(hdr,"Line",ACCENT,V(0,0),V(1,0),V(0,1.5f),V(0,3));
         MkImg(hdr,"AccL",ACCENT,V(0,0.18f),V(0,0.82f),V(3,0),V(6,0));
@@ -59,21 +50,16 @@ public class TrackingUIController : MonoBehaviour
         ttl.fontStyle=FontStyles.Bold; ttl.alignment=TextAlignmentOptions.MidlineLeft; ttl.characterSpacing=2f;
         MkTxt(hdr,"Cat","ATENCION",DIM2,16,V(0.60f,0.12f),V(0.97f,0.88f)).alignment=TextAlignmentOptions.MidlineRight;
 
-        // Zona de juego (objeto móvil aquí)
         var area = MkImg(CanvasRT,"GameArea",C(0,0,0,0),V(0,0.08f),V(1,0.91f),V(0,0),V(0,0));
         area.GetComponent<Image>().raycastTarget = false;
 
-        // Objeto móvil (capas: glow exterior, glow interior, core, shine)
         BuildObject(CanvasRT);
 
-        // Sección de progreso
         BuildProgressSection(CanvasRT);
 
-        // Status label (encima del área)
         _statusLbl = MkTxt(CanvasRT,"Status","",ACCENT,26,V(0.03f,0.84f),V(0.60f,0.92f));
         _statusLbl.fontStyle=FontStyles.Bold; _statusLbl.alignment=TextAlignmentOptions.MidlineLeft;
 
-        // Barra inferior
         var bot = MkImg(CanvasRT,"Bot",HDR,V(0,0),V(1,0),V(0,40),V(0,80));
         MkImg(bot,"BotLine",ACCENT,V(0,1),V(1,1),V(0,-1.5f),V(0,3));
         MkTxt(bot,"Instr","Mantén el cursor sobre el objeto sin perderlo.",
@@ -82,7 +68,6 @@ public class TrackingUIController : MonoBehaviour
         MkImg(bot,"Sep",C(1,1,1,0.10f),V(0.78f,0.1f),V(0.782f,0.9f),V(0,0),V(0,0));
         MkBtn(bot,"Menu",C(0.12f,0.20f,0.36f),V(0.80f,0.08f),V(0.99f,0.92f),onMenu);
 
-        // Panel resultado
         BuildResultPanel(CanvasRT, onRestart, onMenu);
     }
 
@@ -98,15 +83,14 @@ public class TrackingUIController : MonoBehaviour
         go.AddComponent<Image>().color = Color.clear;
         go.GetComponent<Image>().raycastTarget = false;
 
-        // Glow exterior
         _objGlow1 = AddCircleLayer(go.transform,"G1",new Vector2(200f,200f),C(ACCENT.r,ACCENT.g,ACCENT.b,0.06f));
-        // Glow interior
+
         _objGlow2 = AddCircleLayer(go.transform,"G2",new Vector2(135f,135f),C(ACCENT.r,ACCENT.g,ACCENT.b,0.14f));
-        // Core (el círculo principal)
+
         _objCore  = AddCircleLayer(go.transform,"Core",new Vector2(88f,88f),ACCENT);
-        // Brillo
+
         _objShine = AddCircleLayer(go.transform,"Shine",new Vector2(28f,28f),C(1,1,1,0.45f));
-        // Desplazar brillo a esquina sup-izq
+
         _objShine.rectTransform.anchoredPosition = new Vector2(-22f,25f);
     }
 
@@ -166,17 +150,12 @@ public class TrackingUIController : MonoBehaviour
         _resultPanel.SetActive(false);
     }
 
-    // ═════════════════════════════════════════════════════════════════════
-    //  API PÚBLICA
-    // ═════════════════════════════════════════════════════════════════════
-
     public void UpdateObjectVisuals(bool tracking, float pulseT)
     {
-        // Pulso de escala suave en el glow
+
         float pulse = 1f + 0.06f * Mathf.Sin(pulseT * 3.5f);
         if (_objGlow1 != null) _objGlow1.rectTransform.localScale = Vector3.one * pulse;
 
-        // Color según tracking
         Color targetCore  = tracking ? new Color(0.25f,0.95f,0.52f) : ACCENT;
         Color targetGlow1 = tracking ? C(0.25f,0.95f,0.52f,0.10f)  : C(ACCENT.r,ACCENT.g,ACCENT.b,0.06f);
         Color targetGlow2 = tracking ? C(0.25f,0.95f,0.52f,0.20f)  : C(ACCENT.r,ACCENT.g,ACCENT.b,0.14f);
@@ -206,10 +185,6 @@ public class TrackingUIController : MonoBehaviour
         _resultSub.text    = sub;
         _resultPanel.SetActive(true);
     }
-
-    // ═════════════════════════════════════════════════════════════════════
-    //  HELPERS
-    // ═════════════════════════════════════════════════════════════════════
 
     RectTransform MkImg(RectTransform p,string n,Color col,Vector2 am,Vector2 aM,Vector2 pos,Vector2 sd)
     {

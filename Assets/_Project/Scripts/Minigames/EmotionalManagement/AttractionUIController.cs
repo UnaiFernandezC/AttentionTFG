@@ -3,18 +3,6 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-/// <summary>
-/// Construye toda la UI de "Atraccion Emocional" de forma procedural.
-/// Sin prefabs ni assets externos. Los circulos se generan con Texture2D en runtime.
-///
-/// Layout (1920x1080):
-///   Header:     Titulo + categoria + vidas + instruccion
-///   GameArea:   Zona de juego (estimulos, zona segura, cursor)
-///   HUD lateral izquierdo: barra de tiempo seguro
-///   HUD peligro: indicador circular de nivel de riesgo
-///   Footer:     instruccion + boton Menu
-///   ResultPanel: victoria / derrota (overlay)
-/// </summary>
 public class AttractionUIController : MonoBehaviour
 {
     static Vector2 V(float x, float y) => new Vector2(x, y);
@@ -31,12 +19,10 @@ public class AttractionUIController : MonoBehaviour
     static readonly Color CYELLOW  = C(0.96f, 0.82f, 0.20f);
     static readonly Color CGREEN   = C(0.22f, 0.86f, 0.54f);
 
-    // ── Refs publicas (necesita GameManager) ──────────────────────────────
     public RectTransform CanvasRT  { get; private set; }
     public RectTransform GameAreaRT{ get; private set; }
     public RectTransform CursorRT  { get; private set; }
 
-    // ── Refs internas ─────────────────────────────────────────────────────
     Image           _safeBarFill;
     TextMeshProUGUI _safeLbl;
     Image[]         _lifeIcons;
@@ -48,13 +34,9 @@ public class AttractionUIController : MonoBehaviour
     TextMeshProUGUI _resultTitle;
     TextMeshProUGUI _resultSub;
 
-    // ═════════════════════════════════════════════════════════════════════
-    // Construccion
-    // ═════════════════════════════════════════════════════════════════════
-
     public void BuildUI(float safeZoneRadius, Action onRestart, Action onMenu)
     {
-        // ── Canvas ──────────────────────────────────────────────────────
+
         var cGO = new GameObject("Canvas_Attraction");
         cGO.transform.SetParent(transform, false);
         var cv = cGO.AddComponent<Canvas>();
@@ -68,14 +50,11 @@ public class AttractionUIController : MonoBehaviour
         CanvasRT = cGO.GetComponent<RectTransform>();
         var R = CanvasRT;
 
-        // ── Fondos ──────────────────────────────────────────────────────
         MkImg(R, "BG",    BG,                            V(0,0), V(1,1), V(0,0), V(0,0));
         MkImg(R, "Grad1", C(0.00f,0.10f,0.20f,0.25f),   V(0,0), V(1,1), V(0,0), V(0,0));
 
-        // Grid de lineas tenues de fondo (efecto cuadricula)
         BuildGrid(R);
 
-        // ── Header ──────────────────────────────────────────────────────
         var hdr = MkImg(R, "Hdr", HDR, V(0,1), V(1,1), V(0,-44), V(0,88));
         MkImg(hdr, "Line", ACCENT, V(0,0),     V(1,0),     V(0,1.5f), V(0,3));
         MkImg(hdr, "AccL", ACCENT, V(0,0.18f), V(0,0.82f), V(3,0),    V(6,0));
@@ -91,10 +70,8 @@ public class AttractionUIController : MonoBehaviour
         MkTxt(hdr, "Instr", "Mantente en la zona verde", DIM, 17,
               V(0.68f,0.12f), V(0.88f,0.88f)).alignment = TextAlignmentOptions.MidlineRight;
 
-        // Vidas (iconos circulares)
         BuildLivesHUD(hdr);
 
-        // ── Area de juego ────────────────────────────────────────────────
         var gaGO = new GameObject("GameArea");
         gaGO.transform.SetParent(R, false);
         GameAreaRT = gaGO.AddComponent<RectTransform>();
@@ -102,19 +79,14 @@ public class AttractionUIController : MonoBehaviour
         GameAreaRT.sizeDelta = V(0,0); GameAreaRT.anchoredPosition = V(0,0);
         gaGO.AddComponent<Image>().color = Color.clear;
 
-        // Zona segura (circulo verde, centro del canvas)
         BuildSafeZone(GameAreaRT, safeZoneRadius);
 
-        // Cursor del jugador (se posiciona cada frame via Tick())
         BuildCursor(GameAreaRT);
 
-        // ── HUD lateral: barra de tiempo seguro ─────────────────────────
         BuildSafeTimeBar(R);
 
-        // ── HUD: indicador de peligro ────────────────────────────────────
         BuildDangerIndicator(R);
 
-        // ── Flash de impacto (overlay) ───────────────────────────────────
         var flashGO = new GameObject("FlashOverlay");
         flashGO.transform.SetParent(R, false);
         var flashRT = flashGO.AddComponent<RectTransform>();
@@ -124,7 +96,6 @@ public class AttractionUIController : MonoBehaviour
         _flashOverlay.color = new Color(0.9f, 0.1f, 0.1f, 0f);
         flashGO.SetActive(false);
 
-        // ── Footer ──────────────────────────────────────────────────────
         var bot = MkImg(R, "Bot", HDR, V(0,0), V(1,0), V(0,40), V(0,80));
         MkImg(bot, "BotLine", ACCENT, V(0,1), V(1,1), V(0,-1.5f), V(0,3));
         MkTxt(bot, "Info",
@@ -134,14 +105,12 @@ public class AttractionUIController : MonoBehaviour
         MkImg(bot, "Sep", C(1,1,1,0.10f), V(0.78f,0.1f), V(0.782f,0.9f), V(0,0), V(0,0));
         MkBtn(bot, "Menu", C(0.12f,0.18f,0.32f), V(0.80f,0.08f), V(0.99f,0.92f), onMenu);
 
-        // ── Panel resultado ──────────────────────────────────────────────
         BuildResultPanel(R, onRestart, onMenu);
     }
 
-    // ─────────────────────────────────────────────────────────────────────
     void BuildGrid(RectTransform R)
     {
-        // Lineas horizontales y verticales tenues para dar profundidad
+
         for (int i = 1; i < 6; i++)
         {
             float t = i / 6f;
@@ -150,10 +119,9 @@ public class AttractionUIController : MonoBehaviour
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────
     void BuildLivesHUD(RectTransform hdr)
     {
-        // 3 iconos de vida en la cabecera — tamanio fijo para que sean circulos perfectos
+
         _lifeIcons = new Image[3];
         float[] xFrac = { 0.890f, 0.921f, 0.952f };
         for (int i = 0; i < 3; i++)
@@ -161,7 +129,7 @@ public class AttractionUIController : MonoBehaviour
             var liGO = new GameObject("Life_" + i);
             liGO.transform.SetParent(hdr, false);
             var liRT = liGO.AddComponent<RectTransform>();
-            // Ancla central + tamano fijo 42x42 => circulo perfecto
+
             liRT.anchorMin        = V(xFrac[i], 0.5f);
             liRT.anchorMax        = V(xFrac[i], 0.5f);
             liRT.pivot            = V(0.5f, 0.5f);
@@ -174,7 +142,6 @@ public class AttractionUIController : MonoBehaviour
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────
     void BuildSafeZone(RectTransform parent, float radius)
     {
         var szGO = new GameObject("SafeZone");
@@ -187,7 +154,6 @@ public class AttractionUIController : MonoBehaviour
         _safeZoneImg.sprite = MakeCircleSprite(256);
         _safeZoneImg.color  = CSAFE;
 
-        // Anillo del borde de la zona segura
         var ringGO = new GameObject("SafeRing");
         ringGO.transform.SetParent(parent, false);
         var ringRT = ringGO.AddComponent<RectTransform>();
@@ -198,15 +164,13 @@ public class AttractionUIController : MonoBehaviour
         ringImg.sprite = MakeCircleSprite(256);
         ringImg.color  = C(0.20f, 0.85f, 0.50f, 0.35f);
 
-        // Etiqueta en la zona segura
         MkTxt(szRT, "SafeLbl", "ZONA\nSEGURA",
               C(0.25f, 0.95f, 0.60f, 0.55f), 20, V(0,0), V(1,1));
     }
 
-    // ─────────────────────────────────────────────────────────────────────
     void BuildCursor(RectTransform parent)
     {
-        // Cursor: circulo blanco pequeno
+
         var cGO = new GameObject("PlayerCursor");
         cGO.transform.SetParent(parent, false);
         CursorRT = cGO.AddComponent<RectTransform>();
@@ -217,7 +181,6 @@ public class AttractionUIController : MonoBehaviour
         curImg.sprite = MakeCircleSprite(64);
         curImg.color  = Color.white;
 
-        // Anillo exterior del cursor
         var ringGO = new GameObject("CursorRing");
         ringGO.transform.SetParent(CursorRT, false);
         var ringRT = ringGO.AddComponent<RectTransform>();
@@ -228,23 +191,19 @@ public class AttractionUIController : MonoBehaviour
         ringImg.sprite = MakeCircleSprite(64);
         ringImg.color  = C(1f, 1f, 1f, 0.22f);
 
-        // Asegurar que el cursor este encima de todo
         CursorRT.SetAsLastSibling();
     }
 
-    // ─────────────────────────────────────────────────────────────────────
     void BuildSafeTimeBar(RectTransform R)
     {
-        // Panel izquierdo: barra de tiempo seguro acumulado
+
         var panel = MkImg(R, "SafePanel", C(0.03f,0.06f,0.12f,0.85f),
                           V(0,0.12f), V(0,0.88f), V(52f,0), V(38f,0));
         MkImg(panel, "L", ACCENT, V(1,0), V(1,1), V(-1.5f,0), V(3,0));
 
-        // Fondo de la barra
         var barBG = MkImg(panel, "BarBG", C(0.02f,0.05f,0.10f),
                           V(0.15f,0.08f), V(0.85f,0.92f), V(0,0), V(0,0));
 
-        // Fill de la barra (de abajo a arriba)
         var fillGO = new GameObject("Fill");
         fillGO.transform.SetParent(barBG, false);
         var fillRT = fillGO.AddComponent<RectTransform>();
@@ -255,29 +214,25 @@ public class AttractionUIController : MonoBehaviour
         _safeBarFill.color      = CGREEN;
         _safeBarFill.type       = Image.Type.Filled;
         _safeBarFill.fillMethod = Image.FillMethod.Vertical;
-        _safeBarFill.fillOrigin = 0; // desde abajo
+        _safeBarFill.fillOrigin = 0;
         _safeBarFill.fillAmount = 0f;
 
-        // Etiqueta superior
         _safeLbl = MkTxt(panel, "Lbl", "0s", CGREEN, 15,
                          V(0,0.92f), V(1,1.06f));
         _safeLbl.fontStyle = FontStyles.Bold;
 
-        // Icono / etiqueta inferior
         MkTxt(panel, "IcoLbl", "SEG.", DIM, 12, V(0,-0.08f), V(1,0.04f));
     }
 
-    // ─────────────────────────────────────────────────────────────────────
     void BuildDangerIndicator(RectTransform R)
     {
-        // Panel inferior derecho: indicador de nivel de peligro
+
         var panel = MkImg(R, "DangerPanel", C(0.03f,0.06f,0.12f,0.85f),
                           V(1,0), V(1,0), V(-52f, 52f), V(80f,80f));
 
         MkImg(panel, "BG", C(0.02f,0.05f,0.10f),
               V(0.1f,0.1f), V(0.9f,0.9f), V(0,0), V(0,0));
 
-        // Circulo de peligro (fill circular)
         var dFillGO = new GameObject("DangerFill");
         dFillGO.transform.SetParent(panel, false);
         var dRT = dFillGO.AddComponent<RectTransform>();
@@ -288,13 +243,12 @@ public class AttractionUIController : MonoBehaviour
         _dangerFill.color       = new Color(CRED.r, CRED.g, CRED.b, 0f);
         _dangerFill.type        = Image.Type.Filled;
         _dangerFill.fillMethod  = Image.FillMethod.Radial360;
-        _dangerFill.fillOrigin  = 2; // top
+        _dangerFill.fillOrigin  = 2;
         _dangerFill.fillAmount  = 0f;
 
         MkTxt(panel, "DLbl", "!", CRED, 28, V(0,0), V(1,1)).fontStyle = FontStyles.Bold;
     }
 
-    // ─────────────────────────────────────────────────────────────────────
     void BuildResultPanel(RectTransform R, Action onRestart, Action onMenu)
     {
         _resultPanel = new GameObject("ResultPanel");
@@ -326,10 +280,6 @@ public class AttractionUIController : MonoBehaviour
 
         _resultPanel.SetActive(false);
     }
-
-    // ═════════════════════════════════════════════════════════════════════
-    // API publica
-    // ═════════════════════════════════════════════════════════════════════
 
     public void UpdateSafeBar(float safeTime, float target)
     {
@@ -364,7 +314,7 @@ public class AttractionUIController : MonoBehaviour
         if (_flashOverlay == null) return;
         _flashOverlay.gameObject.SetActive(true);
         _flashOverlay.color = new Color(0.9f, 0.1f, 0.1f, 0.35f);
-        // El flash decae mediante corutina (llamada desde GameManager)
+
         StartCoroutine(FlashRoutine());
     }
 
@@ -406,14 +356,6 @@ public class AttractionUIController : MonoBehaviour
         _resultPanel.SetActive(true);
     }
 
-    // ═════════════════════════════════════════════════════════════════════
-    // Generacion de sprites circulares (compartida con AttractionController)
-    // ═════════════════════════════════════════════════════════════════════
-
-    /// <summary>
-    /// Genera un sprite circular en runtime sin assets externos.
-    /// Bordes suavizados con anti-aliasing de 2px.
-    /// </summary>
     public static Sprite MakeCircleSprite(int res = 128)
     {
         var tex     = new Texture2D(res, res, TextureFormat.RGBA32, false);
@@ -439,10 +381,6 @@ public class AttractionUIController : MonoBehaviour
             new Rect(0, 0, res, res),
             new Vector2(0.5f, 0.5f));
     }
-
-    // ═════════════════════════════════════════════════════════════════════
-    // Helpers de construccion UI
-    // ═════════════════════════════════════════════════════════════════════
 
     RectTransform MkImg(RectTransform p, string n, Color col,
                         Vector2 am, Vector2 aM, Vector2 pos, Vector2 sd)
