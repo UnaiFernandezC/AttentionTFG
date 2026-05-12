@@ -27,7 +27,9 @@ public static class SceneLoader
 
     public const string IMPULSE_DONT_PRESS_YET   = "Impulse_DontPressYet_Easy";
     public const string IMPULSE_INVERSE_RESPONSE  = "Impulse_InverseResponse_Easy";
-    public const string IMPULSE_STOP_AND_GO       = "Impulse_StopAndGo_Easy";
+    public const string IMPULSE_STOP_AND_GO         = "Impulse_StopAndGo_Easy";
+    public const string IMPULSE_SILENT_COUNTDOWN       = "Impulse_SilentCountdown_Easy";
+    public const string IMPULSE_DONT_FOLLOW_MAJORITY   = "Impulse_DontFollowMajority_Easy";
 
     public const string ATTENTION_SCENE            = "Attention";
     public const string ATTENTION_OBJECT_TRACKING  = "Attention_ObjectTracking_Easy";
