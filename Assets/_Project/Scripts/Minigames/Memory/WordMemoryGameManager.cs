@@ -53,8 +53,31 @@ public class WordMemoryGameManager : MinigameBase
         "Luego elige esas mismas palabras de una lista mayor.\n" +
         "Gana " + roundsToWin + " de " + totalRounds + " rondas para completar el juego.";
 
+    void ApplyDifficulty()
+    {
+        var diff = GameManager.Instance != null
+            ? GameManager.Instance.CurrentDifficulty
+            : DifficultyLevel.Easy;
+        switch (diff)
+        {
+            case DifficultyLevel.Medium:
+                totalRounds         = 4;
+                roundsToWin         = 3;
+                targetWordsPerRound = new int[] { 3, 4, 4, 5 };
+                memorizeTime        = 3.0f;
+                break;
+            case DifficultyLevel.Hard:
+                totalRounds         = 5;
+                roundsToWin         = 4;
+                targetWordsPerRound = new int[] { 3, 4, 5, 5, 6 };
+                memorizeTime        = 2.5f;
+                break;
+        }
+    }
+
     protected override void OnMinigameStart()
     {
+        ApplyDifficulty();
         EnsureEventSystem();
 
         _ui = GetComponent<WordMemoryUIController>();

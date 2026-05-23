@@ -40,8 +40,31 @@ public class InverseResponseGameManager : MinigameBase
                "Necesitas " + passCount + " de " + totalStimuli + " correctas para ganar.";
     }
 
+    void ApplyDifficulty()
+    {
+        var diff = GameManager.Instance != null
+            ? GameManager.Instance.CurrentDifficulty
+            : DifficultyLevel.Easy;
+        switch (diff)
+        {
+            case DifficultyLevel.Medium:
+                totalStimuli       = 14;
+                passCount          = 10;
+                responseTime       = 2.5f;
+                ruleChangeInterval = 7;
+                break;
+            case DifficultyLevel.Hard:
+                totalStimuli       = 18;
+                passCount          = 14;
+                responseTime       = 2.0f;
+                ruleChangeInterval = 5;
+                break;
+        }
+    }
+
     protected override void OnMinigameStart()
     {
+        ApplyDifficulty();
         EnsureEventSystem();
 
         _stimulus = GetComponent<InverseResponseStimulusManager>();

@@ -34,8 +34,27 @@ public class StopAndGoGameManager : MinigameBase
         "En cada parada la zona cambia de sitio.\n" +
         "Cada ronda la zona es más pequeña y el punto va más rápido.";
 
+    void ApplyDifficulty()
+    {
+        var diff = GameManager.Instance != null
+            ? GameManager.Instance.CurrentDifficulty
+            : DifficultyLevel.Easy;
+        switch (diff)
+        {
+            case DifficultyLevel.Medium:
+                totalRounds = 4;
+                roundsToWin = 3;
+                break;
+            case DifficultyLevel.Hard:
+                totalRounds = 5;
+                roundsToWin = 4;
+                break;
+        }
+    }
+
     protected override void OnMinigameStart()
     {
+        ApplyDifficulty();
         _mover = GetComponent<StopAndGoObjectMover>() ?? gameObject.AddComponent<StopAndGoObjectMover>();
         _zone  = GetComponent<StopAndGoZoneManager>()  ?? gameObject.AddComponent<StopAndGoZoneManager>();
         _input = GetComponent<StopAndGoInputHandler>() ?? gameObject.AddComponent<StopAndGoInputHandler>();

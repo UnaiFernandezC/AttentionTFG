@@ -8,12 +8,32 @@ public static class SceneLoader
     public const string DIFFICULTY_SELECTOR = "DifficultySelector";
 
     public const string GAME_SELECTOR_EASY   = "GameSelector";
-    public const string GAME_SELECTOR_MEDIUM = "GameSelector2";
-    public const string GAME_SELECTOR_HARD   = "GameSelector3";
+    public const string GAME_SELECTOR_MEDIUM = "GameSelector 1";
+    public const string GAME_SELECTOR_HARD   = "GameSelector 2";
+
+    // ── EscenasEleccion (selector de minijuego por categoría) ────────────
+    public const string ESCENAS_ATENCION_EASY     = "Atencion";
+    public const string ESCENAS_IMPULSOS_EASY     = "ContoImpulsos";
+    public const string ESCENAS_EMOCIONAL_EASY    = "ControlEmocional";
+    public const string ESCENAS_MEMORIA_EASY      = "MemoriaTrabajo1 2";
+    public const string ESCENAS_PLANIF_EASY       = "Planificacion";
+
+    public const string ESCENAS_ATENCION_MEDIUM   = "Atencion_Medium";
+    public const string ESCENAS_IMPULSOS_MEDIUM   = "ContoImpulsos_Medium";
+    public const string ESCENAS_EMOCIONAL_MEDIUM  = "ControlEmocional_Medium";
+    public const string ESCENAS_MEMORIA_MEDIUM    = "MemoriaTrabajo_Medium";
+    public const string ESCENAS_PLANIF_MEDIUM     = "Planificacion_Medium";
+
+    public const string ESCENAS_ATENCION_HARD     = "Atencion_Hard";
+    public const string ESCENAS_IMPULSOS_HARD     = "ContoImpulsos_Hard";
+    public const string ESCENAS_EMOCIONAL_HARD    = "ControlEmocional_Hard";
+    public const string ESCENAS_MEMORIA_HARD      = "MemoriaTrabajo_Hard";
+    public const string ESCENAS_PLANIF_HARD       = "Planificacion_Hard";
 
     public const string MEMORY_COLOR_MATCH    = "Memory_ColorMatch";
     public const string MEMORY_PATTERN_RECALL = "Memory_PatternRecall";
-    public const string MEMORY_SIMON_SAYS     = "SimonSays";
+    public const string MEMORY_SIMON_SAYS      = "SimonSays";
+    public const string MEMORY_SIMON_SAYS_EASY = "Memory_SimonSays_Easy";
     public const string MEMORY_ALGO_NO_CUADRA = "¡Algo no cuadra!";
     public const string MEMORY_FIND_CHANGE      = "Memory_FindChange_Easy";
     public const string MEMORY_POSITION_MEMORY  = "Memory_PositionMemory_Easy";
@@ -38,8 +58,9 @@ public static class SceneLoader
 
     public const string PLANNING_ORDEN_CORRECTO      = "Planning_OrdenCorrecto";
     public const string PLANNING_RESOURCE_MANAGEMENT = "Planning_ResourceManagement";
-    public const string PLANNING_OPTIMAL_PATH        = "Planning_OptimalPath";
+    public const string PLANNING_OPTIMAL_PATH        = "Attention_OptimalPath";
     public const string PLANNING_ACTION_SEQUENCE     = "Planning_ActionSequence";
+    public const string PLANNING_PATH_MEMORY_EASY = "Planning_PathMemory_Easy";
 
     public static void LoadScene(string sceneName)
     {

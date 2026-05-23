@@ -61,8 +61,29 @@ public class SilentCountdownGameManager : MinigameBase
             "¡Sin mirar el reloj! Solo tú y el tiempo.";
     }
 
+    void ApplyDifficulty()
+    {
+        var diff = GameManager.Instance != null
+            ? GameManager.Instance.CurrentDifficulty
+            : DifficultyLevel.Easy;
+        switch (diff)
+        {
+            case DifficultyLevel.Medium:
+                totalRounds  = 4;
+                roundsToWin  = 3;
+                roundTargets = new float[] { 3f, 5f, 7f, 9f };
+                break;
+            case DifficultyLevel.Hard:
+                totalRounds  = 5;
+                roundsToWin  = 4;
+                roundTargets = new float[] { 3f, 5f, 7f, 9f, 12f };
+                break;
+        }
+    }
+
     protected override void OnMinigameStart()
     {
+        ApplyDifficulty();
         EnsureEventSystem();
 
         _timer     = GetComponent<SilentCountdownTimerManager>();

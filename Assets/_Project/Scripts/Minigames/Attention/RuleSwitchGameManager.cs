@@ -38,8 +38,29 @@ public class RuleSwitchGameManager : MinigameBase
         "ATENCION: la regla cambia SIN AVISO. Adáptate rápido.\n\n" +
         "Consigue el maximo de aciertos en " + totalStimuli + " estimulos.";
 
+    void ApplyDifficulty()
+    {
+        var diff = GameManager.Instance != null
+            ? GameManager.Instance.CurrentDifficulty
+            : DifficultyLevel.Easy;
+        switch (diff)
+        {
+            case DifficultyLevel.Medium:
+                totalStimuli        = 20;
+                stimuliPerRuleChange = 4;
+                stimulusTime        = 1.5f;
+                break;
+            case DifficultyLevel.Hard:
+                totalStimuli        = 25;
+                stimuliPerRuleChange = 3;
+                stimulusTime        = 1.0f;
+                break;
+        }
+    }
+
     protected override void OnMinigameStart()
     {
+        ApplyDifficulty();
         EnsureEventSystem();
 
         _rule  = GetComponent<RuleSwitchRuleManager>();

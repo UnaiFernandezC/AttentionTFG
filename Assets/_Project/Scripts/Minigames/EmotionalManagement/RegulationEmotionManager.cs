@@ -1,4 +1,4 @@
-using UnityEngine;
+using System;
 
 public class RegulationEmotionManager
 {
@@ -95,7 +95,7 @@ public class RegulationEmotionManager
         LastRegenAmount = RegenerationPerTurn;
         CurrentLevel   += RegenerationPerTurn;
 
-        CurrentLevel = Mathf.Max(0f, CurrentLevel + action.impact);
+        CurrentLevel = Math.Max(0f, CurrentLevel + action.impact);
 
         _cooldowns[index] = COOLDOWN_TURNS + 1;
         for (int i = 0; i < _cooldowns.Length; i++)
@@ -107,6 +107,6 @@ public class RegulationEmotionManager
 
     public int CalculateScore()
     {
-        return Mathf.Max(0, 200 - Mathf.Max(0, StepsTaken - 8) * 10);
+        return Math.Max(0, 200 - Math.Max(0, StepsTaken - 8) * 10);
     }
 }

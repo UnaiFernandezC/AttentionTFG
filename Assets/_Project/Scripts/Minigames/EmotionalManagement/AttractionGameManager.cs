@@ -42,8 +42,31 @@ public class AttractionGameManager : MinigameBase
         "Cada contacto con un circulo rojo te quita una vida.\n" +
         "Aguanta " + targetSafeTime.ToString("0") + " segundos en la zona segura para ganar.";
 
+    void ApplyDifficulty()
+    {
+        var diff = GameManager.Instance != null
+            ? GameManager.Instance.CurrentDifficulty
+            : DifficultyLevel.Easy;
+        switch (diff)
+        {
+            case DifficultyLevel.Medium:
+                targetSafeTime      = 20f;
+                stimulusCount       = 4;
+                attractionStrength  = 200f;
+                dampingFactor       = 1.2f;
+                break;
+            case DifficultyLevel.Hard:
+                targetSafeTime      = 25f;
+                stimulusCount       = 5;
+                attractionStrength  = 240f;
+                dampingFactor       = 1.0f;
+                break;
+        }
+    }
+
     protected override void OnMinigameStart()
     {
+        ApplyDifficulty();
         EnsureEventSystem();
 
         _attraction = GetComponent<AttractionController>();

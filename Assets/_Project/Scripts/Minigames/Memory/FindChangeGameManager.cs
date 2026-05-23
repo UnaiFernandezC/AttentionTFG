@@ -35,8 +35,29 @@ public class FindChangeGameManager : MinigameBase
         "Haz clic en el elemento que creas que cambió.\n" +
         "Completa " + roundsToWin + " de " + rounds + " rondas para ganar.";
 
+    void ApplyDifficulty()
+    {
+        var diff = GameManager.Instance != null
+            ? GameManager.Instance.CurrentDifficulty
+            : DifficultyLevel.Easy;
+        switch (diff)
+        {
+            case DifficultyLevel.Medium:
+                rounds       = 4;
+                roundsToWin  = 3;
+                observeTime  = 4f;
+                break;
+            case DifficultyLevel.Hard:
+                rounds       = 5;
+                roundsToWin  = 4;
+                observeTime  = 3f;
+                break;
+        }
+    }
+
     protected override void OnMinigameStart()
     {
+        ApplyDifficulty();
         EnsureEventSystem();
 
         _gen    = GetComponent<SceneGenerator>();

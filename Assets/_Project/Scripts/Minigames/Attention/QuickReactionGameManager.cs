@@ -36,8 +36,31 @@ public class QuickReactionGameManager : MinigameBase
         "  Ronda 1: 3 s · Ronda 2: 2 s · Ronda 3: 1 s\n\n" +
         "Consigue " + roundsToWin + " de " + rounds + " rondas para ganar.";
 
+    void ApplyDifficulty()
+    {
+        var diff = GameManager.Instance != null
+            ? GameManager.Instance.CurrentDifficulty
+            : DifficultyLevel.Easy;
+        switch (diff)
+        {
+            case DifficultyLevel.Medium:
+                rounds            = 4;
+                roundsToWin       = 3;
+                roundTimeLimits   = new float[] { 2.5f, 1.5f, 1f, 0.8f };
+                pauseBetweenRounds = 1.1f;
+                break;
+            case DifficultyLevel.Hard:
+                rounds            = 5;
+                roundsToWin       = 4;
+                roundTimeLimits   = new float[] { 2f, 1.2f, 0.8f, 0.6f, 0.5f };
+                pauseBetweenRounds = 0.8f;
+                break;
+        }
+    }
+
     protected override void OnMinigameStart()
     {
+        ApplyDifficulty();
         EnsureEventSystem();
 
         _reaction = GetComponent<ReactionManager>();

@@ -50,8 +50,28 @@ public class JuegoMemoria : MonoBehaviour
 
     private readonly int[] monedasPorRonda = { 2, 4, 6 };
 
+
+    void ApplyDifficulty()
+    {
+        var diff = GameManager.Instance != null
+            ? GameManager.Instance.CurrentDifficulty
+            : DifficultyLevel.Easy;
+        switch (diff)
+        {
+            case DifficultyLevel.Medium:
+                tiempoObservacionInicial = 8f;
+                tiempoObservacionFinal   = 4f;
+                break;
+            case DifficultyLevel.Hard:
+                tiempoObservacionInicial = 6f;
+                tiempoObservacionFinal   = 3f;
+                break;
+        }
+    }
+
     private IEnumerator Start()
     {
+        ApplyDifficulty();
         posicionInicial = camaraPrincipal.position;
         rotacionInicial = camaraPrincipal.rotation;
         panelBotones.SetActive(false);

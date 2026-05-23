@@ -30,8 +30,27 @@ public class ConsequencesGameManager : MinigameBase
         "No hay prisa: piensa antes de responder.\n" +
         "Gana " + roundsToWin + " de " + situationCount + " decisiones adecuadas para completar el juego.";
 
+    void ApplyDifficulty()
+    {
+        var diff = GameManager.Instance != null
+            ? GameManager.Instance.CurrentDifficulty
+            : DifficultyLevel.Easy;
+        switch (diff)
+        {
+            case DifficultyLevel.Medium:
+                situationCount = 6;
+                roundsToWin    = 4;
+                break;
+            case DifficultyLevel.Hard:
+                situationCount = 8;
+                roundsToWin    = 6;
+                break;
+        }
+    }
+
     protected override void OnMinigameStart()
     {
+        ApplyDifficulty();
         EnsureEventSystem();
 
         _sitManager = GetComponent<ConsequencesSituationManager>();

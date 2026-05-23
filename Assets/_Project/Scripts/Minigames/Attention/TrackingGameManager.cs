@@ -22,8 +22,27 @@ public class TrackingGameManager : MinigameBase
         "Consigue " + (int)winTime + " segundos de seguimiento para ganar.\n" +
         "Si lo pierdes, el progreso retrocede lentamente.";
 
+    void ApplyDifficulty()
+    {
+        var diff = GameManager.Instance != null
+            ? GameManager.Instance.CurrentDifficulty
+            : DifficultyLevel.Easy;
+        switch (diff)
+        {
+            case DifficultyLevel.Medium:
+                winTime  = 12f;
+                lossRate = 0.4f;
+                break;
+            case DifficultyLevel.Hard:
+                winTime  = 16f;
+                lossRate = 0.6f;
+                break;
+        }
+    }
+
     protected override void OnMinigameStart()
     {
+        ApplyDifficulty();
         EnsureEventSystem();
 
         _mover    = GetComponent<ObjectMover>();

@@ -66,8 +66,33 @@ public class DontFollowMajorityGameManager : MinigameBase
             "¡No sigas el instinto de ir con la mayoría!";
     }
 
+    void ApplyDifficulty()
+    {
+        var diff = GameManager.Instance != null
+            ? GameManager.Instance.CurrentDifficulty
+            : DifficultyLevel.Easy;
+        switch (diff)
+        {
+            case DifficultyLevel.Medium:
+                totalRounds   = 10;
+                passCount     = 7;
+                responseTime  = 3.0f;
+                totalArrows   = 12;
+                minorityCount = 2;
+                break;
+            case DifficultyLevel.Hard:
+                totalRounds   = 12;
+                passCount     = 9;
+                responseTime  = 2.5f;
+                totalArrows   = 15;
+                minorityCount = 2;
+                break;
+        }
+    }
+
     protected override void OnMinigameStart()
     {
+        ApplyDifficulty();
         EnsureEventSystem();
 
         _rule  = GetComponent<DontFollowMajorityRuleManager>();

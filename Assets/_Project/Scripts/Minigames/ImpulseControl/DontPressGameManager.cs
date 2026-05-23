@@ -47,8 +47,35 @@ public class DontPressGameManager : MinigameBase
         "Pulsar antes de tiempo cuenta como fallo.\n" +
         "Consigue " + roundsToWin + " de " + rounds + " rondas para ganar.";
 
+    void ApplyDifficulty()
+    {
+        var diff = GameManager.Instance != null
+            ? GameManager.Instance.CurrentDifficulty
+            : DifficultyLevel.Easy;
+        switch (diff)
+        {
+            case DifficultyLevel.Medium:
+                rounds       = 4;
+                roundsToWin  = 3;
+                waitMin      = 1.5f;
+                waitMax      = 4.5f;
+                activeWindow = 2.0f;
+                fakeOutCount = 1;
+                break;
+            case DifficultyLevel.Hard:
+                rounds       = 5;
+                roundsToWin  = 4;
+                waitMin      = 1.0f;
+                waitMax      = 4.0f;
+                activeWindow = 1.5f;
+                fakeOutCount = 2;
+                break;
+        }
+    }
+
     protected override void OnMinigameStart()
     {
+        ApplyDifficulty();
         EnsureEventSystem();
 
         _timer = GetComponent<DontPressTimerManager>();

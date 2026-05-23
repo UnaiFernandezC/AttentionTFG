@@ -36,8 +36,32 @@ public class PositionMemoryGameManager : MinigameBase
         "Confirma tu eleccion con CONFIRMAR o [ESPACIO].\n" +
         "Gana " + roundsToWin + " de " + totalRounds + " rondas para completar el juego.";
 
+
+    void ApplyDifficulty()
+    {
+        var diff = GameManager.Instance != null
+            ? GameManager.Instance.CurrentDifficulty
+            : DifficultyLevel.Easy;
+        switch (diff)
+        {
+            case DifficultyLevel.Medium:
+                totalRounds    = 4;
+                roundsToWin    = 3;
+                cellsPerRound  = new int[] { 4, 5, 6, 7 };
+                memorizeTime   = 2.0f;
+                break;
+            case DifficultyLevel.Hard:
+                totalRounds    = 5;
+                roundsToWin    = 4;
+                cellsPerRound  = new int[] { 4, 5, 6, 7, 8 };
+                memorizeTime   = 1.5f;
+                break;
+        }
+    }
+
     protected override void OnMinigameStart()
     {
+        ApplyDifficulty();
         EnsureEventSystem();
 
         _ui = GetComponent<PositionMemoryUIController>();

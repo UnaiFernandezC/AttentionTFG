@@ -22,8 +22,29 @@ public class RegulationGameManager : MinigameBase
         "Las acciones tienen recarga de 2 turnos: no podras repetir la misma.\n\n" +
         "Objetivo: bajar a 10 o menos en " + maxSteps + " acciones.";
 
+    void ApplyDifficulty()
+    {
+        var diff = GameManager.Instance != null
+            ? GameManager.Instance.CurrentDifficulty
+            : DifficultyLevel.Easy;
+        switch (diff)
+        {
+            case DifficultyLevel.Medium:
+                startLevel          = 100f;
+                regenerationPerTurn = 10f;
+                maxSteps            = 9;
+                break;
+            case DifficultyLevel.Hard:
+                startLevel          = 100f;
+                regenerationPerTurn = 13f;
+                maxSteps            = 8;
+                break;
+        }
+    }
+
     protected override void OnMinigameStart()
     {
+        ApplyDifficulty();
         EnsureEventSystem();
 
         _emotionMgr = new RegulationEmotionManager(startLevel, regenerationPerTurn);
