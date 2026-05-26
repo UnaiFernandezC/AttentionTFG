@@ -175,7 +175,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 96e2425c2525f5b4ba195b5d91152816, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  sceneToLoad: Planning_ActionSequence
+  sceneToLoad: Planning_ActionSequence_Medium
 --- !u!114 &42746608
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -372,7 +372,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 96e2425c2525f5b4ba195b5d91152816, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  sceneToLoad: Planning_ResourceManagement
+  sceneToLoad: Planning_ResourceManagement_Medium
 --- !u!114 &224800123
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1943,7 +1943,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 96e2425c2525f5b4ba195b5d91152816, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  sceneToLoad: Attention_OptimalPath
+  sceneToLoad: Planning_OptimalPath_Medium
 --- !u!114 &1733652530
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2498,7 +2498,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 96e2425c2525f5b4ba195b5d91152816, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  sceneToLoad: Planning_PathMemory_Easy
+  sceneToLoad: Planning_PathMemory_Medium
 --- !u!114 &2027068249
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2662,7 +2662,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 96e2425c2525f5b4ba195b5d91152816, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  sceneToLoad: Planning_OrdenCorrecto
+  sceneToLoad: Planning_OrdenCorrecto_Medium
 --- !u!114 &2028612269
 MonoBehaviour:
   m_ObjectHideFlags: 0

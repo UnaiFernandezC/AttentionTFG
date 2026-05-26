@@ -30,17 +30,19 @@ public class SimonUIController : MonoBehaviour
     static readonly Color CGREEN  = C(0.22f, 0.86f, 0.54f);
     static readonly Color CYELLOW = C(0.96f, 0.78f, 0.18f);
 
-    // ── Colores de los 4 botones ──────────────────────────────────────────────
+    // ── Colores de los botones (hasta 5) ─────────────────────────────────────
     static readonly Color[] BTN_COLORS = {
         C(0.92f, 0.22f, 0.25f),   // 0 Rojo
         C(0.22f, 0.52f, 0.96f),   // 1 Azul
         C(0.18f, 0.82f, 0.44f),   // 2 Verde
         C(0.96f, 0.78f, 0.14f),   // 3 Amarillo
+        C(0.72f, 0.28f, 0.92f),   // 4 Morado
     };
 
-    static readonly string[] BTN_LABELS = { "●", "●", "●", "●" };
+    static readonly string[] BTN_LABELS = { "●", "●", "●", "●", "●" };
 
     // ── Refs UI privadas ──────────────────────────────────────────────────────
+    int             _buttonCount = 4;
     Canvas          _canvas;
     RectTransform   _canvasRT;
 
@@ -69,8 +71,10 @@ public class SimonUIController : MonoBehaviour
     // Build
     // ═════════════════════════════════════════════════════════════════════════
 
-    public void BuildUI()
+    public void BuildUI(int buttonCount = 4)
     {
+        _buttonCount = Mathf.Clamp(buttonCount, 2, 5);
+
         // Canvas principal
         var cGO = new GameObject("Canvas_Simon");
         cGO.transform.SetParent(transform, false);
@@ -143,9 +147,34 @@ public class SimonUIController : MonoBehaviour
         _statusLbl.characterSpacing = 1.5f;
     }
 
-    // ── Grid 2×2 de botones ───────────────────────────────────────────────────
+    // ── Grid de botones (4 = 2×2 | 5 = 2×2 + 1 centrado) ────────────────────
     void BuildButtonGrid(RectTransform R)
     {
+        bool fiveButtons = _buttonCount >= 5;
+
+        // Tamaño de grid y botones según número de colores
+        float gridW   = 520f;
+        float gridH   = fiveButtons ? 620f : 520f;
+        float btnSize = fiveButtons ? 200f : 220f;
+        float glowSize = fiveButtons ? 230f : 250f;
+        float shineOff = fiveButtons ? -42f : -46f;
+
+        // Posiciones: layout 2×2 para 4 botones; 2×2 + 1 centrado abajo para 5
+        Vector2[] offsets = fiveButtons
+            ? new Vector2[] {
+                new Vector2(-130f,  150f),   // 0 Rojo      (top-left)
+                new Vector2( 130f,  150f),   // 1 Azul      (top-right)
+                new Vector2(-130f,  -60f),   // 2 Verde     (mid-left)
+                new Vector2( 130f,  -60f),   // 3 Amarillo  (mid-right)
+                new Vector2(   0f, -255f),   // 4 Morado    (bottom-center)
+            }
+            : new Vector2[] {
+                new Vector2(-140f,  140f),   // 0 Rojo      (top-left)
+                new Vector2( 140f,  140f),   // 1 Azul      (top-right)
+                new Vector2(-140f, -140f),   // 2 Verde     (bottom-left)
+                new Vector2( 140f, -140f),   // 3 Amarillo  (bottom-right)
+            };
+
         // Contenedor centrado
         var gridGO = new GameObject("ButtonGrid");
         gridGO.transform.SetParent(R, false);
@@ -153,25 +182,16 @@ public class SimonUIController : MonoBehaviour
         gridRT.anchorMin = new Vector2(0.5f, 0.5f);
         gridRT.anchorMax = new Vector2(0.5f, 0.5f);
         gridRT.pivot     = new Vector2(0.5f, 0.5f);
-        gridRT.sizeDelta = new Vector2(520f, 520f);
-        gridRT.anchoredPosition = new Vector2(0f, -20f);
+        gridRT.sizeDelta = new Vector2(gridW, gridH);
+        gridRT.anchoredPosition = new Vector2(0f, fiveButtons ? -30f : -20f);
         gridGO.AddComponent<Image>().color = Color.clear;
 
-        Buttons = new SimonButtonController[4];
-
-        // Posiciones en la grid (2x2)
-        Vector2[] offsets = {
-            new Vector2(-140f,  140f),   // 0 Rojo     (top-left)
-            new Vector2( 140f,  140f),   // 1 Azul     (top-right)
-            new Vector2(-140f, -140f),   // 2 Verde    (bottom-left)
-            new Vector2( 140f, -140f),   // 3 Amarillo (bottom-right)
-        };
+        Buttons = new SimonButtonController[_buttonCount];
 
         Sprite circleSprite = MakeCircleSprite(128);
 
-        for (int i = 0; i < 4; i++)
+        for (int i = 0; i < _buttonCount; i++)
         {
-            int idx = i;
             Color col = BTN_COLORS[i];
 
             // ── Glow (anillo exterior) ──
@@ -180,11 +200,11 @@ public class SimonUIController : MonoBehaviour
             var glowRT = glowGO.AddComponent<RectTransform>();
             glowRT.anchorMin = glowRT.anchorMax = new Vector2(0.5f, 0.5f);
             glowRT.pivot     = new Vector2(0.5f, 0.5f);
-            glowRT.sizeDelta = new Vector2(250f, 250f);
+            glowRT.sizeDelta = new Vector2(glowSize, glowSize);
             glowRT.anchoredPosition = offsets[i];
             var glowImg = glowGO.AddComponent<Image>();
-            glowImg.sprite       = circleSprite;
-            glowImg.color        = Color.clear;
+            glowImg.sprite        = circleSprite;
+            glowImg.color         = Color.clear;
             glowImg.raycastTarget = false;
 
             // ── Botón principal (círculo) ──
@@ -193,7 +213,7 @@ public class SimonUIController : MonoBehaviour
             var btnRT = btnGO.AddComponent<RectTransform>();
             btnRT.anchorMin = btnRT.anchorMax = new Vector2(0.5f, 0.5f);
             btnRT.pivot     = new Vector2(0.5f, 0.5f);
-            btnRT.sizeDelta = new Vector2(220f, 220f);
+            btnRT.sizeDelta = new Vector2(btnSize, btnSize);
             btnRT.anchoredPosition = offsets[i];
 
             var btnImg = btnGO.AddComponent<Image>();
@@ -215,16 +235,16 @@ public class SimonUIController : MonoBehaviour
             shineRT.anchorMin = shineRT.anchorMax = new Vector2(0.5f, 0.5f);
             shineRT.pivot     = new Vector2(0.5f, 0.5f);
             shineRT.sizeDelta = new Vector2(80f, 80f);
-            shineRT.anchoredPosition = new Vector2(-46f, 46f);
+            shineRT.anchoredPosition = new Vector2(shineOff, -shineOff);
             var shineImg = shineGO.AddComponent<Image>();
-            shineImg.sprite       = circleSprite;
-            shineImg.color        = new Color(1f, 1f, 1f, 0.08f);
+            shineImg.sprite        = circleSprite;
+            shineImg.color         = new Color(1f, 1f, 1f, 0.08f);
             shineImg.raycastTarget = false;
 
-            // ── Número de color (pequeño, decorativo) ──
+            // ── Número decorativo ──
             var numTxt = MkTxt(btnRT, "Num", (i + 1).ToString(),
                                new Color(1f, 1f, 1f, 0.18f), 36,
-                               V(0,0), V(1,1));
+                               V(0, 0), V(1, 1));
             numTxt.fontStyle = FontStyles.Bold;
             numTxt.alignment = TextAlignmentOptions.Center;
 
@@ -234,11 +254,12 @@ public class SimonUIController : MonoBehaviour
             Buttons[i] = ctrl;
         }
 
-        // Separador central (decorativo)
-        var sep = MkImg(gridRT, "SepH", C(1,1,1,0.06f),
-                        V(0,0.5f), V(1,0.5f), V(0,0), V(0,2));
-        var sep2 = MkImg(gridRT, "SepV", C(1,1,1,0.06f),
-                         V(0.5f,0), V(0.5f,1), V(0,0), V(2,0));
+        // Separadores decorativos (solo para 4 botones, quedan raros en 5)
+        if (!fiveButtons)
+        {
+            MkImg(gridRT, "SepH", C(1, 1, 1, 0.06f), V(0, 0.5f), V(1, 0.5f), V(0, 0), V(0, 2));
+            MkImg(gridRT, "SepV", C(1, 1, 1, 0.06f), V(0.5f, 0), V(0.5f, 1), V(0, 0), V(2, 0));
+        }
     }
 
     // ── Footer ────────────────────────────────────────────────────────────────
@@ -309,6 +330,19 @@ public class SimonUIController : MonoBehaviour
         _resultRecord.text = isNewRecord
             ? $"🏆  ¡NUEVO RÉCORD!  {record}"
             : $"Récord:  {record}";
+        _resultPanel.SetActive(true);
+    }
+
+    public void ShowWin(bool isNewRecord, int round, int record)
+    {
+        _resultTitle.text  = "¡Lo lograste!";
+        _resultTitle.color = CGREEN;
+        _resultSub.text    = $"¡Completaste todas las  {round}  rondas!";
+        _resultRecord.text = isNewRecord
+            ? $"🏆  ¡NUEVO RÉCORD!  {record}"
+            : $"Récord:  {record}";
+
+        // Cambiar acento del panel a verde para la victoria
         _resultPanel.SetActive(true);
     }
 

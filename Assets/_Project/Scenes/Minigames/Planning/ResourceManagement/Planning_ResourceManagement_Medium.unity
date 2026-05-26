@@ -165,10 +165,21 @@ Camera:
   m_Enabled: 1
   serializedVersion: 2
   m_ClearFlags: 2
-  m_BackGroundColor: {r: 0.05, g: 0.07, b: 0.13, a: 1}
+  m_BackGroundColor: {r: 0.08, g: 0.09, b: 0.18, a: 1}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
   m_FOVAxisMode: 0
+  m_Iso: 200
+  m_ShutterSpeed: 0.005
+  m_Aperture: 16
+  m_FocusDistance: 10
+  m_FocalLength: 50
+  m_BladeCount: 5
+  m_Curvature: {x: 2, y: 11}
+  m_BarrelClipping: 0.25
+  m_Anamorphism: 0
+  m_SensorSize: {x: 36, y: 24}
+  m_LensShift: {x: 0, y: 0}
   m_NormalizedViewPortRect:
     serializedVersion: 2
     x: 0
@@ -213,10 +224,6 @@ GameObject:
   m_Component:
   - component: {fileID: 100000021}
   - component: {fileID: 100000022}
-  - component: {fileID: 100000023}
-  - component: {fileID: 100000024}
-  - component: {fileID: 100000025}
-  - component: {fileID: 100000026}
   m_Layer: 0
   m_Name: GameController
   m_TagString: Untagged
@@ -248,67 +255,31 @@ MonoBehaviour:
   m_GameObject: {fileID: 100000020}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1b9e3f7a5c2d8b4f6e1a9c3d7f5b2e8a, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
-  minigameName: Cuenta Atrás Silenciosa
-  category: 1
-  totalRounds: 3
-  roundsToWin: 2
-  roundTargets:
-  - 3
-  - 5
-  - 7
---- !u!114 &100000023
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 100000020}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f2a4c8e1b9d3f7a5c2e8b4d6f1a3c9e7, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
---- !u!114 &100000024
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 100000020}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8e3b1f5d9a7c4e2f6b8d3a5c7e1f9b4d, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
---- !u!114 &100000025
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 100000020}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5c7a2e9f4b1d8c6a3e7f2b9d5a1c4f8e, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
-  perfectMargin: 0.4
-  goodMargin: 1
---- !u!114 &100000026
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 100000020}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d6f8b2e4a9c1f7b3e5d2a8f4c6b1e9d3, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
+  m_Script: {fileID: 11500000, guid: d3d3574ced71506458b22379e604a08b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  minigameName: Gestion de recursos
+  category: 4
+  starsEasy: 20
+  starsMedium: 14
+  starsHard: 9
+  goal: 100
+  actions:
+  - icon: "\u273F"
+    actionName: Pasito corto
+    cost: 1
+    progress: 6
+    buttonColor: {r: 0, g: 0, b: 0, a: 1}
+  - icon: "\u2726"
+    actionName: Buen avance
+    cost: 2
+    progress: 10
+    buttonColor: {r: 0, g: 0, b: 0, a: 1}
+  - icon: "\u26A1"
+    actionName: Super impulso
+    cost: 5
+    progress: 25
+    buttonColor: {r: 0, g: 0, b: 0, a: 1}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

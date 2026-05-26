@@ -5,8 +5,7 @@ using TMPro;
 
 public class ColorMatchGameController : MinigameBase
 {
-
-    [Header("Pares por dificultad")]
+    [Header("Pares por ronda")]
     public int pairsEasy   = 4;
     public int pairsMedium = 6;
     public int pairsHard   = 8;
@@ -27,23 +26,30 @@ public class ColorMatchGameController : MinigameBase
     private static readonly Color C_WHITE_DIM = new Color(1f, 1f, 1f, 0.65f);
     private static readonly Color C_SEPARATOR = new Color(1f, 1f, 1f, 0.08f);
 
-    private int   _attempts    = 0;
-    private float _elapsed     = 0f;
-    private bool  _gameOver    = false;
-    private bool  _useTimer    = false;
-    private float _timeLimit   = 0f;
-    private int   _targetPairs = 4;
+    private const int TOTAL_ROUNDS = 3;
 
-    private BoardManager  _boardManager;
-    private RectTransform _boardContainer;
-    private TextMeshProUGUI _attemptsLabel;
-    private TextMeshProUGUI _timerLabel;
-    private GameObject    _winPanel;
-    private TextMeshProUGUI _winTitle;
-    private TextMeshProUGUI _statsPairs;
-    private TextMeshProUGUI _statsAttempts;
-    private TextMeshProUGUI _statsTime;
-    private TextMeshProUGUI _statsScore;
+    private int   _currentRound = 0;
+    private int[] _roundPairs;
+    private int   _totalAttempts = 0;
+    private float _elapsed       = 0f;
+    private bool  _gameOver      = false;
+    private bool  _useTimer      = false;
+    private float _timeLimit     = 0f;
+    private int   _accumulatedScore = 0;
+
+    private BoardManager     _boardManager;
+    private RectTransform    _boardContainer;
+    private TextMeshProUGUI  _attemptsLabel;
+    private TextMeshProUGUI  _timerLabel;
+    private TextMeshProUGUI  _roundLabel;
+    private GameObject       _roundBanner;
+    private TextMeshProUGUI  _roundBannerText;
+    private GameObject       _winPanel;
+    private TextMeshProUGUI  _winTitle;
+    private TextMeshProUGUI  _statsPairs;
+    private TextMeshProUGUI  _statsAttempts;
+    private TextMeshProUGUI  _statsTime;
+    private TextMeshProUGUI  _statsScore;
 
     protected override string GetIntroDescription() =>
         "Encuentra todas las parejas de cartas del mismo color.\n" +
@@ -52,25 +58,17 @@ public class ColorMatchGameController : MinigameBase
 
     protected override void OnMinigameStart()
     {
+        _roundPairs = new int[] { pairsEasy, pairsMedium, pairsHard };
+
         var diff = GameManager.Instance != null
             ? GameManager.Instance.CurrentDifficulty
             : DifficultyLevel.Easy;
-
-        switch (diff)
-        {
-            case DifficultyLevel.Easy:
-                _targetPairs = pairsEasy;   _useTimer = false; break;
-            case DifficultyLevel.Medium:
-                _targetPairs = pairsMedium; _useTimer = false; break;
-            case DifficultyLevel.Hard:
-                _targetPairs = pairsHard;
-                _useTimer    = timeLimitHard > 0f;
-                _timeLimit   = timeLimitHard; break;
-        }
+        _useTimer  = diff == DifficultyLevel.Hard && timeLimitHard > 0f;
+        _timeLimit = timeLimitHard;
 
         EnsureEventSystem();
         BuildUI();
-        StartBoard();
+        StartRound();
     }
 
     protected override void OnMinigameComplete() { _gameOver = true; ShowResultPanel(won: true); }
@@ -85,8 +83,7 @@ public class ColorMatchGameController : MinigameBase
         {
             float left = Mathf.Max(0f, _timeLimit - _elapsed);
             if (_timerLabel) _timerLabel.text  = $"{Mathf.CeilToInt(left)}s";
-            if (_timerLabel) _timerLabel.color = left < 15f
-                ? new Color(1f, 0.35f, 0.35f) : C_ACCENT;
+            if (_timerLabel) _timerLabel.color = left < 15f ? new Color(1f, 0.35f, 0.35f) : C_ACCENT;
             if (left <= 0f) FailMinigame();
         }
         else
@@ -95,21 +92,86 @@ public class ColorMatchGameController : MinigameBase
         }
     }
 
+    private void StartRound()
+    {
+        if (_roundLabel) _roundLabel.text = $"Ronda {_currentRound + 1}/{TOTAL_ROUNDS}";
+        if (_attemptsLabel) _attemptsLabel.text = "Intentos: 0";
+
+        for (int i = _boardContainer.childCount - 1; i >= 0; i--)
+            Destroy(_boardContainer.GetChild(i).gameObject);
+
+        if (_boardManager != null)
+        {
+            Destroy(_boardManager.gameObject);
+            _boardManager = null;
+        }
+
+        var go = new GameObject("BoardManager");
+        go.transform.SetParent(transform, false);
+        _boardManager = go.AddComponent<BoardManager>();
+
+        int pairs = _roundPairs[_currentRound];
+        float cardSize = pairs <= 4 ? 140f : pairs <= 6 ? 118f : 98f;
+        float spacing  = pairs <= 4 ? 14f  : pairs <= 6 ? 11f  : 9f;
+
+        _boardManager.Initialize(_boardContainer, pairs, cardSize, spacing);
+        _boardManager.OnAttemptMade += OnAttempt;
+        _boardManager.OnAllMatched  += OnRoundComplete;
+    }
+
+    private void OnAttempt(int total)
+    {
+        _totalAttempts++;
+        if (_attemptsLabel) _attemptsLabel.text = $"Intentos: {total}";
+    }
+
+    private void OnRoundComplete()
+    {
+        int pairs  = _roundPairs[_currentRound];
+        int bonus  = Mathf.Max(0, pairs - (_boardManager != null ? 0 : 0));
+        _accumulatedScore += pairs * 100;
+
+        _currentRound++;
+
+        if (_currentRound >= TOTAL_ROUNDS)
+        {
+            CompleteMinigame(_accumulatedScore);
+        }
+        else
+        {
+            StartCoroutine(RoundTransition());
+        }
+    }
+
+    private IEnumerator RoundTransition()
+    {
+        if (_roundBanner)
+        {
+            if (_roundBannerText) _roundBannerText.text = $"¡Ronda {_currentRound} completada!\nPreparate para la siguiente...";
+            _roundBanner.SetActive(true);
+        }
+
+        yield return new WaitForSeconds(2f);
+
+        if (_roundBanner) _roundBanner.SetActive(false);
+
+        StartRound();
+    }
+
     private void BuildUI()
     {
-
-        var cGO = new GameObject("Canvas"); cGO.transform.SetParent(transform, false);
-        var canvas  = cGO.AddComponent<Canvas>();
+        var cGO    = new GameObject("Canvas"); cGO.transform.SetParent(transform, false);
+        var canvas = cGO.AddComponent<Canvas>();
         canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        var scaler  = cGO.AddComponent<CanvasScaler>();
+        var scaler = cGO.AddComponent<CanvasScaler>();
         scaler.uiScaleMode         = CanvasScaler.ScaleMode.ScaleWithScreenSize;
         scaler.referenceResolution = new Vector2(1080f, 1920f);
         scaler.matchWidthOrHeight  = 0.5f;
         cGO.AddComponent<GraphicRaycaster>();
 
-        var root  = MakePanel(cGO.transform, "Root", C_BG_DARK, Stretch());
+        var root = MakePanel(cGO.transform, "Root", C_BG_DARK, Stretch());
 
-        var grad  = MakePanel(root.transform, "Grad", C_BG_MID, AnchorRect(0,0,1,0.45f));
+        var grad = MakePanel(root.transform, "Grad", C_BG_MID, AnchorRect(0, 0, 1, 0.45f));
         grad.color = new Color(C_BG_MID.r, C_BG_MID.g, C_BG_MID.b, 0.60f);
 
         BuildHeader(root.transform);
@@ -131,41 +193,38 @@ public class ColorMatchGameController : MinigameBase
         _boardContainer.anchoredPosition = Vector2.zero;
 
         BuildBottomBar(root.transform);
-
+        BuildRoundBanner(root.transform);
         BuildResultPanel(root.transform);
     }
 
     private void BuildHeader(Transform parent)
     {
-        var hdr = MakePanel(parent, "Header", C_PANEL, AnchorRect(0, 1, 1, 1, 0, -148f, 0, 0));
+        var hdr = MakePanel(parent, "Header", C_PANEL, AnchorRect(0, 1, 1, 1, 0, -190f, 0, 0));
 
-        var line = MakePanel(hdr.transform, "AccentLine", C_ACCENT, AnchorRect(0, 1, 1, 1, 0, -3f, 0, 0));
+        MakePanel(hdr.transform, "AccentLine", C_ACCENT, AnchorRect(0, 1, 1, 1, 0, -3f, 0, 0));
 
-        var title = MakeLabel(hdr.transform, "Title", "Parejas de Colores",
-            C_WHITE, 50f, FontStyles.Bold);
+        var title = MakeLabel(hdr.transform, "Title", "Parejas de Colores", C_WHITE, 42f, FontStyles.Bold);
         PlaceRT(title.gameObject, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
-                new Vector2(0f, -52f), new Vector2(800f, 64f));
+                new Vector2(0f, -50f), new Vector2(800f, 56f));
 
-        var sep = MakePanel(hdr.transform, "Sep", C_SEPARATOR, AnchorRect(0.05f, 0, 0.95f, 0, 0, 1f, 0, 2f));
+        _roundLabel = MakeLabel(hdr.transform, "Round", "Ronda 1/3", C_GREEN, 26f, FontStyles.Bold);
+        PlaceRT(_roundLabel.gameObject, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
+                new Vector2(0f, -108f), new Vector2(300f, 32f));
 
-        _attemptsLabel = MakeLabel(hdr.transform, "Attempts", "Intentos: 0",
-            C_ACCENT, 28f, FontStyles.Normal);
-        PlaceRT(_attemptsLabel.gameObject, new Vector2(0.28f, 0.5f), new Vector2(0.28f, 0.5f),
-                new Vector2(0f, -90f), new Vector2(320f, 36f));
+        MakePanel(hdr.transform, "Sep", C_SEPARATOR, AnchorRect(0.05f, 0, 0.95f, 0, 0, 1f, 0, 2f));
 
-        _timerLabel = MakeLabel(hdr.transform, "Timer", "00:00",
-            C_ACCENT, 28f, FontStyles.Normal);
-        PlaceRT(_timerLabel.gameObject, new Vector2(0.72f, 0.5f), new Vector2(0.72f, 0.5f),
-                new Vector2(0f, -90f), new Vector2(200f, 36f));
+        _attemptsLabel = MakeLabel(hdr.transform, "Attempts", "Intentos: 0", C_ACCENT, 26f, FontStyles.Normal);
+        PlaceRT(_attemptsLabel.gameObject, new Vector2(0.28f, 1f), new Vector2(0.28f, 1f),
+                new Vector2(0f, -160f), new Vector2(320f, 32f));
 
-        var vsep = MakePanel(hdr.transform, "VSep", C_SEPARATOR,
-            AnchorRect(0.5f, 0.5f, 0.5f, 0.5f, -0.5f, -50f, 0.5f, -36f));
+        _timerLabel = MakeLabel(hdr.transform, "Timer", "00:00", C_ACCENT, 26f, FontStyles.Normal);
+        PlaceRT(_timerLabel.gameObject, new Vector2(0.72f, 1f), new Vector2(0.72f, 1f),
+                new Vector2(0f, -160f), new Vector2(200f, 32f));
     }
 
     private void BuildBottomBar(Transform parent)
     {
         var bar = MakePanel(parent, "BottomBar", C_PANEL, AnchorRect(0, 0, 1, 0.11f));
-
         MakePanel(bar.transform, "TopLine", C_SEPARATOR, AnchorRect(0, 1, 1, 1, 0, -1f, 0, 0));
 
         MakeButton(bar.transform, "BtnRestart", "Reiniciar",
@@ -177,9 +236,26 @@ public class ColorMatchGameController : MinigameBase
             () => ReturnToGameSelector());
     }
 
+    private void BuildRoundBanner(Transform parent)
+    {
+        _roundBanner = MakePanel(parent, "RoundBanner",
+            new Color(0f, 0f, 0f, 0.80f), Stretch()).gameObject;
+
+        var card = MakePanel(_roundBanner.transform, "Card", C_PANEL,
+            CenterRect(680f, 220f)).gameObject;
+
+        MakePanel(card.transform, "TopBorder", C_GREEN, AnchorRect(0, 1, 1, 1, 0, -5f, 0, 0));
+
+        _roundBannerText = MakeLabel(card.transform, "BannerText",
+            "¡Ronda completada!", C_WHITE, 36f, FontStyles.Bold);
+        PlaceRT(_roundBannerText.gameObject, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                Vector2.zero, new Vector2(620f, 160f));
+
+        _roundBanner.SetActive(false);
+    }
+
     private void BuildResultPanel(Transform parent)
     {
-
         _winPanel = MakePanel(parent, "ResultPanel",
             new Color(0f, 0f, 0f, 0.85f), Stretch()).gameObject;
 
@@ -189,7 +265,7 @@ public class ColorMatchGameController : MinigameBase
         var topBorder = MakePanel(card.transform, "TopBorder", C_GREEN,
             AnchorRect(0, 1, 1, 1, 0, -5f, 0, 0));
 
-        _winTitle = MakeLabel(card.transform, "Title", "Ganaste",
+        _winTitle = MakeLabel(card.transform, "Title", "¡Ganaste!",
             C_GREEN, 64f, FontStyles.Bold);
         PlaceRT(_winTitle.gameObject, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
                 new Vector2(0f, -80f), new Vector2(680f, 80f));
@@ -197,18 +273,11 @@ public class ColorMatchGameController : MinigameBase
         MakePanel(card.transform, "Sep1", new Color(1f, 1f, 1f, 0.10f),
             AnchorRect(0.08f, 1f, 0.92f, 1f, 0, -118f, 0, -116f));
 
-        float sy = -148f;
-        float sh = 46f;
-        float sgap = 8f;
-
-        _statsPairs = MakeStatRow(card.transform, "SP", "Parejas encontradas", "--",
-            new Vector2(0f, sy)); sy -= sh + sgap;
-        _statsAttempts = MakeStatRow(card.transform, "SA", "Intentos realizados", "--",
-            new Vector2(0f, sy)); sy -= sh + sgap;
-        _statsTime = MakeStatRow(card.transform, "ST", "Tiempo", "--",
-            new Vector2(0f, sy)); sy -= sh + sgap;
-        _statsScore = MakeStatRow(card.transform, "SS", "Puntuacion", "--",
-            new Vector2(0f, sy));
+        float sy = -148f; float sh = 46f; float sgap = 8f;
+        _statsPairs    = MakeStatRow(card.transform, "SP", "Rondas completadas", "--", new Vector2(0f, sy)); sy -= sh + sgap;
+        _statsAttempts = MakeStatRow(card.transform, "SA", "Intentos totales",   "--", new Vector2(0f, sy)); sy -= sh + sgap;
+        _statsTime     = MakeStatRow(card.transform, "ST", "Tiempo",             "--", new Vector2(0f, sy)); sy -= sh + sgap;
+        _statsScore    = MakeStatRow(card.transform, "SS", "Puntuacion",         "--", new Vector2(0f, sy));
 
         MakePanel(card.transform, "Sep2", new Color(1f, 1f, 1f, 0.10f),
             AnchorRect(0.08f, 0f, 0.92f, 0f, 0, 116f, 0, 118f));
@@ -224,10 +293,31 @@ public class ColorMatchGameController : MinigameBase
         _winPanel.SetActive(false);
     }
 
-    private TextMeshProUGUI MakeStatRow(Transform parent, string id, string label, string value,
-                                 Vector2 yOffset)
+    private void ShowResultPanel(bool won)
     {
+        if (_statsPairs)    _statsPairs.text    = won ? $"{TOTAL_ROUNDS}/{TOTAL_ROUNDS}" : $"{_currentRound}/{TOTAL_ROUNDS}";
+        if (_statsAttempts) _statsAttempts.text = $"{_totalAttempts}";
+        if (_statsTime)     _statsTime.text     = FormatTime(_elapsed);
+        if (_statsScore)    _statsScore.text    = won ? $"{Score} pts" : "---";
 
+        var border = _winPanel?.transform.Find("Card/TopBorder")?.GetComponent<Image>();
+
+        if (won)
+        {
+            if (_winTitle) { _winTitle.text = "¡Lo conseguiste!"; _winTitle.color = C_GREEN; }
+            if (border) border.color = C_GREEN;
+        }
+        else
+        {
+            if (_winTitle) { _winTitle.text = "Tiempo agotado"; _winTitle.color = C_BTN_RED; }
+            if (border) border.color = C_BTN_RED;
+        }
+
+        if (_winPanel) _winPanel.SetActive(true);
+    }
+
+    private TextMeshProUGUI MakeStatRow(Transform parent, string id, string label, string value, Vector2 yOffset)
+    {
         var row = MakePanel(parent, id + "_Row", C_PANEL2,
             new RectTransformCfg
             {
@@ -237,104 +327,38 @@ public class ColorMatchGameController : MinigameBase
                 offsetMax = new Vector2(0f, yOffset.y + 23f)
             });
 
-        var lbl = new GameObject(id + "_Lbl");
-        lbl.transform.SetParent(row.transform, false);
+        var lbl = new GameObject(id + "_Lbl"); lbl.transform.SetParent(row.transform, false);
         var lblRT = lbl.AddComponent<RectTransform>();
         lblRT.anchorMin = new Vector2(0f, 0f); lblRT.anchorMax = new Vector2(0.62f, 1f);
         lblRT.offsetMin = new Vector2(16f, 0f); lblRT.offsetMax = Vector2.zero;
         var lblTmp = lbl.AddComponent<TextMeshProUGUI>();
-        lblTmp.text      = label;
-        lblTmp.color     = C_WHITE_DIM;
-        lblTmp.fontSize  = 27f;
-        lblTmp.alignment = TextAlignmentOptions.MidlineLeft;
+        lblTmp.text = label; lblTmp.color = C_WHITE_DIM;
+        lblTmp.fontSize = 27f; lblTmp.alignment = TextAlignmentOptions.MidlineLeft;
 
-        var val = new GameObject(id + "_Val");
-        val.transform.SetParent(row.transform, false);
+        var val = new GameObject(id + "_Val"); val.transform.SetParent(row.transform, false);
         var valRT = val.AddComponent<RectTransform>();
         valRT.anchorMin = new Vector2(0.62f, 0f); valRT.anchorMax = new Vector2(1f, 1f);
         valRT.offsetMin = Vector2.zero; valRT.offsetMax = new Vector2(-16f, 0f);
         var valTmp = val.AddComponent<TextMeshProUGUI>();
-        valTmp.text      = value;
-        valTmp.color     = C_WHITE;
-        valTmp.fontSize  = 27f;
-        valTmp.fontStyle = FontStyles.Bold;
+        valTmp.text = value; valTmp.color = C_WHITE;
+        valTmp.fontSize = 27f; valTmp.fontStyle = FontStyles.Bold;
         valTmp.alignment = TextAlignmentOptions.MidlineRight;
 
         return valTmp;
     }
 
-    private void StartBoard()
-    {
-        var go = new GameObject("BoardManager");
-        go.transform.SetParent(transform, false);
-        _boardManager = go.AddComponent<BoardManager>();
-
-        float cardSize = _targetPairs <= 4 ? 140f
-                       : _targetPairs <= 6 ? 118f : 98f;
-        float spacing  = _targetPairs <= 4 ? 14f
-                       : _targetPairs <= 6 ? 11f  : 9f;
-
-        _boardManager.Initialize(_boardContainer, _targetPairs, cardSize, spacing);
-        _boardManager.OnAttemptMade += OnAttempt;
-        _boardManager.OnAllMatched  += OnAllMatched;
-    }
-
-    private void OnAttempt(int total)
-    {
-        _attempts = total;
-        if (_attemptsLabel) _attemptsLabel.text = $"Intentos: {_attempts}";
-    }
-
-    private void OnAllMatched() => CompleteMinigame(CalcScore());
-
-    private int CalcScore()
-    {
-        int bonus = Mathf.Max(0, _targetPairs - (_attempts - _targetPairs));
-        return _targetPairs * 100 + bonus * 10;
-    }
-
-    private void ShowResultPanel(bool won)
-    {
-
-        if (_statsPairs)    _statsPairs.text    = $"{_targetPairs}/{_targetPairs}";
-        if (_statsAttempts) _statsAttempts.text = $"{_attempts}";
-        if (_statsTime)     _statsTime.text     = FormatTime(_elapsed);
-        if (_statsScore)    _statsScore.text    = won ? $"{Score} pts" : "---";
-
-        if (won)
-        {
-            if (_winTitle) { _winTitle.text = "¡Ganaste!"; _winTitle.color = C_GREEN; }
-
-            var border = _winPanel?.transform.Find("Card/TopBorder")?.GetComponent<Image>();
-            if (border) border.color = C_GREEN;
-        }
-        else
-        {
-            if (_winTitle) { _winTitle.text = "Tiempo agotado"; _winTitle.color = C_BTN_RED; }
-            if (_statsPairs) _statsPairs.text = "Tiempo agotado";
-
-            var border = _winPanel?.transform.Find("Card/TopBorder")?.GetComponent<Image>();
-            if (border) border.color = C_BTN_RED;
-        }
-
-        if (_winPanel) _winPanel.SetActive(true);
-    }
-
     private Image MakePanel(Transform parent, string name, Color color, RectTransformCfg cfg)
     {
-        var go  = new GameObject(name);
-        go.transform.SetParent(parent, false);
+        var go = new GameObject(name); go.transform.SetParent(parent, false);
         cfg.Apply(go.AddComponent<RectTransform>());
-        var img = go.AddComponent<Image>();
-        img.color = color;
+        var img = go.AddComponent<Image>(); img.color = color;
         return img;
     }
 
     private TextMeshProUGUI MakeLabel(Transform parent, string name, string text,
-                                Color color, float size, FontStyles style)
+                                      Color color, float size, FontStyles style)
     {
-        var go = new GameObject(name);
-        go.transform.SetParent(parent, false);
+        var go = new GameObject(name); go.transform.SetParent(parent, false);
         go.AddComponent<RectTransform>();
         var t = go.AddComponent<TextMeshProUGUI>();
         t.text = text; t.color = color; t.fontSize = size;
@@ -345,29 +369,22 @@ public class ColorMatchGameController : MinigameBase
     private void MakeButton(Transform parent, string name, string label,
                             Color bg, Vector2 pos, Vector2 size, System.Action cb)
     {
-        var go = new GameObject(name);
-        go.transform.SetParent(parent, false);
+        var go = new GameObject(name); go.transform.SetParent(parent, false);
         var rt = go.AddComponent<RectTransform>();
-        rt.anchorMin = new Vector2(0.5f, 0.5f);
-        rt.anchorMax = new Vector2(0.5f, 0.5f);
-        rt.pivot     = new Vector2(0.5f, 0.5f);
-        rt.anchoredPosition = pos;
-        rt.sizeDelta = size;
+        rt.anchorMin = new Vector2(0.5f, 0.5f); rt.anchorMax = new Vector2(0.5f, 0.5f);
+        rt.pivot = new Vector2(0.5f, 0.5f);
+        rt.anchoredPosition = pos; rt.sizeDelta = size;
 
-        var img = go.AddComponent<Image>();
-        img.color = bg;
+        var img = go.AddComponent<Image>(); img.color = bg;
 
         var btn = go.AddComponent<Button>();
         var bc  = btn.colors;
-        bc.normalColor      = Color.white;
-        bc.highlightedColor = new Color(1.12f, 1.12f, 1.12f);
-        bc.pressedColor     = new Color(0.85f, 0.85f, 0.85f);
-        bc.fadeDuration     = 0.06f;
+        bc.normalColor = Color.white; bc.highlightedColor = new Color(1.12f, 1.12f, 1.12f);
+        bc.pressedColor = new Color(0.85f, 0.85f, 0.85f); bc.fadeDuration = 0.06f;
         btn.colors = bc;
         btn.onClick.AddListener(() => cb?.Invoke());
 
-        var tGO = new GameObject("Label");
-        tGO.transform.SetParent(go.transform, false);
+        var tGO = new GameObject("Label"); tGO.transform.SetParent(go.transform, false);
         var tRT = tGO.AddComponent<RectTransform>();
         tRT.anchorMin = Vector2.zero; tRT.anchorMax = Vector2.one;
         tRT.sizeDelta = Vector2.zero; tRT.anchoredPosition = Vector2.zero;
@@ -378,7 +395,7 @@ public class ColorMatchGameController : MinigameBase
     }
 
     private static void PlaceRT(GameObject go, Vector2 anchorMin, Vector2 anchorMax,
-                                Vector2 pos, Vector2 size)
+                                 Vector2 pos, Vector2 size)
     {
         var rt = go.GetComponent<RectTransform>();
         rt.anchorMin = anchorMin; rt.anchorMax = anchorMax;

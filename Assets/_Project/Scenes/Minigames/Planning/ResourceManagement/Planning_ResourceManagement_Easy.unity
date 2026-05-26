@@ -165,10 +165,21 @@ Camera:
   m_Enabled: 1
   serializedVersion: 2
   m_ClearFlags: 2
-  m_BackGroundColor: {r: 0.08, g: 0.10, b: 0.16, a: 1}
+  m_BackGroundColor: {r: 0.08, g: 0.09, b: 0.18, a: 1}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
   m_FOVAxisMode: 0
+  m_Iso: 200
+  m_ShutterSpeed: 0.005
+  m_Aperture: 16
+  m_FocusDistance: 10
+  m_FocalLength: 50
+  m_BladeCount: 5
+  m_Curvature: {x: 2, y: 11}
+  m_BarrelClipping: 0.25
+  m_Anamorphism: 0
+  m_SensorSize: {x: 36, y: 24}
+  m_LensShift: {x: 0, y: 0}
   m_NormalizedViewPortRect:
     serializedVersion: 2
     x: 0
@@ -213,10 +224,6 @@ GameObject:
   m_Component:
   - component: {fileID: 100000021}
   - component: {fileID: 100000022}
-  - component: {fileID: 100000023}
-  - component: {fileID: 100000024}
-  - component: {fileID: 100000025}
-  - component: {fileID: 100000026}
   m_Layer: 0
   m_Name: GameController
   m_TagString: Untagged
@@ -248,64 +255,31 @@ MonoBehaviour:
   m_GameObject: {fileID: 100000020}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e9d5f945026273b48991a14954e3608e, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
-  minigameName: Cambio de regla
-  category: 3
-  totalStimuli: 15
-  stimuliPerRuleChange: 5
-  stimulusTime: 2
-  feedbackTime: 0.45
-  showRuleOnChange: 1
---- !u!114 &100000023
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 100000020}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5eaeaa1d3ed4f2b43bc12ca13fedcfd2, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
---- !u!114 &100000024
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 100000020}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0035a15f61304c84581a891323c18327, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
---- !u!114 &100000025
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 100000020}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7e540954c7d49c447b112fbb0d7539d4, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
---- !u!114 &100000026
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 100000020}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
+  m_Script: {fileID: 11500000, guid: d3d3574ced71506458b22379e604a08b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  minigameName: Gestion de recursos
+  category: 4
+  starsEasy: 20
+  starsMedium: 14
+  starsHard: 9
+  goal: 100
+  actions:
+  - icon: "\u273F"
+    actionName: Pasito corto
+    cost: 1
+    progress: 6
+    buttonColor: {r: 0, g: 0, b: 0, a: 1}
+  - icon: "\u2726"
+    actionName: Buen avance
+    cost: 2
+    progress: 10
+    buttonColor: {r: 0, g: 0, b: 0, a: 1}
+  - icon: "\u26A1"
+    actionName: Super impulso
+    cost: 5
+    progress: 25
+    buttonColor: {r: 0, g: 0, b: 0, a: 1}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

@@ -7,10 +7,8 @@ using UnityEngine;
 /// </summary>
 public class SimonSequenceManager : MonoBehaviour
 {
-    // ── Constantes ────────────────────────────────────────────────────────────
-    public const int COLOR_COUNT = 4;
-
     // ── Estado interno ────────────────────────────────────────────────────────
+    private int _colorCount = 4;
     private readonly List<int> _sequence = new List<int>();
     private int _playerIndex;
 
@@ -30,6 +28,15 @@ public class SimonSequenceManager : MonoBehaviour
 
     // ── API pública ───────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Inicializa el número de colores posibles.
+    /// Llamar antes de empezar el juego.
+    /// </summary>
+    public void Initialize(int colorCount)
+    {
+        _colorCount = Mathf.Max(2, colorCount);
+    }
+
     /// <summary>Reinicia completamente la secuencia.</summary>
     public void ResetSequence()
     {
@@ -40,14 +47,14 @@ public class SimonSequenceManager : MonoBehaviour
     /// <summary>Añade un nuevo color aleatorio al final de la secuencia y resetea el índice del jugador.</summary>
     public void AddStep()
     {
-        _sequence.Add(Random.Range(0, COLOR_COUNT));
+        _sequence.Add(Random.Range(0, _colorCount));
         _playerIndex = 0;
     }
 
     /// <summary>
     /// Registra la pulsación del jugador.
     /// </summary>
-    /// <param name="colorIndex">Color pulsado (0-3).</param>
+    /// <param name="colorIndex">Color pulsado.</param>
     /// <param name="roundComplete">True si el jugador completó toda la ronda correctamente.</param>
     /// <returns>True si el color era correcto.</returns>
     public bool Submit(int colorIndex, out bool roundComplete)

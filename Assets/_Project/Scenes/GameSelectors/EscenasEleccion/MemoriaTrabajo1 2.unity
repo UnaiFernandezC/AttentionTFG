@@ -175,7 +175,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 96e2425c2525f5b4ba195b5d91152816, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  sceneToLoad: Memory_ColorMatch
+  sceneToLoad: Memory_ColorMatch_Easy
 --- !u!114 &42746608
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2499,7 +2499,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 96e2425c2525f5b4ba195b5d91152816, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  sceneToLoad: Memory_PatternRecall
+  sceneToLoad: Memory_PatternRecall_Easy
 --- !u!114 &2027068249
 MonoBehaviour:
   m_ObjectHideFlags: 0

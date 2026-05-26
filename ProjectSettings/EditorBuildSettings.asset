@@ -27,79 +27,79 @@ EditorBuildSettings:
     path: Assets/_Project/Scenes/Minigames/Attention/Attention.unity
     guid: 02b4ad808bba1824596dda5834bd938b
   - enabled: 1
-    path: Assets/_Project/Scenes/Minigames/Attention/Attention_ObjectTracking_Easy.unity
+    path: Assets/_Project/Scenes/Minigames/Attention/ObjectTracking/Attention_ObjectTracking_Easy.unity
     guid: e1e2e3e4f1f2f3f4a1a2a3a4b1b2b3b4
   - enabled: 1
-    path: Assets/_Project/Scenes/Minigames/Attention/Attention_OptimalPath.unity
+    path: Assets/_Project/Scenes/Minigames/Attention/OptimalPath/Attention_OptimalPath.unity
     guid: b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7
   - enabled: 1
-    path: Assets/_Project/Scenes/Minigames/Attention/Attention_QuickReaction_Easy.unity
+    path: Assets/_Project/Scenes/Minigames/Attention/QuickReaction/Attention_QuickReaction_Easy.unity
     guid: c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0
   - enabled: 1
-    path: Assets/_Project/Scenes/Minigames/Attention/Attention_RuleSwitch_Easy.unity
+    path: Assets/_Project/Scenes/Minigames/Attention/RuleSwitch/Attention_RuleSwitch_Easy.unity
     guid: f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1
   - enabled: 1
-    path: Assets/_Project/Scenes/Minigames/Attention/¡Algo no cuadra!.unity
+    path: "Assets/_Project/Scenes/Minigames/Attention/_Legacy/\xA1Algo no cuadra!.unity"
     guid: 7987a1cb84298fe4198dbdb7f8a9446c
   - enabled: 1
-    path: Assets/_Project/Scenes/Minigames/EmotionalManagement/Aventura emocional.unity
+    path: Assets/_Project/Scenes/Minigames/EmotionalManagement/_Legacy/Aventura emocional.unity
     guid: 33da51e6f59f9334ea2c7e0c316444d3
   - enabled: 1
-    path: Assets/_Project/Scenes/Minigames/EmotionalManagement/Emotional_AttractionControl_Easy.unity
+    path: Assets/_Project/Scenes/Minigames/EmotionalManagement/AttractionControl/Emotional_AttractionControl_Easy.unity
     guid: 02445f7b30a9819429a71b8f9e23edba
   - enabled: 1
-    path: Assets/_Project/Scenes/Minigames/EmotionalManagement/Emotional_Balance.unity
+    path: Assets/_Project/Scenes/Minigames/EmotionalManagement/Balance/Emotional_Balance.unity
     guid: e5d4c3b2a1f0e9d8c7b6a5f4e3d2c1b0
   - enabled: 1
-    path: Assets/_Project/Scenes/Minigames/EmotionalManagement/Emotional_Consequences_Easy.unity
+    path: Assets/_Project/Scenes/Minigames/EmotionalManagement/Consequences/Emotional_Consequences_Easy.unity
     guid: f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9
   - enabled: 1
-    path: Assets/_Project/Scenes/Minigames/EmotionalManagement/Emotional_ProgressiveRegulation_Easy.unity
+    path: Assets/_Project/Scenes/Minigames/EmotionalManagement/ProgressiveRegulation/Emotional_ProgressiveRegulation_Easy.unity
     guid: d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9
   - enabled: 1
-    path: Assets/_Project/Scenes/Minigames/ImpulseControl/Impulse_DontFollowMajority_Easy.unity
+    path: Assets/_Project/Scenes/Minigames/ImpulseControl/DontFollowMajority/Impulse_DontFollowMajority_Easy.unity
     guid: 7b3f9c6d2a0e8c4b6d2f0a8e4c6b2f0a
   - enabled: 1
-    path: Assets/_Project/Scenes/Minigames/ImpulseControl/Impulse_DontPressYet_Easy.unity
+    path: Assets/_Project/Scenes/Minigames/ImpulseControl/DontPressYet/Impulse_DontPressYet_Easy.unity
     guid: 9d2e7f4c1b8a5e3f6d9c2b7a4e1f8c5d
   - enabled: 1
-    path: Assets/_Project/Scenes/Minigames/ImpulseControl/Impulse_InverseResponse_Easy.unity
+    path: Assets/_Project/Scenes/Minigames/ImpulseControl/InverseResponse/Impulse_InverseResponse_Easy.unity
     guid: 4e8a2f5b1c9d7e3a6f4b8c2d5e9a1f7c
   - enabled: 1
-    path: Assets/_Project/Scenes/Minigames/ImpulseControl/Impulse_SilentCountdown_Easy.unity
+    path: Assets/_Project/Scenes/Minigames/ImpulseControl/SilentCountdown/Impulse_SilentCountdown_Easy.unity
     guid: 7a3b5c9d1e2f4a8b6c0d3e7f9a1b5c2d
   - enabled: 1
-    path: Assets/_Project/Scenes/Minigames/ImpulseControl/Impulse_StopAndGo_Easy.unity
+    path: Assets/_Project/Scenes/Minigames/ImpulseControl/StopAndGo/Impulse_StopAndGo_Easy.unity
     guid: 3b7e1a9f4c8d2e6b5a3f9c1d4e7b2a8f
   - enabled: 1
-    path: Assets/_Project/Scenes/Minigames/Memory/Memory_ColorMatch.unity
+    path: Assets/_Project/Scenes/Minigames/Memory/ColorMatch/Memory_ColorMatch.unity
     guid: d7a5b6c4f8a9e0d1f2a3b4c5d6e7f8a9
   - enabled: 1
-    path: Assets/_Project/Scenes/Minigames/Memory/Memory_FindChange_Easy.unity
+    path: Assets/_Project/Scenes/Minigames/Memory/FindChange/Memory_FindChange_Easy.unity
     guid: d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2
   - enabled: 1
-    path: Assets/_Project/Scenes/Minigames/Memory/Memory_PatternRecall.unity
+    path: Assets/_Project/Scenes/Minigames/Memory/PatternRecall/Memory_PatternRecall.unity
     guid: c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9
   - enabled: 1
-    path: Assets/_Project/Scenes/Minigames/Memory/Memory_WordMemory_Easy.unity
+    path: Assets/_Project/Scenes/Minigames/Memory/WordMemory/Memory_WordMemory_Easy.unity
     guid: 881022b8bc36dec449a36ce5d84f9c6d
   - enabled: 1
-    path: Assets/_Project/Scenes/Minigames/Memory/SimonSays.unity
+    path: Assets/_Project/Scenes/Minigames/Memory/_Legacy/SimonSays.unity
     guid: a0432c82cdb725b4aadfa13e840ee570
   - enabled: 1
-    path: Assets/_Project/Scenes/Minigames/Memory/Memory_SimonSays_Easy.unity
+    path: Assets/_Project/Scenes/Minigames/Memory/SimonSays/Memory_SimonSays_Easy.unity
     guid: f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c2
   - enabled: 1
-    path: Assets/_Project/Scenes/Minigames/Planning/Planning_ActionSequence.unity
+    path: Assets/_Project/Scenes/Minigames/Planning/ActionSequence/Planning_ActionSequence.unity
     guid: c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8
   - enabled: 1
-    path: Assets/_Project/Scenes/Minigames/Planning/Planning_OrdenCorrecto.unity
+    path: Assets/_Project/Scenes/Minigames/Planning/OrdenCorrecto/Planning_OrdenCorrecto.unity
     guid: f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0
   - enabled: 1
-    path: Assets/_Project/Scenes/Minigames/Planning/Planning_ResourceManagement.unity
+    path: Assets/_Project/Scenes/Minigames/Planning/ResourceManagement/Planning_ResourceManagement.unity
     guid: a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6
   - enabled: 1
-    path: Assets/_Project/Scenes/Minigames/Planning/Planning_PathMemory_Easy.unity
+    path: Assets/_Project/Scenes/Minigames/Planning/PathMemory/Planning_PathMemory_Easy.unity
     guid: b81dcfcdfe134d1da8e9826161db3db6
   - enabled: 1
     path: Assets/_Project/Scenes/GameSelectors/EscenasEleccion/Atencion.unity
@@ -146,4 +146,184 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/_Project/Scenes/GameSelectors/EscenasEleccion/Planificacion_Hard.unity
     guid: 2f7155f6d43a4779ac9f9ddcee2b0943
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/Attention/QuickReaction/Attention_QuickReaction_Medium.unity
+    guid: 6a35616fdabd4b30a8d5582e7f84e4be
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/Attention/QuickReaction/Attention_QuickReaction_Hard.unity
+    guid: e44a930e103446fc89863076f342169e
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/Attention/RuleSwitch/Attention_RuleSwitch_Medium.unity
+    guid: ad2ec88ccf04493b83d8ef15c120cce8
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/Attention/RuleSwitch/Attention_RuleSwitch_Hard.unity
+    guid: 0862c7cbccd44332b4988e5add62e52f
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/Attention/ObjectTracking/Attention_ObjectTracking_Medium.unity
+    guid: 5d35bace75884a75913011cbd6795429
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/Attention/ObjectTracking/Attention_ObjectTracking_Hard.unity
+    guid: 15bbc7c0c4ee4e8682e5f1f32065602e
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/Attention/OptimalPath/Attention_OptimalPath_Easy.unity
+    guid: 881b47c6655241679bb753c4695a6d58
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/Attention/OptimalPath/Attention_OptimalPath_Medium.unity
+    guid: 8902b72a063c470bbf6bc14ec48d09b0
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/Attention/OptimalPath/Attention_OptimalPath_Hard.unity
+    guid: 3c4e2766586944da9e38fc966200c6a5
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/Attention/AlgoNoCuadra/Attention_AlgoNoCuadra_Easy.unity
+    guid: 9af6c285affb41bdb7c92925fe59baab
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/Attention/AlgoNoCuadra/Attention_AlgoNoCuadra_Medium.unity
+    guid: bc4ae31f53804ba982af5983f293f4d1
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/Attention/AlgoNoCuadra/Attention_AlgoNoCuadra_Hard.unity
+    guid: 8622261a508a4e808741bc9a1ff4bcaf
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/EmotionalManagement/AttractionControl/Emotional_AttractionControl_Medium.unity
+    guid: 9883a64bd3844e809801e86131a72a0d
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/EmotionalManagement/AttractionControl/Emotional_AttractionControl_Hard.unity
+    guid: a7ca503b3058428997130657d86bbf9c
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/EmotionalManagement/Consequences/Emotional_Consequences_Medium.unity
+    guid: c0037cbd892d4d7391be928b8e9450f4
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/EmotionalManagement/Consequences/Emotional_Consequences_Hard.unity
+    guid: 2149ea23ca4d4de791687a9e68ab7461
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/EmotionalManagement/ProgressiveRegulation/Emotional_ProgressiveRegulation_Medium.unity
+    guid: 7260ff4896bf4731a4142031efdc328c
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/EmotionalManagement/ProgressiveRegulation/Emotional_ProgressiveRegulation_Hard.unity
+    guid: 4d6f40c84b7d4e4ebc4518db501d9bad
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/EmotionalManagement/Balance/Emotional_Balance_Easy.unity
+    guid: bb7bb66c49bc4d528c7aeb51edf38fb0
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/EmotionalManagement/Balance/Emotional_Balance_Medium.unity
+    guid: 57f2030b0bb347baa00deeb2cac7a39d
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/EmotionalManagement/Balance/Emotional_Balance_Hard.unity
+    guid: bf1699a171d7444e970bfd65a84e20a1
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/EmotionalManagement/AventuraEmocional/Emotional_AventuraEmocional_Easy.unity
+    guid: 79c807329fa5430abcf3c4342a2137e6
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/EmotionalManagement/AventuraEmocional/Emotional_AventuraEmocional_Medium.unity
+    guid: 7a17f51ac3254432905d00840e2beba3
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/EmotionalManagement/AventuraEmocional/Emotional_AventuraEmocional_Hard.unity
+    guid: 5382d3d5416c4a59a2741a41127c7956
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/ImpulseControl/DontFollowMajority/Impulse_DontFollowMajority_Medium.unity
+    guid: e818a77273f744e0bd8cf47949180be0
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/ImpulseControl/DontFollowMajority/Impulse_DontFollowMajority_Hard.unity
+    guid: 0cb0fe4e415e49848bc2593e70c55bec
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/ImpulseControl/DontPressYet/Impulse_DontPressYet_Medium.unity
+    guid: 7585a6f75f2b403c8e3e05bdd09165ce
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/ImpulseControl/DontPressYet/Impulse_DontPressYet_Hard.unity
+    guid: a2af06ed3a2040308850245b4b79b250
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/ImpulseControl/InverseResponse/Impulse_InverseResponse_Medium.unity
+    guid: cefe5036a69d4a0e862c15018994b3fd
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/ImpulseControl/InverseResponse/Impulse_InverseResponse_Hard.unity
+    guid: 266e26f5b2c8428890eeab3404af04ee
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/ImpulseControl/SilentCountdown/Impulse_SilentCountdown_Medium.unity
+    guid: 1c7ca0aa6745458691afa003d5e07a52
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/ImpulseControl/SilentCountdown/Impulse_SilentCountdown_Hard.unity
+    guid: 53ef05ed41e84247b136a49b5716fbae
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/ImpulseControl/StopAndGo/Impulse_StopAndGo_Medium.unity
+    guid: 133e25d8646646beb1e098d4d31b3253
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/ImpulseControl/StopAndGo/Impulse_StopAndGo_Hard.unity
+    guid: 44bd87bc1f1043c892a64fe4e05629ff
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/Memory/FindChange/Memory_FindChange_Medium.unity
+    guid: e035f87e2a154caeb5661a57a0f855a8
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/Memory/FindChange/Memory_FindChange_Hard.unity
+    guid: 74b8efd643c4421fb7fad349c9757af5
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/Memory/SimonSays/Memory_SimonSays_Medium.unity
+    guid: abf42d7ea192408a8c1fe2be0b762e7e
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/Memory/SimonSays/Memory_SimonSays_Hard.unity
+    guid: fd3863d554d141ab8c026da295f8e5c6
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/Memory/WordMemory/Memory_WordMemory_Medium.unity
+    guid: fd17aecc64084496b7eec111998a09cd
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/Memory/WordMemory/Memory_WordMemory_Hard.unity
+    guid: 95ae6255b9b34bf58133624cd314cfe7
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/Memory/ColorMatch/Memory_ColorMatch_Easy.unity
+    guid: ec5346adc69a45b4965ca5482d6a69e2
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/Memory/ColorMatch/Memory_ColorMatch_Medium.unity
+    guid: 701b70abdaf5407f94417efa100188c6
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/Memory/ColorMatch/Memory_ColorMatch_Hard.unity
+    guid: 893efbcf3e1d46f9a0595c2ee0c5999d
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/Memory/PatternRecall/Memory_PatternRecall_Easy.unity
+    guid: 468820fceb7a42719fbbc4647a4dc537
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/Memory/PatternRecall/Memory_PatternRecall_Medium.unity
+    guid: a1cb36976b764f338a98eebb85c148d5
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/Memory/PatternRecall/Memory_PatternRecall_Hard.unity
+    guid: 23e82bd87eaf46d9b52d0e785556666c
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/Planning/PathMemory/Planning_PathMemory_Medium.unity
+    guid: 8689f328f2ce466c828b78582dd8dfb6
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/Planning/PathMemory/Planning_PathMemory_Hard.unity
+    guid: f3e5d7f40acc4dcf920dbd1db214cab7
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/Planning/ActionSequence/Planning_ActionSequence_Easy.unity
+    guid: a73216b17f72404991e014ec862f3661
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/Planning/ActionSequence/Planning_ActionSequence_Medium.unity
+    guid: 3f050722b6ec4a5097f5e126218a6048
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/Planning/ActionSequence/Planning_ActionSequence_Hard.unity
+    guid: 003ea1e51e6e4592b2744ced9356ae2b
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/Planning/OrdenCorrecto/Planning_OrdenCorrecto_Easy.unity
+    guid: 198382d33f9d46829b92cd9f576bace8
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/Planning/OrdenCorrecto/Planning_OrdenCorrecto_Medium.unity
+    guid: 7dc836a319c847fca8900e8c8286fdf0
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/Planning/OrdenCorrecto/Planning_OrdenCorrecto_Hard.unity
+    guid: 7ba90c0f551844cca7f01dc9cbe6b7be
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/Planning/ResourceManagement/Planning_ResourceManagement_Easy.unity
+    guid: b53d28f37b0e48baa33e27944517dd9b
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/Planning/ResourceManagement/Planning_ResourceManagement_Medium.unity
+    guid: 290d054b95c448d9a3e355a261e93993
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/Planning/ResourceManagement/Planning_ResourceManagement_Hard.unity
+    guid: 3ed35de19c384333a8c49175a6c9f035
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/Planning/OptimalPath/Planning_OptimalPath_Easy.unity
+    guid: eaec5a8b9dec429bb8a50f6c973bc48b
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/Planning/OptimalPath/Planning_OptimalPath_Medium.unity
+    guid: fc754847ee6f42f5a1011ddd9ea0eb6f
+  - enabled: 1
+    path: Assets/_Project/Scenes/Minigames/Planning/OptimalPath/Planning_OptimalPath_Hard.unity
+    guid: 241442ca6a354e83a08c15b875bcb5b9
   m_configObjects: {}

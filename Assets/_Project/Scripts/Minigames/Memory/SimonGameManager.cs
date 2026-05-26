@@ -3,20 +3,18 @@ using UnityEngine;
 
 /// <summary>
 /// Orquestador principal del minijuego "Simón Dice".
-/// Extiende MinigameBase → recibe intro panel automático con color de categoría
-/// y EventSystem garantizado antes de que se construya la UI del juego.
 ///
-/// ── Máquina de estados ──────────────────────────────────────────────────────
-///   Idle            → Esperando que el jugador pulse "Empezar"
-///   ShowingSequence → Reproduciendo la secuencia de colores
-///   PlayerTurn      → Esperando input del jugador
-///   RoundWon        → El jugador completó la ronda (breve pausa antes de la siguiente)
-///   GameOver        → El jugador cometió un error
+/// Estructura: 3 fases secuenciales por escena.
+/// Cada fase tiene su propio número de pasos objetivo y timings.
+/// Los valores se configuran directamente en el Inspector — sin selección
+/// automática de dificultad. Cada escena (_Easy, _Medium, _Hard) tiene
+/// sus propios valores.
 ///
-/// ── Dificultad ──────────────────────────────────────────────────────────────
-///   Easy   → stepDuration=0.80s  stepGap=0.35s  previewPause=0.90s
-///   Medium → stepDuration=0.55s  stepGap=0.25s  previewPause=0.65s
-///   Hard   → stepDuration=0.35s  stepGap=0.18s  previewPause=0.45s
+/// Flujo por fase:
+///   1. La secuencia crece +1 cada ronda hasta alcanzar stepsToWin.
+///   2. Al completar la fase → banner de transición → siguiente fase.
+///   3. Al completar las 3 fases → victoria.
+///   4. Si el jugador falla en cualquier momento → Game Over.
 /// </summary>
 public class SimonGameManager : MinigameBase
 {
@@ -29,47 +27,55 @@ public class SimonGameManager : MinigameBase
     enum State { Idle, ShowingSequence, PlayerTurn, RoundWon, GameOver }
     State _state = State.Idle;
 
-    // ── Dificultad (configurable desde Inspector) ─────────────────────────────
-    [Header("Dificultad")]
-    [Tooltip("Duración (segundos) de cada flash de color en la secuencia.")]
-    [SerializeField] float stepDurationEasy   = 0.80f;
-    [SerializeField] float stepDurationMedium = 0.55f;
-    [SerializeField] float stepDurationHard   = 0.35f;
+    // ── Configuración de escena ───────────────────────────────────────────────
+    [Header("Número de colores de la escena")]
+    [Tooltip("Cuántos colores distintos usa el juego en esta escena (4 o 5).")]
+    [SerializeField] int colorCount = 4;
 
-    [Tooltip("Pausa (segundos) entre cada color de la secuencia.")]
-    [SerializeField] float stepGapEasy   = 0.35f;
-    [SerializeField] float stepGapMedium = 0.25f;
-    [SerializeField] float stepGapHard   = 0.18f;
+    // ── Fase 1 ────────────────────────────────────────────────────────────────
+    [Header("Fase 1")]
+    [Tooltip("La fase termina cuando el jugador alcanza esta longitud de secuencia.")]
+    [SerializeField] int   stepsToWin1   = 3;
+    [Tooltip("Duración del flash de cada color (segundos).")]
+    [SerializeField] float stepDuration1 = 0.80f;
+    [Tooltip("Pausa entre flashes (segundos).")]
+    [SerializeField] float stepGap1      = 0.35f;
+    [Tooltip("Pausa antes del turno del jugador (segundos).")]
+    [SerializeField] float previewPause1 = 0.90f;
 
-    [Tooltip("Pausa antes de que el jugador pueda introducir su respuesta.")]
-    [SerializeField] float previewPauseEasy   = 0.90f;
-    [SerializeField] float previewPauseMedium = 0.65f;
-    [SerializeField] float previewPauseHard   = 0.45f;
+    // ── Fase 2 ────────────────────────────────────────────────────────────────
+    [Header("Fase 2")]
+    [SerializeField] int   stepsToWin2   = 4;
+    [SerializeField] float stepDuration2 = 0.60f;
+    [SerializeField] float stepGap2      = 0.28f;
+    [SerializeField] float previewPause2 = 0.70f;
+
+    // ── Fase 3 ────────────────────────────────────────────────────────────────
+    [Header("Fase 3")]
+    [SerializeField] int   stepsToWin3   = 5;
+    [SerializeField] float stepDuration3 = 0.45f;
+    [SerializeField] float stepGap3      = 0.22f;
+    [SerializeField] float previewPause3 = 0.55f;
 
     [Header("Puntuación")]
-    [Tooltip("Puntos base por ronda completada.")]
-    [SerializeField] int pointsPerRound = 100;
+    [SerializeField] int pointsPerStep = 100;
 
-    // ── Cache de config por dificultad ────────────────────────────────────────
+    // ── Runtime ───────────────────────────────────────────────────────────────
     float _stepDuration;
     float _stepGap;
     float _previewPause;
+    int   _currentPhase;     // 0-based
+    int   _accumulatedScore;
 
-    // ── Récord ────────────────────────────────────────────────────────────────
-    const string PREF_RECORD = "simon_record_easy";
-    string PREF_RECORD_Runtime = PREF_RECORD;
-
+    const string PREF_RECORD = "simon_record";
     int _record;
-    int _sessionScore;
 
-    // ── Coroutine activa ──────────────────────────────────────────────────────
     Coroutine _gameLoop;
 
     // ═════════════════════════════════════════════════════════════════════════
     // MinigameBase overrides
     // ═════════════════════════════════════════════════════════════════════════
 
-    // Establece nombre y categoría antes de que MinigameBase construya el intro panel
     protected override void Start()
     {
         minigameName = "Simón Dice";
@@ -80,41 +86,37 @@ public class SimonGameManager : MinigameBase
     protected override string GetIntroDescription() =>
         "Observa la secuencia de colores que se ilumina.\n" +
         "Cuando sea tu turno, repítela en el mismo orden.\n\n" +
-        "Cada ronda se añade un color más. ¿Hasta dónde llegarás?";
+        "Supera las 3 fases para ganar. ¡Buena suerte!";
 
-    // Llamado por MinigameBase cuando el jugador pulsa COMENZAR o [ESPACIO]
     protected override void OnMinigameStart()
     {
         _seq   = GetComponent<SimonSequenceManager>();
         _audio = GetComponent<SimonAudioManager>();
         _ui    = GetComponent<SimonUIController>();
 
-        ApplyDifficulty();
-        _record       = PlayerPrefs.GetInt(PREF_RECORD_Runtime, 0);
-        _sessionScore = 0;
+        _seq.Initialize(colorCount);
 
-        // Construir UI del juego
-        _ui.BuildUI();
+        _record           = PlayerPrefs.GetInt(PREF_RECORD, 0);
+        _accumulatedScore = 0;
+        _currentPhase     = 0;
+
+        _ui.BuildUI(colorCount);
         _ui.SetRecord(_record);
         _ui.SetRound(0);
+        _ui.SetPhase(1, 3);
         _ui.SetStatus("");
 
-        // Conectar botones de colores
         foreach (var btn in _ui.Buttons)
         {
             btn.SetInteractive(false);
-            btn.OnPressed += HandleButtonPressed;
+            btn.OnPressed += _ => { }; // registrado en GameLoop
         }
 
-        // Conectar navegación (reiniciar = recargar escena; menú = selector)
         _ui.OnRestartPressed += () => RestartMinigame();
         _ui.OnMenuPressed    += () => ReturnToGameSelector();
 
-        // Arrancar
-        _seq.ResetSequence();
         if (_gameLoop != null) StopCoroutine(_gameLoop);
         _gameLoop = StartCoroutine(GameLoop());
-        _state = State.Idle;
     }
 
     protected override void OnMinigameComplete() { }
@@ -126,48 +128,81 @@ public class SimonGameManager : MinigameBase
 
     IEnumerator GameLoop()
     {
-        while (true)
+        int[] stepsToWin     = { stepsToWin1,   stepsToWin2,   stepsToWin3   };
+        float[] durations    = { stepDuration1, stepDuration2, stepDuration3 };
+        float[] gaps         = { stepGap1,      stepGap2,      stepGap3      };
+        float[] previews     = { previewPause1, previewPause2, previewPause3 };
+
+        for (_currentPhase = 0; _currentPhase < 3; _currentPhase++)
         {
-            // 1. Añadir paso y actualizar UI
-            _seq.AddStep();
-            _ui.SetRound(_seq.Round);
-            SetAllInteractive(false);
+            // Aplicar configuración de esta fase
+            _stepDuration = durations[_currentPhase];
+            _stepGap      = gaps[_currentPhase];
+            _previewPause = previews[_currentPhase];
+            int phaseSteps = stepsToWin[_currentPhase];
 
-            // 2. Breve pausa antes de mostrar la secuencia
-            _state = State.ShowingSequence;
-            _ui.SetStatus("Observa la secuencia…", new Color(0.38f, 0.52f, 0.68f));
-            yield return new WaitForSeconds(0.55f);
+            // Reiniciar secuencia para la nueva fase
+            _seq.ResetSequence();
 
-            // 3. Mostrar secuencia
-            yield return ShowSequence();
+            _ui.SetPhase(_currentPhase + 1, 3);
+            _ui.SetRound(0);
 
-            // 4. Pausa antes del turno del jugador
-            yield return new WaitForSeconds(_previewPause);
+            // Bucle interno de la fase
+            bool gameOver = false;
 
-            // 5. Turno del jugador
-            _state = State.PlayerTurn;
-            _ui.SetStatus("¡Tu turno!", new Color(0.22f, 0.86f, 0.54f));
-            SetAllInteractive(true);
+            while (_seq.Round < phaseSteps)
+            {
+                // 1. Añadir paso
+                _seq.AddStep();
+                _ui.SetRound(_seq.Round);
+                SetAllInteractive(false);
 
-            // 6. Esperar hasta que el jugador complete o falle
-            bool[] inputResult = { false };
-            yield return WaitForPlayerInput(inputResult);
+                // 2. Pausa breve → mostrar secuencia
+                _state = State.ShowingSequence;
+                _ui.SetStatus("Observa la secuencia…", new Color(0.38f, 0.52f, 0.68f));
+                yield return new WaitForSeconds(0.55f);
 
-            SetAllInteractive(false);
+                yield return ShowSequence();
 
-            if (inputResult[0])
+                // 3. Pausa antes del turno del jugador
+                yield return new WaitForSeconds(_previewPause);
+
+                // 4. Turno del jugador
+                _state = State.PlayerTurn;
+                _ui.SetStatus("¡Tu turno!", new Color(0.22f, 0.86f, 0.54f));
+                SetAllInteractive(true);
+
+                bool[] failed = { false };
+                yield return WaitForPlayerInput(failed);
+                SetAllInteractive(false);
+
+                if (failed[0])
+                {
+                    gameOver = true;
+                    break;
+                }
+
+                // 5. Ronda correcta
+                _state = State.RoundWon;
+                _accumulatedScore += pointsPerStep * _seq.Round;
+                _ui.SetStatus("¡Correcto! +1 color", new Color(0.96f, 0.78f, 0.18f));
+                _audio.PlaySuccess();
+                yield return new WaitForSeconds(1.00f);
+            }
+
+            if (gameOver)
             {
                 yield return HandleGameOver();
                 yield break;
             }
 
-            // 7. Ronda completada
-            _state = State.RoundWon;
-            _sessionScore += pointsPerRound * _seq.Round;
-            _ui.SetStatus("¡Correcto! +1 color", new Color(0.96f, 0.78f, 0.18f));
-            _audio.PlaySuccess();
-            yield return new WaitForSeconds(1.10f);
+            // Fase completada — si no es la última, transición
+            if (_currentPhase < 2)
+                yield return PhaseTransition(_currentPhase + 1);
         }
+
+        // Las 3 fases completadas
+        yield return HandleWin();
     }
 
     // ── Mostrar secuencia ─────────────────────────────────────────────────────
@@ -176,11 +211,9 @@ public class SimonGameManager : MinigameBase
     {
         for (int i = 0; i < _seq.Round; i++)
         {
-            int colorIdx = _seq.GetStep(i);
-            var btn      = _ui.Buttons[colorIdx];
-
-            _audio.PlayColor(colorIdx);
-            yield return btn.Flash(_stepDuration);
+            int idx = _seq.GetStep(i);
+            _audio.PlayColor(idx);
+            yield return _ui.Buttons[idx].Flash(_stepDuration);
             yield return new WaitForSeconds(_stepGap);
         }
     }
@@ -192,15 +225,12 @@ public class SimonGameManager : MinigameBase
         bool done   = false;
         bool failed = false;
 
-        void OnInput(int colorIdx)
+        void OnInput(int idx)
         {
-            if (_state != State.PlayerTurn) return;
-            if (done) return;
+            if (_state != State.PlayerTurn || done) return;
 
-            bool correct = _seq.Submit(colorIdx, out bool roundComplete);
-
-            // Flash visual del botón pulsado
-            StartCoroutine(_ui.Buttons[colorIdx].PlayerPress(0.18f));
+            bool correct = _seq.Submit(idx, out bool roundComplete);
+            StartCoroutine(_ui.Buttons[idx].PlayerPress(0.18f));
 
             if (!correct)
             {
@@ -211,22 +241,31 @@ public class SimonGameManager : MinigameBase
             }
             else
             {
-                _audio.PlayColor(colorIdx);
-                if (roundComplete)
-                    done = true;
+                _audio.PlayColor(idx);
+                if (roundComplete) done = true;
             }
         }
 
-        foreach (var btn in _ui.Buttons)
-            btn.OnPressed += OnInput;
-
-        while (!done)
-            yield return null;
-
-        foreach (var btn in _ui.Buttons)
-            btn.OnPressed -= OnInput;
+        foreach (var btn in _ui.Buttons) btn.OnPressed += OnInput;
+        while (!done) yield return null;
+        foreach (var btn in _ui.Buttons) btn.OnPressed -= OnInput;
 
         failedOut[0] = failed;
+    }
+
+    // ── Transición entre fases ────────────────────────────────────────────────
+
+    IEnumerator PhaseTransition(int nextPhase)
+    {
+        _state = State.Idle;
+        SetAllInteractive(false);
+
+        _ui.SetStatus($"¡Fase {nextPhase - 1} completada!\nPreparate para la fase {nextPhase}…",
+                      new Color(0.96f, 0.78f, 0.18f));
+        _audio.PlaySuccess();
+        yield return new WaitForSeconds(2.20f);
+
+        _ui.SetStatus("");
     }
 
     // ── Game Over ─────────────────────────────────────────────────────────────
@@ -236,66 +275,52 @@ public class SimonGameManager : MinigameBase
         _state = State.GameOver;
         _ui.SetStatus("¡Oh no! Secuencia incorrecta", new Color(0.90f, 0.22f, 0.28f));
 
-        // Actualizar récord
         bool newRecord = false;
-        if (_seq.Round > _record)
+        int totalSteps = _seq.Round + _currentPhase * 10; // puntuación aproximada de récord
+        if (totalSteps > _record)
         {
-            _record   = _seq.Round;
+            _record = totalSteps;
             newRecord = true;
-            PlayerPrefs.SetInt(PREF_RECORD_Runtime, _record);
+            PlayerPrefs.SetInt(PREF_RECORD, _record);
             PlayerPrefs.Save();
         }
         _ui.SetRecord(_record);
-
-        // Registrar puntuación (MinigameBase la pasa al GameManager global)
-        CompleteMinigame(_sessionScore);
+        CompleteMinigame(_accumulatedScore);
 
         yield return new WaitForSeconds(0.80f);
         _ui.ShowResult(newRecord, _seq.Round, _record);
     }
 
-    // ═════════════════════════════════════════════════════════════════════════
-    // Helpers
-    // ═════════════════════════════════════════════════════════════════════════
+    // ── Victoria ──────────────────────────────────────────────────────────────
+
+    IEnumerator HandleWin()
+    {
+        _state = State.GameOver;
+        _ui.SetStatus("¡Lo lograste! ¡Eres increíble!", new Color(0.22f, 0.86f, 0.54f));
+        _audio.PlaySuccess();
+
+        bool newRecord = false;
+        int totalSteps = 999; // ganar siempre bate el récord anterior si era <999
+        if (_record < totalSteps)
+        {
+            newRecord = true;
+            _record   = totalSteps;
+            PlayerPrefs.SetInt(PREF_RECORD, _record);
+            PlayerPrefs.Save();
+        }
+        _ui.SetRecord(_record);
+        CompleteMinigame(_accumulatedScore);
+
+        yield return new WaitForSeconds(0.80f);
+        _ui.ShowWin(newRecord, 3, 3);
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
 
     void SetAllInteractive(bool value)
     {
+        if (_ui?.Buttons == null) return;
         foreach (var btn in _ui.Buttons)
             btn.SetInteractive(value);
-    }
-
-    void HandleButtonPressed(int colorIdx)
-    {
-        // Los botones sólo son interactivos en PlayerTurn
-        // (SetInteractive(false) los bloquea fuera de ese estado)
-    }
-
-    void ApplyDifficulty()
-    {
-        DifficultyLevel diff = GameManager.Instance != null
-            ? GameManager.Instance.CurrentDifficulty
-            : DifficultyLevel.Easy;
-
-        switch (diff)
-        {
-            case DifficultyLevel.Medium:
-                _stepDuration       = stepDurationMedium;
-                _stepGap            = stepGapMedium;
-                _previewPause       = previewPauseMedium;
-                PREF_RECORD_Runtime = "simon_record_medium";
-                break;
-            case DifficultyLevel.Hard:
-                _stepDuration       = stepDurationHard;
-                _stepGap            = stepGapHard;
-                _previewPause       = previewPauseHard;
-                PREF_RECORD_Runtime = "simon_record_hard";
-                break;
-            default:
-                _stepDuration       = stepDurationEasy;
-                _stepGap            = stepGapEasy;
-                _previewPause       = previewPauseEasy;
-                PREF_RECORD_Runtime = PREF_RECORD;
-                break;
-        }
     }
 }
