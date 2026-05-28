@@ -29,14 +29,8 @@ public class ResourceGameController : MinigameBase
     }
 
     [Header("=== ESTRELLAS (energia) ===")]
-    [Tooltip("Estrellas en dificultad facil (para ninos: generoso)")]
-    public int starsEasy = 20;
-
-    [Tooltip("Estrellas en dificultad media")]
-    public int starsMedium = 14;
-
-    [Tooltip("Estrellas en dificultad dificil")]
-    public int starsHard = 9;
+    [Tooltip("Estrellas disponibles en esta escena")]
+    public int stars = 20;
 
     [Header("=== OBJETIVO ===")]
     [Tooltip("Progreso necesario para ganar")]
@@ -105,7 +99,7 @@ public class ResourceGameController : MinigameBase
         }
 
         EnsureES();
-        _maxStars    = GetStars();
+        _maxStars    = stars;
         _stars       = _maxStars;
         _progress    = 0f;
         _displayProg = 0f;
@@ -125,15 +119,6 @@ public class ResourceGameController : MinigameBase
             _displayProg = Mathf.Lerp(_displayProg, _progress, Time.deltaTime * 8f);
             UpdateProgVisual();
         }
-    }
-
-    private int GetStars()
-    {
-        if (GameManager.Instance == null) return starsEasy;
-        DifficultyLevel d = GameManager.Instance.CurrentDifficulty;
-        if (d == DifficultyLevel.Medium) return starsMedium;
-        if (d == DifficultyLevel.Hard)   return starsHard;
-        return starsEasy;
     }
 
     private void DoAction(int i)

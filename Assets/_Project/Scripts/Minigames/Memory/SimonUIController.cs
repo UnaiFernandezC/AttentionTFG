@@ -47,6 +47,7 @@ public class SimonUIController : MonoBehaviour
     RectTransform   _canvasRT;
 
     // HUD
+    TextMeshProUGUI _roundHeaderLbl;
     TextMeshProUGUI _roundLbl;
     TextMeshProUGUI _recordLbl;
     TextMeshProUGUI _statusLbl;
@@ -123,7 +124,8 @@ public class SimonUIController : MonoBehaviour
         // Ronda
         var rdBox = MkImg(hdr, "RdBox", PANEL2, V(0.52f,0.10f), V(0.73f,0.90f), V(0,0), V(0,0));
         MkImg(rdBox, "LineT", ACCENT, V(0,1), V(1,1), V(0,-2), V(0,4));
-        MkTxt(rdBox, "RdLbl", "RONDA", DIM, 13, V(0,0.52f), V(1,0.96f)).alignment = TextAlignmentOptions.Center;
+        _roundHeaderLbl = MkTxt(rdBox, "RdLbl", "FASE", DIM, 13, V(0,0.52f), V(1,0.96f));
+        _roundHeaderLbl.alignment = TextAlignmentOptions.Center;
         _roundLbl = MkTxt(rdBox, "RdVal", "—", Color.white, 28, V(0,0.05f), V(1,0.55f));
         _roundLbl.fontStyle = FontStyles.Bold;
         _roundLbl.alignment = TextAlignmentOptions.Center;
@@ -309,6 +311,12 @@ public class SimonUIController : MonoBehaviour
     // ═════════════════════════════════════════════════════════════════════════
     // API de actualización de HUD
     // ═════════════════════════════════════════════════════════════════════════
+
+    public void SetPhase(int phase, int total)
+    {
+        if (_roundHeaderLbl) _roundHeaderLbl.text = $"FASE {phase}/{total}";
+        if (_roundLbl) _roundLbl.text = "—";
+    }
 
     public void SetRound(int round) =>
         _roundLbl.text = round > 0 ? round.ToString() : "—";

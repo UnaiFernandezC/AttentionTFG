@@ -260,9 +260,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   minigameName: Gestion de recursos
   category: 4
-  starsEasy: 20
-  starsMedium: 14
-  starsHard: 9
+  stars: 20
   goal: 100
   actions:
   - icon: "\u273F"
@@ -273,12 +271,12 @@ MonoBehaviour:
   - icon: "\u2726"
     actionName: Buen avance
     cost: 2
-    progress: 10
+    progress: 14
     buttonColor: {r: 0, g: 0, b: 0, a: 1}
   - icon: "\u26A1"
     actionName: Super impulso
     cost: 5
-    progress: 25
+    progress: 28
     buttonColor: {r: 0, g: 0, b: 0, a: 1}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:

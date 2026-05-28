@@ -260,11 +260,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   minigameName: Orden correcto
   category: 4
-  numbersRound1: 4
-  timeLimitRound1: 15
-  numbersRound2: 6
-  timeLimitRound2: 20
-  numbersRound3: 10
+  numbersRound1: 3
+  timeLimitRound1: 20
+  numbersRound2: 4
+  timeLimitRound2: 25
+  numbersRound3: 5
   timeLimitRound3: 30
 --- !u!1660057539 &9223372036854775807
 SceneRoots:

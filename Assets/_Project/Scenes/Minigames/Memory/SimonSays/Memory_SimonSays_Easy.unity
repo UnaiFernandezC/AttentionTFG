@@ -169,6 +169,17 @@ Camera:
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
   m_FOVAxisMode: 0
+  m_Iso: 200
+  m_ShutterSpeed: 0.005
+  m_Aperture: 16
+  m_FocusDistance: 10
+  m_FocalLength: 50
+  m_BladeCount: 5
+  m_Curvature: {x: 2, y: 11}
+  m_BarrelClipping: 0.25
+  m_Anamorphism: 0
+  m_SensorSize: {x: 36, y: 24}
+  m_LensShift: {x: 0, y: 0}
   m_NormalizedViewPortRect:
     serializedVersion: 2
     x: 0
@@ -248,18 +259,24 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b1, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
-  stepDurationEasy: 0.8
-  stepDurationMedium: 0.55
-  stepDurationHard: 0.35
-  stepGapEasy: 0.35
-  stepGapMedium: 0.25
-  stepGapHard: 0.18
-  previewPauseEasy: 0.9
-  previewPauseMedium: 0.65
-  previewPauseHard: 0.45
-  pointsPerRound: 100
+  m_Name: 
+  m_EditorClassIdentifier: 
+  minigameName: Minijuego
+  category: 0
+  colorCount: 4
+  stepsToWin1: 3
+  stepDuration1: 0.8
+  stepGap1: 0.35
+  previewPause1: 0.9
+  stepsToWin2: 4
+  stepDuration2: 0.6
+  stepGap2: 0.28
+  previewPause2: 0.75
+  stepsToWin3: 5
+  stepDuration3: 0.55
+  stepGap3: 0.22
+  previewPause3: 0.65
+  pointsPerStep: 100
 --- !u!114 &100000023
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -270,8 +287,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 96f596f10e6e874429ccd92a3f6c9124, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!114 &100000024
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -282,8 +299,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f38e1f7dfe134084fa22e2242160d96f, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!114 &100000025
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -294,8 +311,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a0, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

@@ -29,8 +29,11 @@ public class PathMemoryGameManager : MinigameBase
     int  _currentLevel = 0;
     bool _gameActive   = false;
 
-    // Dificultad — override de displaySeconds (0 = usar valor del PathManager)
-    float _displaySecondsOverride = 0f;
+    // ── Configuración de escena (inspector) ──────────────────────
+    [Header("Tiempo de memorización por nivel (segundos)")]
+    [SerializeField] float displaySecondsLevel1 = 5f;
+    [SerializeField] float displaySecondsLevel2 = 4f;
+    [SerializeField] float displaySecondsLevel3 = 3f;
 
     // ── MinigameBase ─────────────────────────────────────────────
 
@@ -46,26 +49,8 @@ public class PathMemoryGameManager : MinigameBase
         "Cuando se apaguen, tócalas en el mismo orden.\n\n" +
         "Empieza por la casilla AZUL y termina en la DORADA.";
 
-    void ApplyDifficulty()
-    {
-        var diff = GameManager.Instance != null
-            ? GameManager.Instance.CurrentDifficulty
-            : DifficultyLevel.Easy;
-        switch (diff)
-        {
-            case DifficultyLevel.Medium:
-                _displaySecondsOverride = 3f;  // slightly less time per level
-                break;
-            case DifficultyLevel.Hard:
-                _displaySecondsOverride = 2f;  // shortest display time
-                break;
-            // Easy = default (PathManager values: 5s/4s/3s), no override
-        }
-    }
-
     protected override void OnMinigameStart()
     {
-        ApplyDifficulty();
         // Crear componentes en tiempo de ejecución (no dependen del YAML de escena)
         _grid    = gameObject.AddComponent<PathMemoryGridManager>();
         _pathMgr = gameObject.AddComponent<PathMemoryPathManager>();
@@ -89,10 +74,11 @@ public class PathMemoryGameManager : MinigameBase
 
     void StartLevel(int level)
     {
-        _cfg   = _pathMgr.GetConfig(level);
-        if (_displaySecondsOverride > 0f)
-            _cfg = new PathMemoryPathManager.LevelConfig
-                { gridSize = _cfg.gridSize, displaySeconds = _displaySecondsOverride };
+        _cfg = _pathMgr.GetConfig(level);
+        // Sobreescribir displaySeconds con el valor del inspector
+        float[] inspectorTimes = { displaySecondsLevel1, displaySecondsLevel2, displaySecondsLevel3 };
+        _cfg = new PathMemoryPathManager.LevelConfig
+            { gridSize = _cfg.gridSize, displaySeconds = inspectorTimes[Mathf.Clamp(level, 0, 2)] };
         _route = _pathMgr.GetRoute(level);
 
         // Si el canvas del grid existe de una partida anterior, lo destruimos

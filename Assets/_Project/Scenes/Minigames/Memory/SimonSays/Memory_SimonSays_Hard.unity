@@ -263,25 +263,20 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   minigameName: Minijuego
   category: 0
-  stepDurationEasy: 0.8
-  stepDurationMedium: 0.55
-  stepDurationHard: 0.35
-  stepGapEasy: 0.35
-  stepGapMedium: 0.25
-  stepGapHard: 0.18
-  previewPauseEasy: 0.9
-  previewPauseMedium: 0.65
-  previewPauseHard: 0.45
-  colorCountEasy: 5
-  colorCountMedium: 4
-  colorCountHard: 5
-  maxRoundsEasy: 5
-  maxRoundsMedium: 8
-  maxRoundsHard: 10
-  startLengthEasy: 1
-  startLengthMedium: 1
-  startLengthHard: 2
-  pointsPerRound: 100
+  colorCount: 4
+  stepsToWin1: 4
+  stepDuration1: 0.45
+  stepGap1: 0.3
+  previewPause1: 0.55
+  stepsToWin2: 5
+  stepDuration2: 0.35
+  stepGap2: 0.3
+  previewPause2: 0.55
+  stepsToWin3: 6
+  stepDuration3: 0.28
+  stepGap3: 0.3
+  previewPause3: 0.55
+  pointsPerStep: 100
 --- !u!114 &100000023
 MonoBehaviour:
   m_ObjectHideFlags: 0
