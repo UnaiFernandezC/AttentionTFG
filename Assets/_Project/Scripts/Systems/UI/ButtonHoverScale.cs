@@ -3,31 +3,31 @@ using UnityEngine.EventSystems;
 
 public class ButtonHoverScaler : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
 {
-    public Vector3 hoverScale = new Vector3(1.2f, 1.2f, 1f);
-    public float scaleSpeed = 8f;
+    [HideInInspector] public Vector3 hoverScale;
+    [HideInInspector] public float scaleSpeed = 8f;
 
-    private Vector3 originalScale;
-    private Vector3 targetScale;
+    Vector3 _originalScale;
+    Vector3 _targetScale;
 
     void Start()
     {
-        originalScale = transform.localScale;
-        targetScale = originalScale;
+        _originalScale = transform.localScale;
+        hoverScale     = _originalScale * 1.07f;
+        _targetScale   = _originalScale;
     }
 
     void Update()
     {
-
-        transform.localScale = Vector3.Lerp(transform.localScale, targetScale, Time.deltaTime * scaleSpeed);
+        transform.localScale = Vector3.Lerp(transform.localScale, _targetScale, Time.deltaTime * scaleSpeed);
     }
 
     public void OnPointerEnter(PointerEventData eventData)
     {
-        targetScale = hoverScale;
+        _targetScale = hoverScale;
     }
 
     public void OnPointerExit(PointerEventData eventData)
     {
-        targetScale = originalScale;
+        _targetScale = _originalScale;
     }
 }

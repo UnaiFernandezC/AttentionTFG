@@ -65,9 +65,10 @@ public class EmotionalBalanceController : MinigameBase
     static Color C(float r, float g, float b) => new Color(r, g, b);
 
     protected override string GetIntroDescription() =>
-        "El indicador se mueve solo. Mantelo dentro de la zona verde.\n" +
-        "Usa A / D, las flechas del teclado, o los botones de pantalla.\n" +
-        "El control es suave: no lo muevas de golpe, hazlo poco a poco.";
+        "El indicador se mueve solo. Mantelo en la zona verde!\n\n" +
+        "Usa los botones de pantalla o las flechas del teclado.\n" +
+        "Muevelo despacio, no de golpe.\n" +
+        "Si se va a la zona roja demasiado tiempo, pierdes!";
 
     protected override void OnMinigameStart()
     {
@@ -215,7 +216,7 @@ public class EmotionalBalanceController : MinigameBase
         BuildStabilityBar(R);
 
         _statusLbl = MkTxt(R, "Status", "Preparate...", DIM, 34,
-            V2(0.05f, 0.30f), V2(0.95f, 0.40f));
+            V2(0.05f, 0.10f), V2(0.95f, 0.22f));
         _statusLbl.fontStyle = FontStyles.Bold;
 
         BuildControlButtons(R);

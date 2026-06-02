@@ -29,10 +29,10 @@ public class StopAndGoGameManager : MinigameBase
     float _currentZoneSpan;
 
     protected override string GetIntroDescription() =>
-        "Un punto rueda por la pista. Para cuando esté en la zona VERDE.\n\n" +
-        "3 rondas · 3 paradas por ronda\n" +
-        "En cada parada la zona cambia de sitio.\n" +
-        "Cada ronda la zona es más pequeña y el punto va más rápido.";
+        "Un punto da vueltas en un circulo.\n" +
+        "Tienes que pararlo cuando este en la zona VERDE.\n\n" +
+        "Pulsa ESPACIO o el boton PARA cuando el punto llegue al verde.\n" +
+        "Si te pasas o te quedas corto, la zona se hace mas pequena!";
 
     void ApplyDifficulty()
     {

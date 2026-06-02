@@ -247,7 +247,7 @@ public class QuickReactionUIController : MonoBehaviour
         else if (timeout)
         {
             SetStimulusColor(CRED, false);
-            _stimLabel.text  = "✗";
+            _stimLabel.text  = "X";
             _stimLabel.color = CRED;
             _statusLbl.text  = "¡Tiempo agotado!";
             _statusLbl.color = CRED;

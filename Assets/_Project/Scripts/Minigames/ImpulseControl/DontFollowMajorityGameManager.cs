@@ -60,10 +60,10 @@ public class DontFollowMajorityGameManager : MinigameBase
     protected override string GetIntroDescription()
     {
         return
-            "Aparecen " + totalArrows + " flechas: la mayoría apuntan en\n" +
-            "una dirección, solo " + minorityCount + " apuntan en otra.\n" +
-            "Elige la dirección con MENOS flechas.\n" +
-            "¡No sigas el instinto de ir con la mayoría!";
+            "Ves muchas flechas apuntando a distintos lados.\n" +
+            "Tu tarea: elegir la direccion que tiene MENOS flechas.\n\n" +
+            "No hagas lo que hace la mayoria!\n" +
+            "Piensa antes de pulsar.";
     }
 
     void ApplyDifficulty()

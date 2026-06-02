@@ -33,10 +33,10 @@ public class RuleSwitchGameManager : MinigameBase
     bool _playerChose;
 
     protected override string GetIntroDescription() =>
-        "Pulsa el objeto si su color coincide con la REGLA ACTIVA.\n" +
-        "Ignóralo si no coincide (no hagas click).\n\n" +
-        "ATENCION: la regla cambia SIN AVISO. Adáptate rápido.\n\n" +
-        "Consigue el maximo de aciertos en " + totalStimuli + " estimulos.";
+        "Aparecen figuras de colores.\n" +
+        "Pulsa las que te indique la regla!\n\n" +
+        "Atencion: la regla puede cambiar de repente.\n" +
+        "Mira siempre el aviso grande del centro.";
 
     void ApplyDifficulty()
     {

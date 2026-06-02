@@ -17,10 +17,10 @@ public class TrackingGameManager : MinigameBase
     float _pulseT;
 
     protected override string GetIntroDescription() =>
-        "Un objeto se moverá por la pantalla.\n" +
-        "Mantén el cursor sobre él el mayor tiempo posible.\n" +
-        "Consigue " + (int)winTime + " segundos de seguimiento para ganar.\n" +
-        "Si lo pierdes, el progreso retrocede lentamente.";
+        "Un punto se mueve por la pantalla.\n" +
+        "Mueve el raton encima del punto y no lo pierdas!\n\n" +
+        "Cuanto mas tiempo lo sigas, mas puntos consigues.\n" +
+        "Concentracion al maximo!";
 
     void ApplyDifficulty()
     {

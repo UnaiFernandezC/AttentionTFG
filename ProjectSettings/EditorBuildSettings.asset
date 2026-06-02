@@ -15,15 +15,15 @@ EditorBuildSettings:
     path: Assets/_Project/Scenes/Main/MainMenu.unity
     guid: 9fc0d4010bbf28b4594072e72b8655ab
   - enabled: 1
-    path: Assets/_Project/Scenes/GameSelectors/GameSelector.unity
+    path: Assets/_Project/Scenes/GameSelectors/EasyMenu.unity
     guid: 5c4fce54a6c2fde46aa57ee5db3d3e4d
-  - enabled: 1
+  - enabled: 0
     path: Assets/_Project/Scenes/GameSelectors/GameSelector 1.unity
-    guid: 630dd74263b53834698b47412bb2673b
-  - enabled: 1
+    guid: 385ba5f425e17684998e412c9e18544f
+  - enabled: 0
     path: Assets/_Project/Scenes/GameSelectors/GameSelector 2.unity
     guid: 13aca51e234a2a6478ca6062aaa93605
-  - enabled: 1
+  - enabled: 0
     path: Assets/_Project/Scenes/Minigames/Attention/Attention.unity
     guid: 02b4ad808bba1824596dda5834bd938b
   - enabled: 1
@@ -326,4 +326,10 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/_Project/Scenes/Minigames/Planning/OptimalPath/Planning_OptimalPath_Hard.unity
     guid: 241442ca6a354e83a08c15b875bcb5b9
+  - enabled: 1
+    path: Assets/_Project/Scenes/GameSelectors/HardMenu.unity
+    guid: 261f52cd5dd48e643b7779c2c16ed313
+  - enabled: 1
+    path: Assets/_Project/Scenes/GameSelectors/MediumMenu.unity
+    guid: cb444c5b3a708af4a9a234eec9590c85
   m_configObjects: {}

@@ -20,6 +20,10 @@ public class DontPressGameManager : MinigameBase
     [Header("Pausa entre rondas (s)")]
     public float pauseBetweenRounds = 1.6f;
 
+    [Header("Señal verde falsa")]
+    [Tooltip("Probabilidad de que aparezca una señal verde falsa antes del verde real (0=nunca, 1=siempre)")]
+    [SerializeField] float fakeGreenChance = 0.4f;
+
     DontPressTimerManager  _timer;
     DontPressUIController  _ui;
 
@@ -42,10 +46,9 @@ public class DontPressGameManager : MinigameBase
     static readonly Color TXT_YELLOW = new Color(0.95f, 0.80f, 0.15f);
 
     protected override string GetIntroDescription() =>
-        "Aparece un boton ROJO: NO lo pulses todavia.\n" +
-        "Cuando cambie a VERDE: pulsalo lo antes posible.\n\n" +
-        "Pulsar antes de tiempo cuenta como fallo.\n" +
-        "Consigue " + roundsToWin + " de " + rounds + " rondas para ganar.";
+        "Aparece un boton. ESPERA hasta que cambie de color Y el texto diga YA.\n\n" +
+        "Si pulsas demasiado pronto... fallo!\n" +
+        "Solo pulsa cuando el boton sea VERDE y diga YA!";
 
     void ApplyDifficulty()
     {
@@ -137,6 +140,39 @@ public class DontPressGameManager : MinigameBase
         _ui.SetStatusText("Espera... no pulses todavia", TXT_DIM);
         _ui.HideCountdown();
         _timer.StartRound();
+
+        if (UnityEngine.Random.value < fakeGreenChance)
+            StartCoroutine(FakeGreenRoutine());
+    }
+
+    IEnumerator FakeGreenRoutine()
+    {
+        // Wait a random portion of the min wait time before flashing fake green
+        float delay = UnityEngine.Random.Range(waitMin * 0.3f, waitMin * 0.8f);
+        float elapsed = 0f;
+        while (elapsed < delay)
+        {
+            if (!_waitingPhase || !_roundActive) yield break;
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        // Only trigger if still in waiting phase
+        if (!_waitingPhase || !_roundActive) yield break;
+
+        // Flash green visuals but show "Aun no!" warning
+        _ui.ButtonCtrl.SetActive();
+        _ui.SetStatusText("Aun no!", TXT_RED);
+        _ui.Flash(C_YELLOW);
+
+        yield return new WaitForSeconds(0.8f);
+
+        // Restore waiting state if round still ongoing
+        if (_waitingPhase && _roundActive)
+        {
+            _ui.ButtonCtrl.SetWaiting();
+            _ui.SetStatusText("Espera... no pulses todavia", TXT_DIM);
+        }
     }
 
     void HandleActivated()

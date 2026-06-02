@@ -29,12 +29,10 @@ public class QuickReactionGameManager : MinigameBase
     bool  _stimulusActive;
 
     protected override string GetIntroDescription() =>
-        "Espera a que el círculo se ponga VERDE.\n" +
-        "Haz click (o pulsa ESPACIO) lo más rápido posible.\n\n" +
-        "• Click ANTES de verde → ronda fallida\n" +
-        "• Sin reaccionar a tiempo → ronda fallida\n" +
-        "  Ronda 1: 3 s · Ronda 2: 2 s · Ronda 3: 1 s\n\n" +
-        "Consigue " + roundsToWin + " de " + rounds + " rondas para ganar.";
+        "Mira el circulo.\n" +
+        "Cuando se ponga VERDE, pulsa lo mas rapido que puedas.\n\n" +
+        "Si pulsas antes de que se ponga verde... fallo de ronda.\n" +
+        "Tienes 3 rondas. Ganas si consigues 2.";
 
     void ApplyDifficulty()
     {

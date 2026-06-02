@@ -94,8 +94,8 @@ public class DontFollowMajorityUIController : MonoBehaviour
         _roundDots = BuildRoundDots(hdr, rounds);
 
         // ── Score ─────────────────────────────────────────────────────────
-        _scoreText = MkTxt(R, "Score", "0 pts", DIM, 19,
-                           V(0.01f,0.885f), V(0.16f,0.935f));
+        _scoreText = MkTxt(R, "Score", "0 pts", Color.white, 30,
+                           V(0.75f,0.885f), V(0.99f,0.935f));
         _scoreText.alignment = TextAlignmentOptions.MidlineLeft;
 
         // ── Hint ──────────────────────────────────────────────────────────
@@ -198,8 +198,8 @@ public class DontFollowMajorityUIController : MonoBehaviour
         var dpGO = new GameObject("DPad");
         dpGO.transform.SetParent(R, false);
         var dpRT = dpGO.AddComponent<RectTransform>();
-        dpRT.anchorMin = V(0.34f, 0.075f);
-        dpRT.anchorMax = V(0.66f, 0.162f);
+        dpRT.anchorMin = V(0.20f, 0.055f);
+        dpRT.anchorMax = V(0.80f, 0.215f);
         dpRT.offsetMin = dpRT.offsetMax = Vector2.zero;
 
         // Fondo sutil
@@ -242,7 +242,7 @@ public class DontFollowMajorityUIController : MonoBehaviour
         var captured = dir;
         btn.onClick.AddListener(() => onDir?.Invoke(captured));
 
-        var t = MkTxt(rt, "T", symbol, Color.white, 36, V(0,0), V(1,1));
+        var t = MkTxt(rt, "T", symbol, Color.white, 54, V(0,0), V(1,1));
         t.fontStyle = FontStyles.Bold;
     }
 
@@ -315,8 +315,8 @@ public class DontFollowMajorityUIController : MonoBehaviour
         Color flashCol = correct ? C(0.22f,0.86f,0.54f,0.24f) : C(0.90f,0.22f,0.28f,0.24f);
         Color textCol  = correct ? CGREEN : CRED;
         string txt     = correct
-            ? "✓  CORRECTO  —  " + correctDirName
-            : "✗  INCORRECTO  —  era " + correctDirName;
+            ? "CORRECTO: " + correctDirName
+            : "INCORRECTO — era " + correctDirName;
 
         if (_feedbackText) { _feedbackText.text = txt; _feedbackText.color = textCol; }
 

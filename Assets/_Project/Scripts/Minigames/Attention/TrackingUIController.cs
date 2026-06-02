@@ -57,7 +57,7 @@ public class TrackingUIController : MonoBehaviour
 
         BuildProgressSection(CanvasRT);
 
-        _statusLbl = MkTxt(CanvasRT,"Status","",ACCENT,26,V(0.03f,0.84f),V(0.60f,0.92f));
+        _statusLbl = MkTxt(CanvasRT,"Status","",ACCENT,26,V(0.03f,0.79f),V(0.70f,0.855f));
         _statusLbl.fontStyle=FontStyles.Bold; _statusLbl.alignment=TextAlignmentOptions.MidlineLeft;
 
         var bot = MkImg(CanvasRT,"Bot",HDR,V(0,0),V(1,0),V(0,40),V(0,80));

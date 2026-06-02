@@ -29,15 +29,11 @@ public class InverseResponseGameManager : MinigameBase
 
     protected override string GetIntroDescription()
     {
-        string ruleHint = ruleChangeInterval < 999
-            ? "La regla puede cambiar durante el juego: lee el banner."
-            : "Regla siempre activa: INVERSA (pulsa lo contrario).";
-
-        return "Aparece una flecha: pulsa la direccion CONTRARIA.\n" +
-               "→ Derecha  →  pulsa ← Izquierda\n" +
-               "↑ Arriba   →  pulsa ↓ Abajo\n\n" +
-               ruleHint + "\n" +
-               "Necesitas " + passCount + " de " + totalStimuli + " correctas para ganar.";
+        return "Aparece una figura a la IZQUIERDA o a la DERECHA.\n" +
+               "Pero tienes que pulsar el lado CONTRARIO!\n\n" +
+               "Figura a la izquierda -> pulsa derecha.\n" +
+               "Figura a la derecha -> pulsa izquierda.\n" +
+               "No te dejes enganar!";
     }
 
     void ApplyDifficulty()

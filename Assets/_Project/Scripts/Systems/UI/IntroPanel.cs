@@ -48,7 +48,7 @@ public static class IntroPanel
 
         var card = Img(R,
             new Vector2(0.5f,0.5f), new Vector2(0.5f,0.5f),
-            Vector2.zero, new Vector2(1060f, 590f),
+            Vector2.zero, new Vector2(1060f, 680f),
             new Color(0.10f, 0.13f, 0.24f));
 
         Img(card, new Vector2(0,0), new Vector2(0,1),
@@ -81,11 +81,14 @@ public static class IntroPanel
             new Color(1,1,1,0.10f));
 
         var descT = Txt(card, description,
-            new Color(0.72f, 0.80f, 0.96f), 28,
+            new Color(0.72f, 0.80f, 0.96f), 23,
             new Vector2(0.06f, 0.34f), new Vector2(0.94f, 0.67f));
         descT.alignment     = TextAlignmentOptions.TopLeft;
-        descT.overflowMode  = TextOverflowModes.Overflow;
+        descT.overflowMode  = TextOverflowModes.Truncate;
         descT.lineSpacing   = 6f;
+        descT.enableAutoSizing = true;
+        descT.fontSizeMin = 14f;
+        descT.fontSizeMax = 23f;
 
         var hintBg = Img(card,
             new Vector2(0.06f,0.18f), new Vector2(0.94f,0.32f),

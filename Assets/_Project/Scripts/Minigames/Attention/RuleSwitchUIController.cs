@@ -55,14 +55,31 @@ public class RuleSwitchUIController : MonoBehaviour
         ttl.fontStyle = FontStyles.Bold; ttl.alignment = TextAlignmentOptions.MidlineLeft; ttl.characterSpacing = 2f;
         MkTxt(hdr, "Cat", "ATENCIÓN", DIM2, 16, V(0.62f, 0.12f), V(0.97f, 0.88f)).alignment = TextAlignmentOptions.MidlineRight;
 
-        var info = MkImg(R, "InfoBar", C(0, 0, 0, 0.12f), V(0, 0.857f), V(1, 0.918f), V(0, 0), V(0, 0));
+        // ── Rule banner — large centered indicator ────────────────────────
+        var ruleBanner = MkImg(R, "RuleBanner", C(0.04f, 0.07f, 0.16f, 0.95f),
+                               V(0.10f, 0.70f), V(0.90f, 0.82f), V(0,0), V(0,0));
+        MkImg(ruleBanner, "RBLine", ACCENT, V(0,0), V(1,0), V(0,1.5f), V(0,3f));
+        MkImg(ruleBanner, "RBLineT", ACCENT, V(0,1), V(1,1), V(0,-1.5f), V(0,3f));
 
-        BuildRuleDot(info);
+        // colored dot on the left side of banner
+        var dotGO = new GameObject("RuleDot");
+        dotGO.transform.SetParent(ruleBanner, false);
+        var dotRT = dotGO.AddComponent<RectTransform>();
+        dotRT.anchorMin = new Vector2(0.02f, 0.15f);
+        dotRT.anchorMax = new Vector2(0.06f, 0.85f);
+        dotRT.sizeDelta = Vector2.zero;
+        dotRT.anchoredPosition = Vector2.zero;
+        _ruleDot = dotGO.AddComponent<Image>();
+        _ruleDot.color = Color.white;
+        _ruleDot.raycastTarget = false;
 
-        _ruleLbl = MkTxt(info, "RuleLbl", "Pulsa solo los ROJOS", ACCENT, 22,
-                         V(0.04f, 0), V(0.52f, 1));
+        _ruleLbl = MkTxt(ruleBanner, "RuleLbl", "Pulsa solo los ROJOS", Color.white, 40,
+                         V(0.07f, 0), V(0.93f, 1));
         _ruleLbl.fontStyle = FontStyles.Bold;
-        _ruleLbl.alignment = TextAlignmentOptions.MidlineLeft;
+        _ruleLbl.alignment = TextAlignmentOptions.Center;
+
+        // score and progress in a smaller strip below the banner
+        var info = MkImg(R, "InfoBar", C(0, 0, 0, 0.12f), V(0, 0.857f), V(1, 0.918f), V(0, 0), V(0, 0));
 
         _scoreLbl = MkTxt(info, "Score", "0 pts", Color.white, 24, V(0.60f, 0), V(0.79f, 1));
         _scoreLbl.fontStyle = FontStyles.Bold;
@@ -89,8 +106,8 @@ public class RuleSwitchUIController : MonoBehaviour
         var areaGO = new GameObject("GameArea");
         areaGO.transform.SetParent(R, false);
         GameAreaRT = areaGO.AddComponent<RectTransform>();
-        GameAreaRT.anchorMin        = new Vector2(0.25f, 0.26f);
-        GameAreaRT.anchorMax        = new Vector2(0.75f, 0.82f);
+        GameAreaRT.anchorMin        = new Vector2(0.10f, 0.18f);
+        GameAreaRT.anchorMax        = new Vector2(0.90f, 0.69f);
         GameAreaRT.sizeDelta        = Vector2.zero;
         GameAreaRT.anchoredPosition = Vector2.zero;
         areaGO.AddComponent<Image>().color = Color.clear;

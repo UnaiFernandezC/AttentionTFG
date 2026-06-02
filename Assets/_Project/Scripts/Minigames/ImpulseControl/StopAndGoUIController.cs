@@ -78,8 +78,8 @@ public class StopAndGoUIController : MonoBehaviour
 
         _roundDots = BuildDotRow(hdr, rounds, 0.76f, 0.04f, 26f);
 
-        _scoreText = MkTxt(R, "Score", "0 pts", DIM, 20,
-                           V(0.01f, 0.885f), V(0.16f, 0.935f));
+        _scoreText = MkTxt(R, "Score", "0 pts", Color.white, 30,
+                           V(0.75f, 0.885f), V(0.99f, 0.935f));
         _scoreText.alignment = TextAlignmentOptions.MidlineLeft;
 
         BuildLegendPanel(R, stopsPerRound);
@@ -153,11 +153,11 @@ public class StopAndGoUIController : MonoBehaviour
     void BuildLegendPanel(RectTransform R, int stopsPerRound)
     {
         var panel = MkImg(R, "Legend", C(0.04f,0.07f,0.14f,0.88f),
-                          V(0,0.12f), V(0,0.88f), V(90f,0), V(160f,0));
+                          V(0,0.12f), V(0,0.88f), V(100f,0), V(180f,0));
         MkImg(panel, "Line", ACCENT, V(1,0), V(1,1), V(-1.5f,0), V(3f,0));
 
-        _roundLabel = MkTxt(panel, "Round", "Ronda 1/3", Color.white, 18,
-                            V(0.08f,0.84f), V(0.92f,0.98f));
+        _roundLabel = MkTxt(panel, "Round", "Ronda 1/3", Color.white, 15,
+                            V(0.04f,0.84f), V(0.96f,0.98f));
         _roundLabel.fontStyle = FontStyles.Bold;
         _roundLabel.alignment = TextAlignmentOptions.Center;
 

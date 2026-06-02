@@ -16,11 +16,10 @@ public class RegulationGameManager : MinigameBase
     RegulationUIController   _ui;
 
     protected override string GetIntroDescription() =>
-        "Tu nivel emocional esta muy alto. Debes regularlo.\n\n" +
-        "ATENCION: cada turno el nivel sube +8 solo, antes de que actues.\n" +
-        "Solo las acciones mas efectivas consiguen reducirlo de verdad.\n" +
-        "Las acciones tienen recarga de 2 turnos: no podras repetir la misma.\n\n" +
-        "Objetivo: bajar a 10 o menos en " + maxSteps + " acciones.";
+        "El nivel de emocion esta muy alto. Tienes que calmarlo.\n\n" +
+        "Cada turno el nivel sube solo. Elige la accion correcta para bajarlo.\n" +
+        "No puedes repetir la misma accion dos veces seguidas.\n\n" +
+        "Baja el nivel a 10 o menos antes de quedarte sin acciones!";
 
     void ApplyDifficulty()
     {

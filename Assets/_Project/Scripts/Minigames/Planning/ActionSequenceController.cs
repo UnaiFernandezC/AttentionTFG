@@ -9,13 +9,13 @@ public class ActionSequenceController : MinigameBase
 {
 
     [Header("Ronda 1")]
-    public string[] easyActions   = { "Levantarte", "Desayunar", "Ir al colegio" };
+    public string[] easyActions   = { "Levantarte", "Lavarte la cara", "Desayunar", "Coger la mochila" };
 
     [Header("Ronda 2")]
-    public string[] mediumActions = { "Chutar", "Marcar", "Celebrar" };
+    public string[] mediumActions = { "Elegir ropa", "Ducharse", "Desayunar", "Cepillarse los dientes", "Salir de casa" };
 
     [Header("Ronda 3")]
-    public string[] hardActions   = { "Tumbarte", "Cerrar los ojos", "Dormir" };
+    public string[] hardActions   = { "Llegar al colegio", "Sacar los libros", "Sentarte", "Escuchar al profesor", "Hacer los ejercicios", "Recoger y salir" };
 
     [Header("Segundos de feedback de error antes de reiniciar")]
     public float errorDelay = 0.9f;
