@@ -1,12 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-/// <summary>
-/// Asigna al componente Button de este GameObject la acción de seleccionar
-/// una dificultad concreta y navegar al GameSelector correspondiente.
-///
-/// Flujo: clic → SetDifficulty en GameManager → SceneLoader.LoadGameSelector()
-/// </summary>
 [RequireComponent(typeof(Button))]
 public class DifficultyButton : MonoBehaviour
 {

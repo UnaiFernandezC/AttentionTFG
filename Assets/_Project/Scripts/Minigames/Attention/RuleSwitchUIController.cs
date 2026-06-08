@@ -55,13 +55,11 @@ public class RuleSwitchUIController : MonoBehaviour
         ttl.fontStyle = FontStyles.Bold; ttl.alignment = TextAlignmentOptions.MidlineLeft; ttl.characterSpacing = 2f;
         MkTxt(hdr, "Cat", "ATENCIÓN", DIM2, 16, V(0.62f, 0.12f), V(0.97f, 0.88f)).alignment = TextAlignmentOptions.MidlineRight;
 
-        // ── Rule banner — large centered indicator ────────────────────────
         var ruleBanner = MkImg(R, "RuleBanner", C(0.04f, 0.07f, 0.16f, 0.95f),
                                V(0.10f, 0.70f), V(0.90f, 0.82f), V(0,0), V(0,0));
         MkImg(ruleBanner, "RBLine", ACCENT, V(0,0), V(1,0), V(0,1.5f), V(0,3f));
         MkImg(ruleBanner, "RBLineT", ACCENT, V(0,1), V(1,1), V(0,-1.5f), V(0,3f));
 
-        // colored dot on the left side of banner
         var dotGO = new GameObject("RuleDot");
         dotGO.transform.SetParent(ruleBanner, false);
         var dotRT = dotGO.AddComponent<RectTransform>();
@@ -78,7 +76,6 @@ public class RuleSwitchUIController : MonoBehaviour
         _ruleLbl.fontStyle = FontStyles.Bold;
         _ruleLbl.alignment = TextAlignmentOptions.Center;
 
-        // score and progress in a smaller strip below the banner
         var info = MkImg(R, "InfoBar", C(0, 0, 0, 0.12f), V(0, 0.857f), V(1, 0.918f), V(0, 0), V(0, 0));
 
         _scoreLbl = MkTxt(info, "Score", "0 pts", Color.white, 24, V(0.60f, 0), V(0.79f, 1));
@@ -123,7 +120,6 @@ public class RuleSwitchUIController : MonoBehaviour
               C(ACCENT.r + 0.10f, ACCENT.g + 0.10f, ACCENT.b + 0.10f, 1f),
               19, V(0.01f, 0), V(0.78f, 1)).alignment = TextAlignmentOptions.MidlineLeft;
         MkImg(bot, "Sep", C(1, 1, 1, 0.10f), V(0.78f, 0.1f), V(0.782f, 0.9f), V(0, 0), V(0, 0));
-        MkBtn(bot, "Menu", C(0.12f, 0.20f, 0.36f), V(0.80f, 0.08f), V(0.99f, 0.92f), onMenu);
 
         BuildResultPanel(R, onRestart, onMenu);
 
@@ -163,8 +159,7 @@ public class RuleSwitchUIController : MonoBehaviour
         _resultSub = MkTxt(card, "RS", "", C(0.48f, 0.62f, 0.80f), 23, V(0.05f, 0.24f), V(0.95f, 0.72f));
         _resultSub.overflowMode = TextOverflowModes.Overflow;
 
-        MkBtn(card, "Jugar de nuevo", ACCENT,                V(0.05f, 0.04f), V(0.46f, 0.18f), onRestart);
-        MkBtn(card, "Menu",           C(0.14f, 0.22f, 0.38f), V(0.54f, 0.04f), V(0.95f, 0.18f), onMenu);
+        MkBtn(card, "Jugar de nuevo", ACCENT,                V(0.05f, 0.04f), V(0.95f, 0.18f), onRestart);
 
         _resultPanel.SetActive(false);
     }

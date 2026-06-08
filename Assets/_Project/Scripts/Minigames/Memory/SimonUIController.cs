@@ -3,20 +3,9 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-/// <summary>
-/// Construye y gestiona toda la interfaz del minijuego Simón Dice.
-/// Genera la UI completamente por código — sin prefabs ni assets externos.
-///
-/// Layout:
-///   • Panel intro      → título + instrucciones + botón "Empezar"
-///   • HUD superior     → título, ronda, récord
-///   • Estado central   → "Observa…" / "¡Tu turno!"
-///   • Grid 2x2         → 4 botones de colores circulares
-///   • Panel resultado  → ronda alcanzada + récord + replay / menu
-/// </summary>
 public class SimonUIController : MonoBehaviour
 {
-    // ── Paleta (mismo estilo que el resto del proyecto) ───────────────────────
+
     static Color C(float r, float g, float b, float a = 1f) => new Color(r, g, b, a);
     static Vector2 V(float x, float y) => new Vector2(x, y);
 
@@ -30,53 +19,41 @@ public class SimonUIController : MonoBehaviour
     static readonly Color CGREEN  = C(0.22f, 0.86f, 0.54f);
     static readonly Color CYELLOW = C(0.96f, 0.78f, 0.18f);
 
-    // ── Colores de los botones (hasta 5) ─────────────────────────────────────
     static readonly Color[] BTN_COLORS = {
-        C(0.92f, 0.22f, 0.25f),   // 0 Rojo
-        C(0.22f, 0.52f, 0.96f),   // 1 Azul
-        C(0.18f, 0.82f, 0.44f),   // 2 Verde
-        C(0.96f, 0.78f, 0.14f),   // 3 Amarillo
-        C(0.72f, 0.28f, 0.92f),   // 4 Morado
+        C(0.92f, 0.22f, 0.25f),
+        C(0.22f, 0.52f, 0.96f),
+        C(0.18f, 0.82f, 0.44f),
+        C(0.96f, 0.78f, 0.14f),
+        C(0.72f, 0.28f, 0.92f),
     };
 
     static readonly string[] BTN_LABELS = { "●", "●", "●", "●", "●" };
 
-    // ── Refs UI privadas ──────────────────────────────────────────────────────
     int             _buttonCount = 4;
     Canvas          _canvas;
     RectTransform   _canvasRT;
 
-    // HUD
     TextMeshProUGUI _roundHeaderLbl;
     TextMeshProUGUI _roundLbl;
     TextMeshProUGUI _recordLbl;
     TextMeshProUGUI _statusLbl;
 
-    // Botones de juego
     public SimonButtonController[] Buttons { get; private set; }
 
-    // Resultado
     GameObject      _resultPanel;
     TextMeshProUGUI _resultTitle;
     TextMeshProUGUI _resultSub;
     TextMeshProUGUI _resultRecord;
 
-    // Feedback (flash de error)
     Image           _errorFlash;
 
-    // ── Acciones expuestas ────────────────────────────────────────────────────
     public Action          OnRestartPressed;
     public Action          OnMenuPressed;
-
-    // ═════════════════════════════════════════════════════════════════════════
-    // Build
-    // ═════════════════════════════════════════════════════════════════════════
 
     public void BuildUI(int buttonCount = 4)
     {
         _buttonCount = Mathf.Clamp(buttonCount, 2, 5);
 
-        // Canvas principal
         var cGO = new GameObject("Canvas_Simon");
         cGO.transform.SetParent(transform, false);
         _canvas = cGO.AddComponent<Canvas>();
@@ -89,12 +66,10 @@ public class SimonUIController : MonoBehaviour
         cGO.AddComponent<GraphicRaycaster>();
         _canvasRT = cGO.GetComponent<RectTransform>();
 
-        // Fondo
         MkImg(_canvasRT, "BG", BG, V(0,0), V(1,1), V(0,0), V(0,0));
-        // Gradiente superior sutil
+
         MkImg(_canvasRT, "GradTop", C(0.10f, 0.22f, 0.40f, 0.18f), V(0, 0.72f), V(1, 1), V(0,0), V(0,0));
 
-        // Error flash (overlay rojo, inicialmente invisible)
         _errorFlash = MkImg(_canvasRT, "ErrFlash", C(CRED.r, CRED.g, CRED.b, 0f),
                             V(0,0), V(1,1), V(0,0), V(0,0)).GetComponent<Image>();
 
@@ -105,7 +80,6 @@ public class SimonUIController : MonoBehaviour
         BuildResultPanel(_canvasRT);
     }
 
-    // ── HUD superior ─────────────────────────────────────────────────────────
     void BuildHUD(RectTransform R)
     {
         var hdr = MkImg(R, "HDR", HDR, V(0,1), V(1,1), V(0,-44), V(0,88));
@@ -121,7 +95,6 @@ public class SimonUIController : MonoBehaviour
         MkTxt(hdr, "Cat", "MEMORIA", DIM, 16,
               V(0.03f,0f), V(0.30f,0.42f)).alignment = TextAlignmentOptions.MidlineLeft;
 
-        // Ronda
         var rdBox = MkImg(hdr, "RdBox", PANEL2, V(0.52f,0.10f), V(0.73f,0.90f), V(0,0), V(0,0));
         MkImg(rdBox, "LineT", ACCENT, V(0,1), V(1,1), V(0,-2), V(0,4));
         _roundHeaderLbl = MkTxt(rdBox, "RdLbl", "FASE", DIM, 13, V(0,0.52f), V(1,0.96f));
@@ -130,7 +103,6 @@ public class SimonUIController : MonoBehaviour
         _roundLbl.fontStyle = FontStyles.Bold;
         _roundLbl.alignment = TextAlignmentOptions.Center;
 
-        // Récord
         var rcBox = MkImg(hdr, "RcBox", PANEL2, V(0.75f,0.10f), V(0.97f,0.90f), V(0,0), V(0,0));
         MkImg(rcBox, "LineT", CYELLOW, V(0,1), V(1,1), V(0,-2), V(0,4));
         MkTxt(rcBox, "RcLbl", "RÉCORD", DIM, 13, V(0,0.52f), V(1,0.96f)).alignment = TextAlignmentOptions.Center;
@@ -139,7 +111,6 @@ public class SimonUIController : MonoBehaviour
         _recordLbl.alignment = TextAlignmentOptions.Center;
     }
 
-    // ── Área de estado ────────────────────────────────────────────────────────
     void BuildStatusArea(RectTransform R)
     {
         _statusLbl = MkTxt(R, "StatusLbl", "", DIM, 30,
@@ -149,35 +120,31 @@ public class SimonUIController : MonoBehaviour
         _statusLbl.characterSpacing = 1.5f;
     }
 
-    // ── Grid de botones (4 = 2×2 | 5 = 2×2 + 1 centrado) ────────────────────
     void BuildButtonGrid(RectTransform R)
     {
         bool fiveButtons = _buttonCount >= 5;
 
-        // Tamaño de grid y botones según número de colores
         float gridW   = 520f;
         float gridH   = fiveButtons ? 620f : 520f;
         float btnSize = fiveButtons ? 200f : 220f;
         float glowSize = fiveButtons ? 230f : 250f;
         float shineOff = fiveButtons ? -42f : -46f;
 
-        // Posiciones: layout 2×2 para 4 botones; 2×2 + 1 centrado abajo para 5
         Vector2[] offsets = fiveButtons
             ? new Vector2[] {
-                new Vector2(-130f,  150f),   // 0 Rojo      (top-left)
-                new Vector2( 130f,  150f),   // 1 Azul      (top-right)
-                new Vector2(-130f,  -60f),   // 2 Verde     (mid-left)
-                new Vector2( 130f,  -60f),   // 3 Amarillo  (mid-right)
-                new Vector2(   0f, -255f),   // 4 Morado    (bottom-center)
+                new Vector2(-130f,  150f),
+                new Vector2( 130f,  150f),
+                new Vector2(-130f,  -60f),
+                new Vector2( 130f,  -60f),
+                new Vector2(   0f, -255f),
             }
             : new Vector2[] {
-                new Vector2(-140f,  140f),   // 0 Rojo      (top-left)
-                new Vector2( 140f,  140f),   // 1 Azul      (top-right)
-                new Vector2(-140f, -140f),   // 2 Verde     (bottom-left)
-                new Vector2( 140f, -140f),   // 3 Amarillo  (bottom-right)
+                new Vector2(-140f,  140f),
+                new Vector2( 140f,  140f),
+                new Vector2(-140f, -140f),
+                new Vector2( 140f, -140f),
             };
 
-        // Contenedor centrado
         var gridGO = new GameObject("ButtonGrid");
         gridGO.transform.SetParent(R, false);
         var gridRT = gridGO.AddComponent<RectTransform>();
@@ -196,7 +163,6 @@ public class SimonUIController : MonoBehaviour
         {
             Color col = BTN_COLORS[i];
 
-            // ── Glow (anillo exterior) ──
             var glowGO = new GameObject($"Glow_{i}");
             glowGO.transform.SetParent(gridRT, false);
             var glowRT = glowGO.AddComponent<RectTransform>();
@@ -209,7 +175,6 @@ public class SimonUIController : MonoBehaviour
             glowImg.color         = Color.clear;
             glowImg.raycastTarget = false;
 
-            // ── Botón principal (círculo) ──
             var btnGO = new GameObject($"Button_{i}");
             btnGO.transform.SetParent(gridRT, false);
             var btnRT = btnGO.AddComponent<RectTransform>();
@@ -230,7 +195,6 @@ public class SimonUIController : MonoBehaviour
             cols.pressedColor     = new Color(0.85f, 0.85f, 0.85f);
             btn.colors = cols;
 
-            // ── Shine (reflejo top-left) ──
             var shineGO = new GameObject("Shine");
             shineGO.transform.SetParent(btnGO.transform, false);
             var shineRT = shineGO.AddComponent<RectTransform>();
@@ -243,20 +207,17 @@ public class SimonUIController : MonoBehaviour
             shineImg.color         = new Color(1f, 1f, 1f, 0.08f);
             shineImg.raycastTarget = false;
 
-            // ── Número decorativo ──
             var numTxt = MkTxt(btnRT, "Num", (i + 1).ToString(),
                                new Color(1f, 1f, 1f, 0.18f), 36,
                                V(0, 0), V(1, 1));
             numTxt.fontStyle = FontStyles.Bold;
             numTxt.alignment = TextAlignmentOptions.Center;
 
-            // ── ButtonController ──
             var ctrl = btnGO.AddComponent<SimonButtonController>();
             ctrl.Init(i, btnImg, glowImg, shineImg);
             Buttons[i] = ctrl;
         }
 
-        // Separadores decorativos (solo para 4 botones, quedan raros en 5)
         if (!fiveButtons)
         {
             MkImg(gridRT, "SepH", C(1, 1, 1, 0.06f), V(0, 0.5f), V(1, 0.5f), V(0, 0), V(0, 2));
@@ -264,18 +225,15 @@ public class SimonUIController : MonoBehaviour
         }
     }
 
-    // ── Footer ────────────────────────────────────────────────────────────────
     void BuildFooter(RectTransform R)
     {
         var ft = MkImg(R, "Footer", HDR, V(0,0), V(1,0), V(0,40), V(0,80));
         MkImg(ft, "LineT", C(ACCENT.r,ACCENT.g,ACCENT.b,0.30f),
               V(0,1), V(1,1), V(0,-1.5f), V(0,3));
 
-        MkBtn(ft, "↺  Reiniciar", PANEL2, V(0.02f,0.10f), V(0.30f,0.90f), () => OnRestartPressed?.Invoke());
-        MkBtn(ft, "⌂  Menú",     PANEL2, V(0.32f,0.10f), V(0.60f,0.90f), () => OnMenuPressed?.Invoke());
+        MkBtn(ft, "↺  Reiniciar", PANEL2, V(0.02f,0.10f), V(0.55f,0.90f), () => OnRestartPressed?.Invoke());
     }
 
-    // ── Panel de resultado ────────────────────────────────────────────────────
     void BuildResultPanel(RectTransform R)
     {
         _resultPanel = new GameObject("ResultPanel");
@@ -300,17 +258,11 @@ public class SimonUIController : MonoBehaviour
         _resultRecord = MkTxt(card, "RR", "", CYELLOW, 20, V(0.04f, 0.36f), V(0.96f, 0.52f));
         _resultRecord.alignment = TextAlignmentOptions.Center;
 
-        MkBtn(card, "↺  Jugar de nuevo", ACCENT,  V(0.04f,0.06f), V(0.48f,0.20f),
+        MkBtn(card, "↺  Jugar de nuevo", ACCENT,  V(0.04f,0.06f), V(0.96f,0.20f),
               () => OnRestartPressed?.Invoke());
-        MkBtn(card, "⌂  Menú Principal", PANEL2,  V(0.52f,0.06f), V(0.96f,0.20f),
-              () => OnMenuPressed?.Invoke());
 
         _resultPanel.SetActive(false);
     }
-
-    // ═════════════════════════════════════════════════════════════════════════
-    // API de actualización de HUD
-    // ═════════════════════════════════════════════════════════════════════════
 
     public void SetPhase(int phase, int total)
     {
@@ -350,13 +302,11 @@ public class SimonUIController : MonoBehaviour
             ? $"🏆  ¡NUEVO RÉCORD!  {record}"
             : $"Récord:  {record}";
 
-        // Cambiar acento del panel a verde para la victoria
         _resultPanel.SetActive(true);
     }
 
     public void HideResult() => _resultPanel.SetActive(false);
 
-    // ── Flash de error (pantalla roja) ────────────────────────────────────────
     public System.Collections.IEnumerator FlashError()
     {
         _errorFlash.color = new Color(CRED.r, CRED.g, CRED.b, 0.28f);
@@ -370,10 +320,6 @@ public class SimonUIController : MonoBehaviour
         }
         _errorFlash.color = Color.clear;
     }
-
-    // ═════════════════════════════════════════════════════════════════════════
-    // Helpers: sprite circular procedural
-    // ═════════════════════════════════════════════════════════════════════════
 
     static Sprite _circleSprite128;
 
@@ -390,7 +336,7 @@ public class SimonUIController : MonoBehaviour
         {
             float dx = x - r + 0.5f, dy = y - r + 0.5f;
             float d  = Mathf.Sqrt(dx * dx + dy * dy);
-            // Anti-alias suave en el borde
+
             float alpha = Mathf.Clamp01(r - d + 1.0f);
             pixels[y * res + x] = new Color(1f, 1f, 1f, alpha);
         }
@@ -403,10 +349,6 @@ public class SimonUIController : MonoBehaviour
         if (res == 128) _circleSprite128 = spr;
         return spr;
     }
-
-    // ═════════════════════════════════════════════════════════════════════════
-    // Helpers: primitivas UI (misma firma que el resto del proyecto)
-    // ═════════════════════════════════════════════════════════════════════════
 
     RectTransform MkImg(RectTransform p, string n, Color col,
                         Vector2 am, Vector2 aM, Vector2 pos, Vector2 sd)

@@ -18,6 +18,9 @@ public abstract class MinigameBase : MonoBehaviour
 
     protected virtual void Start()
     {
+        GameSelectorMusicManager.DestroyInstance();
+        if (UIAudioManager.Instance != null)
+            UIAudioManager.Instance.StopMusic();
         BuildIntroPanel();
         StartCoroutine(WaitForSpaceKey());
     }

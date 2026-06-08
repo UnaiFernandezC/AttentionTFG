@@ -2,11 +2,6 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 
-/// <summary>
-/// Añade navegacion a las tres imagenes del selector de dificultad.
-/// Adjunta este script a cualquier GameObject de la escena.
-/// Las imagenes deben llamarse exactamente "Image", "Image (1)" e "Image (2)".
-/// </summary>
 public class DifficultyImageNavigator : MonoBehaviour
 {
     [Header("Nombres de escena destino")]
@@ -30,15 +25,12 @@ public class DifficultyImageNavigator : MonoBehaviour
             return;
         }
 
-        // Asegurar que tiene Image para que Button funcione
         if (go.GetComponent<Image>() == null)
             go.AddComponent<Image>().color = Color.clear;
 
-        // Añadir Button si no lo tiene ya
         var btn = go.GetComponent<Button>();
         if (btn == null) btn = go.AddComponent<Button>();
 
-        // Hacer que el boton sea invisible pero funcional
         var cb = btn.colors;
         cb.normalColor      = Color.white;
         cb.highlightedColor = new Color(1f, 1f, 1f, 0.85f);

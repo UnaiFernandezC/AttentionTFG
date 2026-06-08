@@ -120,7 +120,6 @@ public class ConsequencesUIController : MonoBehaviour
               C(ACCENT.r + 0.08f, ACCENT.g - 0.12f, ACCENT.b - 0.10f, 1f),
               18, V(0.01f, 0), V(0.78f, 1)).alignment = TextAlignmentOptions.MidlineLeft;
         MkImg(bot, "Sep", C(1,1,1,0.10f), V(0.78f, 0.1f), V(0.782f, 0.9f), V(0,0), V(0,0));
-        MkBtn(bot, "Menu", C(0.12f, 0.20f, 0.36f), V(0.80f, 0.08f), V(0.99f, 0.92f), onMenu);
 
         BuildResultPanel(R, onRestart, onMenu);
     }
@@ -204,8 +203,7 @@ public class ConsequencesUIController : MonoBehaviour
         _resultSub.alignment    = TextAlignmentOptions.Center;
         _resultSub.lineSpacing  = 10f;
 
-        MkBtn(card, "Jugar de nuevo", ACCENT,               V(0.05f,0.04f), V(0.46f,0.17f), onRestart);
-        MkBtn(card, "Menu",          C(0.14f,0.22f,0.38f), V(0.54f,0.04f), V(0.95f,0.17f), onMenu);
+        MkBtn(card, "Jugar de nuevo", ACCENT,               V(0.05f,0.04f), V(0.95f,0.17f), onRestart);
 
         _resultPanel.SetActive(false);
     }

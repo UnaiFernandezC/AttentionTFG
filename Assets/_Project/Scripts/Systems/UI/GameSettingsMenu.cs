@@ -2,23 +2,11 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-/// <summary>
-/// Menu de ajustes accesible con la tecla M desde cualquier escena.
-///
-/// SETUP:
-/// 1. Crea un GameObject vacío llamado "SettingsMenu" en la primera escena.
-/// 2. Añade este script.
-/// 3. El menu se construye completamente por codigo — no necesita prefabs.
-/// 4. Sobrevive entre escenas (DontDestroyOnLoad).
-///
-/// Controles: M → abrir/cerrar | ESC → cerrar
-/// </summary>
 public class GameSettingsMenu : MonoBehaviour
 {
-    // ── Singleton ─────────────────────────────────────────────────────────────
+
     public static GameSettingsMenu Instance { get; private set; }
 
-    // ── UI refs ───────────────────────────────────────────────────────────────
     GameObject      _panel;
     Slider          _musicSlider;
     Slider          _clickSlider;
@@ -28,7 +16,6 @@ public class GameSettingsMenu : MonoBehaviour
 
     bool _built = false;
 
-    // ── Colores ───────────────────────────────────────────────────────────────
     static Color C(float r, float g, float b, float a = 1f) => new Color(r, g, b, a);
     static readonly Color BG      = C(0.04f, 0.06f, 0.12f, 0.97f);
     static readonly Color PANEL   = C(0.08f, 0.11f, 0.22f);
@@ -36,10 +23,6 @@ public class GameSettingsMenu : MonoBehaviour
     static readonly Color ACCENT  = C(0.30f, 0.65f, 1.00f);
     static readonly Color DIM     = C(0.45f, 0.58f, 0.75f);
     static readonly Color BTNC    = C(0.12f, 0.18f, 0.32f);
-
-    // ═════════════════════════════════════════════════════════════════════════
-    // Unity lifecycle
-    // ═════════════════════════════════════════════════════════════════════════
 
     void Awake()
     {
@@ -62,10 +45,6 @@ public class GameSettingsMenu : MonoBehaviour
             Close();
     }
 
-    // ═════════════════════════════════════════════════════════════════════════
-    // Control publico
-    // ═════════════════════════════════════════════════════════════════════════
-
     public void Toggle() { if (_panel.activeSelf) Close(); else Open(); }
     public void Open()   { _panel.SetActive(true);  RefreshFromManager(); }
     public void Close()  { _panel.SetActive(false); }
@@ -86,21 +65,16 @@ public class GameSettingsMenu : MonoBehaviour
         if (_clickValLbl) _clickValLbl.text = Mathf.RoundToInt(UIAudioManager.Instance.ClickVolume  * 100f) + "%";
     }
 
-    // ═════════════════════════════════════════════════════════════════════════
-    // Construccion del menu
-    // ═════════════════════════════════════════════════════════════════════════
-
     void BuildMenu()
     {
         if (_built) return;
         _built = true;
 
-        // Canvas
         var cvGO = new GameObject("SettingsCanvas");
         cvGO.transform.SetParent(transform, false);
         var cv = cvGO.AddComponent<Canvas>();
         cv.renderMode   = RenderMode.ScreenSpaceOverlay;
-        cv.sortingOrder = 200; // por encima de todo
+        cv.sortingOrder = 200;
         var sc = cvGO.AddComponent<CanvasScaler>();
         sc.uiScaleMode         = CanvasScaler.ScaleMode.ScaleWithScreenSize;
         sc.referenceResolution = new Vector2(1920f, 1080f);
@@ -108,7 +82,6 @@ public class GameSettingsMenu : MonoBehaviour
         cvGO.AddComponent<GraphicRaycaster>();
         var R = cvGO.GetComponent<RectTransform>();
 
-        // Fondo oscuro
         _panel = new GameObject("SettingsPanel");
         _panel.transform.SetParent(R, false);
         var panelRT = _panel.AddComponent<RectTransform>();
@@ -117,11 +90,9 @@ public class GameSettingsMenu : MonoBehaviour
         _panel.AddComponent<Image>().color = C(0, 0, 0, 0.75f);
         var pRT = panelRT;
 
-        // Tarjeta central
         var card = MkImg(pRT, "Card", PANEL, new Vector2(0.5f,0.5f), new Vector2(0.5f,0.5f),
                          Vector2.zero, new Vector2(640f, 480f));
 
-        // Franja de cabecera
         var hdr = MkImg(card, "Hdr", HDR, new Vector2(0,1), new Vector2(1,1),
                         Vector2.zero, new Vector2(0, 72f));
         hdr.anchoredPosition = new Vector2(0, -36f);
@@ -138,7 +109,6 @@ public class GameSettingsMenu : MonoBehaviour
                           new Vector2(0.72f,0.10f), new Vector2(0.98f,0.90f));
         hintT.alignment = TextAlignmentOptions.MidlineRight;
 
-        // ── Musica de fondo ───────────────────────────────────────────────────
         MkSectionLabel(card, "Musica de fondo", ACCENT, 0.73f);
 
         _musicToggle = MkToggle(card, "Activar musica", 0.63f, isOn =>
@@ -156,7 +126,6 @@ public class GameSettingsMenu : MonoBehaviour
             UpdateLabels();
         });
 
-        // ── Sonido de clic ────────────────────────────────────────────────────
         MkSectionLabel(card, "Sonido de clic", ACCENT, 0.40f);
 
         _clickValLbl = MkTxt(card, "ClickVal", "75%", DIM, 20,
@@ -169,16 +138,11 @@ public class GameSettingsMenu : MonoBehaviour
             UpdateLabels();
         });
 
-        // ── Boton cerrar ──────────────────────────────────────────────────────
         MkBtn(card, "Cerrar", ACCENT,
               new Vector2(0.25f, 0.04f), new Vector2(0.75f, 0.15f), Close);
 
         UpdateLabels();
     }
-
-    // ═════════════════════════════════════════════════════════════════════════
-    // Helpers de construccion
-    // ═════════════════════════════════════════════════════════════════════════
 
     void MkSectionLabel(RectTransform p, string text, Color col, float anchorY)
     {
@@ -186,7 +150,7 @@ public class GameSettingsMenu : MonoBehaviour
                         new Vector2(0.05f, anchorY - 0.04f), new Vector2(0.75f, anchorY + 0.04f));
         lbl.fontStyle = FontStyles.Bold;
         lbl.alignment = TextAlignmentOptions.MidlineLeft;
-        // linea decorativa bajo el label
+
         MkImg(p, "SecLine", C(ACCENT.r, ACCENT.g, ACCENT.b, 0.25f),
               new Vector2(0.05f, anchorY - 0.045f), new Vector2(0.95f, anchorY - 0.04f),
               Vector2.zero, Vector2.zero);
@@ -250,7 +214,6 @@ public class GameSettingsMenu : MonoBehaviour
         slider.maxValue = 1f;
         slider.value    = defaultValue;
 
-        // Track background
         var trackBg = new GameObject("TrackBg");
         trackBg.transform.SetParent(sliderGO.transform, false);
         var trackRT = trackBg.AddComponent<RectTransform>();
@@ -260,7 +223,6 @@ public class GameSettingsMenu : MonoBehaviour
         trackImg.color = C(0.15f, 0.18f, 0.30f);
         slider.targetGraphic = trackImg;
 
-        // Fill area
         var fillArea = new GameObject("FillArea");
         fillArea.transform.SetParent(sliderGO.transform, false);
         var fillAreaRT = fillArea.AddComponent<RectTransform>();
@@ -277,7 +239,6 @@ public class GameSettingsMenu : MonoBehaviour
         fillImg.color = ACCENT;
         slider.fillRect = fillRT;
 
-        // Handle
         var handleArea = new GameObject("HandleArea");
         handleArea.transform.SetParent(sliderGO.transform, false);
         var handleAreaRT = handleArea.AddComponent<RectTransform>();

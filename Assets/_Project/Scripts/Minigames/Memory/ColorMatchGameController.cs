@@ -224,16 +224,6 @@ public class ColorMatchGameController : MinigameBase
 
     private void BuildBottomBar(Transform parent)
     {
-        var bar = MakePanel(parent, "BottomBar", C_PANEL, AnchorRect(0, 0, 1, 0.11f));
-        MakePanel(bar.transform, "TopLine", C_SEPARATOR, AnchorRect(0, 1, 1, 1, 0, -1f, 0, 0));
-
-        MakeButton(bar.transform, "BtnRestart", "Reiniciar",
-            C_BTN_BLUE, new Vector2(-170f, 0f), new Vector2(290f, 68f),
-            () => RestartMinigame());
-
-        MakeButton(bar.transform, "BtnMenu", "Volver al menu",
-            C_BTN_GREY, new Vector2(170f, 0f), new Vector2(290f, 68f),
-            () => ReturnToGameSelector());
     }
 
     private void BuildRoundBanner(Transform parent)
@@ -283,12 +273,8 @@ public class ColorMatchGameController : MinigameBase
             AnchorRect(0.08f, 0f, 0.92f, 0f, 0, 116f, 0, 118f));
 
         MakeButton(card.transform, "BtnAgain", "Jugar de nuevo",
-            C_BTN_BLUE, new Vector2(-190f, 70f), new Vector2(330f, 72f),
+            C_BTN_BLUE, new Vector2(0f, 70f), new Vector2(580f, 72f),
             () => RestartMinigame());
-
-        MakeButton(card.transform, "BtnMenuW", "Menu principal",
-            C_BTN_GREY, new Vector2(190f, 70f), new Vector2(330f, 72f),
-            () => ReturnToGameSelector());
 
         _winPanel.SetActive(false);
     }

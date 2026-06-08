@@ -66,7 +66,6 @@ public class TrackingUIController : MonoBehaviour
             C(ACCENT.r+0.10f,ACCENT.g+0.10f,ACCENT.b+0.10f,1f),
             19,V(0.01f,0),V(0.78f,1)).alignment=TextAlignmentOptions.MidlineLeft;
         MkImg(bot,"Sep",C(1,1,1,0.10f),V(0.78f,0.1f),V(0.782f,0.9f),V(0,0),V(0,0));
-        MkBtn(bot,"Menu",C(0.12f,0.20f,0.36f),V(0.80f,0.08f),V(0.99f,0.92f),onMenu);
 
         BuildResultPanel(CanvasRT, onRestart, onMenu);
     }
@@ -145,8 +144,7 @@ public class TrackingUIController : MonoBehaviour
         _resultSub  =MkTxt(card,"RS","",C(0.48f,0.62f,0.80f),24,V(0.05f,0.26f),V(0.95f,0.72f));
         _resultSub.overflowMode=TextOverflowModes.Overflow;
 
-        MkBtn(card,"Jugar de nuevo",ACCENT,V(0.05f,0.05f),V(0.46f,0.18f),onRestart);
-        MkBtn(card,"Menu",C(0.14f,0.22f,0.38f),V(0.54f,0.05f),V(0.95f,0.18f),onMenu);
+        MkBtn(card,"Jugar de nuevo",ACCENT,V(0.05f,0.05f),V(0.95f,0.18f),onRestart);
         _resultPanel.SetActive(false);
     }
 

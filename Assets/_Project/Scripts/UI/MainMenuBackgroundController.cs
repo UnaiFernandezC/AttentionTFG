@@ -2,35 +2,16 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-/// <summary>
-/// Fondo animado procedural para la pantalla principal.
-/// Estética: oscuro azul-noche, igual que los minijuegos, con 7 capas animadas:
-///
-///   1. Base sólida + gradientes
-///   2. Rejilla de líneas con respiración de opacidad desfasada
-///   3. Partículas flotantes (ascienden, oscilan, parpadean)
-///   4. Nodos tipo red neuronal que pulsan y escalan
-///   5. Líneas de conexión entre nodos cercanos
-///   6. Glow central que respira lentamente
-///   7. Línea de escáner que cruza la pantalla cada ~10 s
-///   8. Estrellas fugaces ocasionales (diagonal rápida)
-///
-/// USO: Añadir este script a un GameObject vacío en la escena.
-/// Asegúrate de que el Canvas que crea tenga sortingOrder ≤ -10
-/// para que quede detrás de todos los paneles existentes.
-/// </summary>
 public class MainMenuBackgroundController : MonoBehaviour
 {
-    // ── Helpers ───────────────────────────────────────────────────────────
+
     static Color   C(float r, float g, float b, float a = 1f) => new Color(r, g, b, a);
     static Vector2 V(float x, float y) => new Vector2(x, y);
 
-    // ── Paleta ────────────────────────────────────────────────────────────
     static readonly Color BG      = C(0.05f, 0.08f, 0.14f);
-    static readonly Color ACCENT  = C(0.18f, 0.80f, 0.58f);   // teal
-    static readonly Color ACCENT2 = C(0.12f, 0.45f, 0.85f);   // azul eléctrico
+    static readonly Color ACCENT  = C(0.18f, 0.80f, 0.58f);
+    static readonly Color ACCENT2 = C(0.12f, 0.45f, 0.85f);
 
-    // ── Inspector ─────────────────────────────────────────────────────────
     [Header("Partículas")]
     public int   particleCount    = 32;
     public float particleMinSpeed = 28f;
@@ -38,15 +19,14 @@ public class MainMenuBackgroundController : MonoBehaviour
 
     [Header("Nodos")]
     public int  nodeCount           = 11;
-    public float nodeConnectionDist = 0.32f;  // distancia máx. (normalizada)
+    public float nodeConnectionDist = 0.32f;
 
     [Header("Escáner")]
-    public float scanPeriod = 10f;  // segundos por pasada
+    public float scanPeriod = 10f;
 
     [Header("Estrellas fugaces")]
     public float shootingStarInterval = 4.5f;
 
-    // ── Datos internos ────────────────────────────────────────────────────
     struct Particle
     {
         public RectTransform rt;
@@ -80,19 +60,15 @@ public class MainMenuBackgroundController : MonoBehaviour
 
     float _nextStar;
 
-    // ═══════════════════════════════════════════════════════════════════════
     void Awake()
     {
         Build();
         _nextStar = Time.time + Random.Range(1f, shootingStarInterval);
     }
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // Construcción
-    // ═══════════════════════════════════════════════════════════════════════
     void Build()
     {
-        // Canvas propio, detrás de todo
+
         var cGO = new GameObject("BG_Canvas");
         cGO.transform.SetParent(transform, false);
         var cv = cGO.AddComponent<Canvas>();
@@ -104,18 +80,15 @@ public class MainMenuBackgroundController : MonoBehaviour
         sc.matchWidthOrHeight  = 0.5f;
         _root = cGO.GetComponent<RectTransform>();
 
-        // ── 1. Fondos base ────────────────────────────────────────────────
         MkImg(_root, "Base",  BG,                          V(0,0),    V(1,1),    V(0,0), V(0,0));
         MkImg(_root, "GradT", C(0f, 0.04f, 0.16f, 0.45f), V(0,0.55f),V(1,1),   V(0,0), V(0,0));
         MkImg(_root, "GradB", C(0f, 0.02f, 0.08f, 0.38f), V(0,0),    V(1,0.4f),V(0,0), V(0,0));
-        // Viñeta lateral (bordes más oscuros)
+
         MkImg(_root, "VigL",  C(0,0,0,0.22f), V(0,0),    V(0.15f,1), V(0,0), V(0,0));
         MkImg(_root, "VigR",  C(0,0,0,0.22f), V(0.85f,0),V(1,1),     V(0,0), V(0,0));
 
-        // ── 2. Rejilla ────────────────────────────────────────────────────
         BuildGrid();
 
-        // ── 3. Glow central ───────────────────────────────────────────────
         var gGO = new GameObject("CtrGlow");
         gGO.transform.SetParent(_root, false);
         var gRT = gGO.AddComponent<RectTransform>();
@@ -126,20 +99,16 @@ public class MainMenuBackgroundController : MonoBehaviour
         _centerGlow.color = C(0.08f, 0.28f, 0.55f, 0);
         _centerGlow.raycastTarget = false;
 
-        // ── 4. Partículas ─────────────────────────────────────────────────
         BuildParticles();
 
-        // ── 5. Nodos + conexiones ─────────────────────────────────────────
         BuildNodes();
         BuildConnections();
 
-        // ── 6. Líneas accent top/bottom (como los minijuegos) ─────────────
         MkImg(_root, "LineT", C(ACCENT.r,ACCENT.g,ACCENT.b,0.20f),
               V(0,0.994f), V(1,1),     V(0,0), V(0,0));
         MkImg(_root, "LineB", C(ACCENT.r,ACCENT.g,ACCENT.b,0.20f),
               V(0,0),      V(1,0.006f),V(0,0), V(0,0));
 
-        // ── 7. Línea de escáner ────────────────────────────────────────────
         var sGO = new GameObject("ScanLine");
         sGO.transform.SetParent(_root, false);
         _scanLine = sGO.AddComponent<RectTransform>();
@@ -154,7 +123,6 @@ public class MainMenuBackgroundController : MonoBehaviour
         sImg.raycastTarget = false;
     }
 
-    // ───────────────────────────────────────────────────────────────────────
     void BuildGrid()
     {
         int h = 8, v = 8;
@@ -176,7 +144,6 @@ public class MainMenuBackgroundController : MonoBehaviour
         }
     }
 
-    // ───────────────────────────────────────────────────────────────────────
     void BuildParticles()
     {
         _particles = new Particle[particleCount];
@@ -196,7 +163,7 @@ public class MainMenuBackgroundController : MonoBehaviour
             rt.anchoredPosition = Vector2.zero;
             var img = go.AddComponent<Image>();
             img.sprite = CircleSprite(16);
-            // Alterna entre teal y azul para variedad
+
             Color col = Random.value > 0.55f ? ACCENT : ACCENT2;
             img.color = new Color(col.r, col.g, col.b, 0f);
             img.raycastTarget = false;
@@ -211,8 +178,6 @@ public class MainMenuBackgroundController : MonoBehaviour
         }
     }
 
-    // ───────────────────────────────────────────────────────────────────────
-    // Posiciones semi-distribuidas de los nodos
     static readonly float[] NX = { 0.10f, 0.22f, 0.40f, 0.60f, 0.78f, 0.90f,
                                     0.15f, 0.50f, 0.72f, 0.32f, 0.55f };
     static readonly float[] NY = { 0.72f, 0.28f, 0.60f, 0.18f, 0.52f, 0.78f,
@@ -249,7 +214,6 @@ public class MainMenuBackgroundController : MonoBehaviour
         }
     }
 
-    // ───────────────────────────────────────────────────────────────────────
     void BuildConnections()
     {
         var list = new List<Connection>();
@@ -268,14 +232,10 @@ public class MainMenuBackgroundController : MonoBehaviour
         _connections = list.ToArray();
     }
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // Update — todas las animaciones
-    // ═══════════════════════════════════════════════════════════════════════
     void Update()
     {
         float t = Time.time;
 
-        // ── 1. Rejilla: respiración desfasada por línea ───────────────────
         for (int i = 0; i < _hLines.Length; i++)
         {
             float a = 0.012f + 0.014f * Mathf.Sin(t * 0.45f + i * 0.72f);
@@ -287,7 +247,6 @@ public class MainMenuBackgroundController : MonoBehaviour
             _vLines[i].color = new Color(1,1,1,a);
         }
 
-        // ── 2. Partículas flotantes ───────────────────────────────────────
         for (int i = 0; i < _particles.Length; i++)
         {
             ref Particle p = ref _particles[i];
@@ -295,7 +254,7 @@ public class MainMenuBackgroundController : MonoBehaviour
 
             if (y > 1.06f)
             {
-                // Reaparece en la parte baja con posición X aleatoria
+
                 y = -0.04f;
                 p.homeX = Random.Range(0.03f, 0.97f);
                 p.phase = Random.Range(0f, Mathf.PI * 2f);
@@ -305,7 +264,6 @@ public class MainMenuBackgroundController : MonoBehaviour
             p.rt.anchorMin = V(x, y);
             p.rt.anchorMax = V(x, y);
 
-            // Fade in desde abajo, hold, fade out arriba + parpadeo
             float fade = y < 0.12f ? y / 0.12f :
                          y > 0.82f ? (1.06f - y) / 0.24f : 1f;
             float twinkle = 0.55f + 0.20f * Mathf.Sin(t * 2.1f + p.phase * 1.3f);
@@ -315,7 +273,6 @@ public class MainMenuBackgroundController : MonoBehaviour
             p.img.color = new Color(c.r, c.g, c.b, alpha);
         }
 
-        // ── 3. Nodos: pulso de brillo + escala ────────────────────────────
         for (int i = 0; i < _nodes.Length; i++)
         {
             ref Node n = ref _nodes[i];
@@ -327,7 +284,6 @@ public class MainMenuBackgroundController : MonoBehaviour
             n.rt.localScale = Vector3.one * sc;
         }
 
-        // ── 4. Conexiones: opacidad ligada a nodos ────────────────────────
         for (int i = 0; i < _connections.Length; i++)
         {
             ref Connection cn = ref _connections[i];
@@ -336,20 +292,18 @@ public class MainMenuBackgroundController : MonoBehaviour
             cn.img.color = new Color(c.r, c.g, c.b, a);
         }
 
-        // ── 5. Glow central: respiración lenta ────────────────────────────
         if (_centerGlow)
         {
             float breath = 0.5f + 0.5f * Mathf.Sin(t * 0.38f);
             _centerGlow.color = new Color(0.06f, 0.22f, 0.52f, breath * 0.09f);
         }
 
-        // ── 6. Línea de escáner ────────────────────────────────────────────
         if (_scanLine)
         {
             float yPos = 1f - (t % scanPeriod) / scanPeriod;
             _scanLine.anchorMin = V(0, yPos);
             _scanLine.anchorMax = V(1, yPos);
-            // Fade out cerca del final del ciclo
+
             float cycleT = (t % scanPeriod) / scanPeriod;
             float scanAlpha = cycleT < 0.05f
                 ? cycleT / 0.05f * 0.07f
@@ -360,7 +314,6 @@ public class MainMenuBackgroundController : MonoBehaviour
                 new Color(ACCENT.r, ACCENT.g, ACCENT.b, scanAlpha);
         }
 
-        // ── 7. Estrellas fugaces ───────────────────────────────────────────
         if (t >= _nextStar)
         {
             SpawnShootingStar();
@@ -369,15 +322,12 @@ public class MainMenuBackgroundController : MonoBehaviour
         }
     }
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // Estrella fugaz
-    // ═══════════════════════════════════════════════════════════════════════
     void SpawnShootingStar()
     {
-        // Aparece en borde superior/derecho y cae en diagonal
+
         float startX = Random.Range(0.1f, 0.9f);
         float startY = Random.Range(0.6f, 1.0f);
-        float angle  = Random.Range(-38f, -22f); // descenso diagonal
+        float angle  = Random.Range(-38f, -22f);
         float length = Random.Range(80f, 160f);
         float duration = Random.Range(0.5f, 0.9f);
 
@@ -401,7 +351,7 @@ public class MainMenuBackgroundController : MonoBehaviour
         RectTransform rt, Image img, float duration,
         Vector2 start, float angle)
     {
-        float speed = 380f; // px/s en espacio de referencia
+        float speed = 380f;
         float elapsed = 0f;
 
         float rad     = angle * Mathf.Deg2Rad;
@@ -429,11 +379,6 @@ public class MainMenuBackgroundController : MonoBehaviour
         Destroy(rt.gameObject);
     }
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // Helpers
-    // ═══════════════════════════════════════════════════════════════════════
-
-    // Dibuja un segmento entre dos posiciones normalizadas [0,1]
     RectTransform DrawLine(Vector2 fromN, Vector2 toN, Color col)
     {
         Vector2 p1 = new Vector2(fromN.x * RW, fromN.y * RH);

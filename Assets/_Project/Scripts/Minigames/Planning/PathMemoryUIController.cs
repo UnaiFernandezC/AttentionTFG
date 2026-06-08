@@ -3,24 +3,11 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-/// <summary>
-/// Construye y gestiona el HUD del minijuego Memoria de Ruta.
-///
-/// Canvas HUD (sortOrder=5) sobre el GridCanvas (sortOrder=3).
-///
-/// Elementos:
-///   ─ Banner superior: texto de fase ("¡Memoriza!", "¡Tu turno!", etc.)
-///   ─ Countdown: número grande centrado (visible durante fase de memorización)
-///   ─ Progreso: "Paso X / Y" (visible durante turno del jugador)
-///   ─ Barra inferior: botón Reiniciar + botón Salir
-///   ─ Overlay de resultado (victoria / derrota)
-/// </summary>
 public class PathMemoryUIController : MonoBehaviour
 {
     static Color C(float r, float g, float b, float a = 1f) => new Color(r, g, b, a);
     static Vector2 V(float x, float y) => new Vector2(x, y);
 
-    // Paleta
     static readonly Color BgDark   = C(0.07f, 0.09f, 0.15f);
     static readonly Color PanelBg  = C(0.10f, 0.13f, 0.22f);
     static readonly Color BtnBlue  = C(0.18f, 0.24f, 0.40f);
@@ -38,12 +25,10 @@ public class PathMemoryUIController : MonoBehaviour
 
     GameObject      _countdownGO;
     GameObject      _progressGO;
-    GameObject      _resultOverlayGO;   // referencia al overlay de resultado
+    GameObject      _resultOverlayGO;
 
     Action _onReiniciar;
     Action _onMenu;
-
-    // ── Init ─────────────────────────────────────────────────────
 
     public void Init(Action onReiniciar, Action onMenu)
     {
@@ -70,17 +55,13 @@ public class PathMemoryUIController : MonoBehaviour
         BuildBottomBar();
     }
 
-    // ── Fondos de marco ──────────────────────────────────────────
-
     void BuildFrameBands()
     {
-        // Franja superior
+
         MkImg(_hudRoot, "Top", BgDark, V(0f, 0.89f), V(1f, 1f), Vector2.zero, Vector2.zero);
-        // Franja inferior
+
         MkImg(_hudRoot, "Bot", BgDark, V(0f, 0f), V(1f, 0.075f), Vector2.zero, Vector2.zero);
     }
-
-    // ── Banner de fase ───────────────────────────────────────────
 
     void BuildBanner()
     {
@@ -90,8 +71,6 @@ public class PathMemoryUIController : MonoBehaviour
                             V(0f, 0f), V(1f, 1f));
         _bannerText.fontStyle = FontStyles.Bold;
     }
-
-    // ── Countdown grande ─────────────────────────────────────────
 
     void BuildCountdown()
     {
@@ -109,8 +88,6 @@ public class PathMemoryUIController : MonoBehaviour
         _countdownGO.SetActive(false);
     }
 
-    // ── Progreso del jugador ─────────────────────────────────────
-
     void BuildProgress()
     {
         _progressGO = new GameObject("ProgressBlock");
@@ -125,30 +102,18 @@ public class PathMemoryUIController : MonoBehaviour
         _progressGO.SetActive(false);
     }
 
-    // ── Barra inferior ───────────────────────────────────────────
-
     void BuildBottomBar()
     {
-        // Reiniciar
+
         var bgRe = MkImg(_hudRoot, "BtnRe", BtnBlue,
-                         V(0.32f, 0.008f), V(0.50f, 0.065f), Vector2.zero, Vector2.zero);
+                         V(0.32f, 0.008f), V(0.68f, 0.065f), Vector2.zero, Vector2.zero);
         MkTxt(bgRe, "L", "REINICIAR", ColDim, 22, V(0f, 0f), V(1f, 1f));
         var btnRe = bgRe.gameObject.AddComponent<Button>();
         btnRe.targetGraphic = bgRe.GetComponent<Image>();
         SetBtnColors(btnRe, BtnBlue, BtnHover, BtnPress);
         btnRe.onClick.AddListener(() => _onReiniciar?.Invoke());
 
-        // Salir
-        var bgSa = MkImg(_hudRoot, "BtnSa", C(0.20f, 0.10f, 0.10f),
-                         V(0.52f, 0.008f), V(0.68f, 0.065f), Vector2.zero, Vector2.zero);
-        MkTxt(bgSa, "L", "SALIR", C(1f, 0.5f, 0.5f), 22, V(0f, 0f), V(1f, 1f));
-        var btnSa = bgSa.gameObject.AddComponent<Button>();
-        btnSa.targetGraphic = bgSa.GetComponent<Image>();
-        SetBtnColors(btnSa, C(0.20f, 0.10f, 0.10f), C(0.32f, 0.16f, 0.16f), C(0.12f, 0.06f, 0.06f));
-        btnSa.onClick.AddListener(() => _onMenu?.Invoke());
     }
-
-    // ── API pública ──────────────────────────────────────────────
 
     public void SetBannerText(string text, Color color)
     {
@@ -163,7 +128,7 @@ public class PathMemoryUIController : MonoBehaviour
         if (seconds <= 0) { _countdownGO.SetActive(false); return; }
         _countdownGO.SetActive(true);
         _countdownText.text  = seconds.ToString();
-        // Color: verde→amarillo→rojo según segundos restantes
+
         _countdownText.color = seconds >= 3 ? C(0.20f, 0.90f, 0.40f) :
                                seconds == 2 ? C(1.00f, 0.85f, 0.15f) :
                                               C(0.95f, 0.30f, 0.30f);
@@ -186,16 +151,10 @@ public class PathMemoryUIController : MonoBehaviour
         if (_progressGO != null) _progressGO.SetActive(false);
     }
 
-    // ── Overlay de resultado ─────────────────────────────────────
-
-    /// <summary>
-    /// Muestra el overlay de victoria / derrota.
-    /// retryLabel: texto del botón de acción principal (p.ej. "REINTENTAR", "SIGUIENTE", "JUGAR DE NUEVO").
-    /// </summary>
     public void ShowResult(bool win, string title, string subtitle,
                            string retryLabel, Action onRetry, Action onMenu)
     {
-        // Destruir overlay anterior si existiera
+
         ClearResult();
 
         var overlayRT = MkImg(_hudRoot, "Overlay",
@@ -227,7 +186,6 @@ public class PathMemoryUIController : MonoBehaviour
         btnMe.onClick.AddListener(() => onMenu?.Invoke());
     }
 
-    /// <summary>Destruye el overlay de resultado (para que no quede visible al reintentar).</summary>
     public void ClearResult()
     {
         if (_resultOverlayGO != null)
@@ -236,8 +194,6 @@ public class PathMemoryUIController : MonoBehaviour
             _resultOverlayGO = null;
         }
     }
-
-    // ── Helpers de layout ────────────────────────────────────────
 
     static RectTransform MkImg(RectTransform p, string name, Color col,
                                 Vector2 amin, Vector2 amax, Vector2 pos, Vector2 sd)

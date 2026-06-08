@@ -1,23 +1,9 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
 
-/// <summary>
-/// Orquesta "Cuenta Atrás Silenciosa".
-///
-/// Flujo por ronda:
-///   READY    → el jugador ve el tiempo objetivo → pulsa ¡EMPIEZA!
-///   COUNTING → el temporizador corre oculto     → pulsa ¡YA!
-///   RESULT   → se evalúa la diferencia          → pulsa Continuar
-///   (repite para cada ronda)
-///   FINAL    → resultado global
-///
-/// Victoria: correctCount >= roundsToWin
-/// </summary>
 public class SilentCountdownGameManager : MinigameBase
 {
-    // ------------------------------------------------------------------ //
-    // Inspector
-    // ------------------------------------------------------------------ //
+
     [Header("Configuración de rondas")]
     public int totalRounds = 3;
     public int roundsToWin = 2;
@@ -31,27 +17,18 @@ public class SilentCountdownGameManager : MinigameBase
     [Tooltip("Diferencia máxima para calificación BIEN (60–99 pts). Por encima → FALLO")]
     public float goodMargin    = 1.00f;
 
-    // ------------------------------------------------------------------ //
-    // Componentes
-    // ------------------------------------------------------------------ //
     SilentCountdownTimerManager   _timer;
     SilentCountdownInputHandler   _input;
     SilentCountdownScoreEvaluator _evaluator;
     SilentCountdownUIController   _ui;
 
-    // ------------------------------------------------------------------ //
-    // Estado
-    // ------------------------------------------------------------------ //
     enum Phase { Ready, Counting, Result, Final }
     Phase _phase;
-    int   _currentRound;   // 0-based
+    int   _currentRound;
     int   _correctCount;
     int   _totalScore;
     float _targetTime;
 
-    // ------------------------------------------------------------------ //
-    // MinigameBase
-    // ------------------------------------------------------------------ //
     protected override string GetIntroDescription()
     {
         return
@@ -96,7 +73,6 @@ public class SilentCountdownGameManager : MinigameBase
                     () => RestartMinigame(),
                     () => ReturnToGameSelector());
 
-        // Aplica los márgenes configurados en el Inspector de este componente
         _evaluator.perfectMargin = perfectMargin;
         _evaluator.goodMargin    = goodMargin;
 
@@ -114,16 +90,12 @@ public class SilentCountdownGameManager : MinigameBase
 
     void Update()
     {
-        // Permite avanzar desde la pantalla de resultado con Espacio (el ratón usa el botón)
+
         if (_phase == Phase.Result && Input.GetKeyDown(KeyCode.Space))
         {
             AdvanceRound();
         }
     }
-
-    // ------------------------------------------------------------------ //
-    // Flujo de ronda
-    // ------------------------------------------------------------------ //
 
     void BeginRound()
     {
@@ -134,9 +106,6 @@ public class SilentCountdownGameManager : MinigameBase
         _ui.ShowReady(_targetTime);
     }
 
-    /// <summary>
-    /// Llamado por el botón central unificado (¡EMPIEZA! / ¡YA! / Continuar).
-    /// </summary>
     void OnMainButton()
     {
         switch (_phase)
@@ -146,8 +115,7 @@ public class SilentCountdownGameManager : MinigameBase
                 break;
 
             case Phase.Counting:
-                // Delega en el InputHandler para que el evento sea coherente
-                // con las pulsaciones de teclado/ratón.
+
                 _input.PressButton();
                 break;
 
@@ -157,7 +125,6 @@ public class SilentCountdownGameManager : MinigameBase
         }
     }
 
-    /// <summary>Recibe el evento del InputHandler cuando el jugador pulsa.</summary>
     void OnPlayerPressed()
     {
         if (_phase != Phase.Counting) return;
@@ -237,15 +204,11 @@ public class SilentCountdownGameManager : MinigameBase
         _ui.ShowFinalResult(won, _correctCount, totalRounds, _totalScore);
     }
 
-    // ------------------------------------------------------------------ //
-    // Helpers
-    // ------------------------------------------------------------------ //
-
     float GetTargetForRound(int round)
     {
         if (roundTargets != null && round < roundTargets.Length)
             return roundTargets[round];
-        return 3f + round * 2f;   // fallback: 3 s, 5 s, 7 s, …
+        return 3f + round * 2f;
     }
 
     static void EnsureEventSystem()

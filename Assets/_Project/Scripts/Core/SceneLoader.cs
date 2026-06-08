@@ -11,7 +11,6 @@ public static class SceneLoader
     public const string GAME_SELECTOR_MEDIUM = "GameSelector 1";
     public const string GAME_SELECTOR_HARD   = "GameSelector 2";
 
-    // ── EscenasEleccion (selector de minijuego por categoría) ────────────
     public const string ESCENAS_ATENCION_EASY     = "Atencion";
     public const string ESCENAS_IMPULSOS_EASY     = "ContoImpulsos";
     public const string ESCENAS_EMOCIONAL_EASY    = "ControlEmocional";
@@ -30,7 +29,6 @@ public static class SceneLoader
     public const string ESCENAS_MEMORIA_HARD      = "MemoriaTrabajo_Hard";
     public const string ESCENAS_PLANIF_HARD       = "Planificacion_Hard";
 
-    // ── Attention minigames ──────────────────────────────────────
     public const string ATTENTION_QUICK_REACTION_EASY   = "Attention_QuickReaction_Easy";
     public const string ATTENTION_QUICK_REACTION_MEDIUM = "Attention_QuickReaction_Medium";
     public const string ATTENTION_QUICK_REACTION_HARD   = "Attention_QuickReaction_Hard";
@@ -51,7 +49,6 @@ public static class SceneLoader
     public const string ATTENTION_ALGO_NO_CUADRA_MEDIUM = "Attention_AlgoNoCuadra_Medium";
     public const string ATTENTION_ALGO_NO_CUADRA_HARD   = "Attention_AlgoNoCuadra_Hard";
 
-    // ── Emotional Management minigames ────────────────────────────
     public const string EMOTION_ATTRACTION_CONTROL_EASY   = "Emotional_AttractionControl_Easy";
     public const string EMOTION_ATTRACTION_CONTROL_MEDIUM = "Emotional_AttractionControl_Medium";
     public const string EMOTION_ATTRACTION_CONTROL_HARD   = "Emotional_AttractionControl_Hard";
@@ -72,7 +69,6 @@ public static class SceneLoader
     public const string EMOTION_AVENTURA_EMOCIONAL_MEDIUM = "Emotional_AventuraEmocional_Medium";
     public const string EMOTION_AVENTURA_EMOCIONAL_HARD   = "Emotional_AventuraEmocional_Hard";
 
-    // ── Impulse Control minigames ─────────────────────────────────
     public const string IMPULSE_DONT_FOLLOW_MAJORITY_EASY   = "Impulse_DontFollowMajority_Easy";
     public const string IMPULSE_DONT_FOLLOW_MAJORITY_MEDIUM = "Impulse_DontFollowMajority_Medium";
     public const string IMPULSE_DONT_FOLLOW_MAJORITY_HARD   = "Impulse_DontFollowMajority_Hard";
@@ -93,7 +89,6 @@ public static class SceneLoader
     public const string IMPULSE_STOP_AND_GO_MEDIUM = "Impulse_StopAndGo_Medium";
     public const string IMPULSE_STOP_AND_GO_HARD   = "Impulse_StopAndGo_Hard";
 
-    // ── Memory minigames ──────────────────────────────────────────
     public const string MEMORY_FIND_CHANGE_EASY   = "Memory_FindChange_Easy";
     public const string MEMORY_FIND_CHANGE_MEDIUM = "Memory_FindChange_Medium";
     public const string MEMORY_FIND_CHANGE_HARD   = "Memory_FindChange_Hard";
@@ -114,7 +109,6 @@ public static class SceneLoader
     public const string MEMORY_PATTERN_RECALL_MEDIUM = "Memory_PatternRecall_Medium";
     public const string MEMORY_PATTERN_RECALL_HARD   = "Memory_PatternRecall_Hard";
 
-    // ── Planning minigames ────────────────────────────────────────
     public const string PLANNING_PATH_MEMORY_EASY   = "Planning_PathMemory_Easy";
     public const string PLANNING_PATH_MEMORY_MEDIUM = "Planning_PathMemory_Medium";
     public const string PLANNING_PATH_MEMORY_HARD   = "Planning_PathMemory_Hard";

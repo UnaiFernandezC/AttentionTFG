@@ -50,7 +50,6 @@ public class JuegoMemoria : MonoBehaviour
 
     private readonly int[] monedasPorRonda = { 2, 4, 6 };
 
-
     void ApplyDifficulty()
     {
         var diff = GameManager.Instance != null

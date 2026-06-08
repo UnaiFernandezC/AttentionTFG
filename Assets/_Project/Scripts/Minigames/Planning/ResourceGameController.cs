@@ -263,8 +263,7 @@ public class ResourceGameController : MinigameBase
         BuildActions(botP);
 
         RectTransform bar = Img(R, "Bar", HEADER, V(0,0), V(1,0), V(0,45), V(0,90));
-        MkBtn(bar, "Reiniciar", new Color(0.32f,0.34f,0.44f), V(0.06f,0.12f), V(0.46f,0.88f), () => Reset());
-        MkBtn(bar, "Volver al menu", ACCENT, V(0.54f,0.12f), V(0.94f,0.88f), () => ReturnToGameSelector());
+        MkBtn(bar, "Reiniciar", new Color(0.32f,0.34f,0.44f), V(0.06f,0.12f), V(0.94f,0.88f), () => Reset());
 
         BuildEnd(R);
     }
@@ -384,7 +383,6 @@ public class ResourceGameController : MinigameBase
         _endSub.alignment = TextAlignmentOptions.Center;
 
         MkBtn(card, "Jugar de nuevo", ACCENT, V(0.08f,0.04f), V(0.48f,0.24f), () => Reset());
-        MkBtn(card, "Menu", new Color(0.32f,0.34f,0.44f), V(0.52f,0.04f), V(0.92f,0.24f), () => ReturnToGameSelector());
 
         _endPanel.SetActive(false);
     }

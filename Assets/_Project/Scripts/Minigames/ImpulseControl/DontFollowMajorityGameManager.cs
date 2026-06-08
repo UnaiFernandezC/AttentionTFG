@@ -2,32 +2,12 @@ using System.Collections;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
-/// <summary>
-/// Orquesta "No sigas la mayoría".
-///
-/// Flujo por ronda:
-///   1. GenerateRound()          → RuleManager elige mayoría / minoría
-///   2. Generate(container, …)   → StimulusGenerator coloca las flechas
-///   3. AcceptInput = true       → jugador elige dirección (teclado o botón)
-///   4. HandleResponse(dir)      → evalúa, feedback, actualiza UI
-///   5. Breve pausa              → siguiente ronda o final
-///
-/// Victoria: correctCount >= passCount
-/// Puntuación: 60–100 pts por ronda correcta según velocidad de respuesta.
-///
-/// Cómo ajustar dificultad desde el Inspector:
-///   · totalArrows / minorityCount  → cuánto destaca la minoría
-///   · responseTime                 → presión de tiempo
-///   · totalRounds / passCount      → exigencia para ganar
-/// </summary>
 public class DontFollowMajorityGameManager : MinigameBase
 {
-    // ------------------------------------------------------------------ //
-    // Inspector
-    // ------------------------------------------------------------------ //
+
     [Header("Rondas")]
     public int   totalRounds  = 10;
-    public int   passCount    = 7;    // rondas correctas para ganar
+    public int   passCount    = 7;
 
     [Header("Tiempo de respuesta (segundos)")]
     public float responseTime         = 3.5f;
@@ -35,28 +15,19 @@ public class DontFollowMajorityGameManager : MinigameBase
 
     [Header("Estímulos")]
     public int totalArrows   = 10;
-    public int minorityCount = 2;     // flechas de la dirección correcta
+    public int minorityCount = 2;
 
-    // ------------------------------------------------------------------ //
-    // Componentes
-    // ------------------------------------------------------------------ //
     DontFollowMajorityRuleManager       _rule;
     DontFollowMajorityStimulusGenerator _gen;
     DontFollowMajorityInputHandler      _input;
     DontFollowMajorityUIController      _ui;
 
-    // ------------------------------------------------------------------ //
-    // Estado
-    // ------------------------------------------------------------------ //
     int   _round;
     int   _correct;
     int   _score;
     float _elapsed;
     bool  _waitingForNext;
 
-    // ------------------------------------------------------------------ //
-    // MinigameBase
-    // ------------------------------------------------------------------ //
     protected override string GetIntroDescription()
     {
         return
@@ -100,12 +71,9 @@ public class DontFollowMajorityGameManager : MinigameBase
         _input = GetComponent<DontFollowMajorityInputHandler>();
         _ui    = GetComponent<DontFollowMajorityUIController>();
 
-        // Propaga configuración al generador
         _gen.totalArrows   = totalArrows;
         _gen.minorityCount = minorityCount;
 
-        // Construye UI — los botones del D-pad van por el InputHandler
-        // para respetar el flag AcceptInput y evitar doble disparo
         _ui.BuildUI(totalRounds,
                     d => _input.PressDirection(d),
                     () => RestartMinigame(),
@@ -126,9 +94,6 @@ public class DontFollowMajorityGameManager : MinigameBase
     protected override void OnMinigameComplete() { }
     protected override void OnMinigameFailed()   { }
 
-    // ------------------------------------------------------------------ //
-    // Update — temporizador de respuesta
-    // ------------------------------------------------------------------ //
     void Update()
     {
         if (!IsPlaying || _waitingForNext || !_input.AcceptInput) return;
@@ -142,10 +107,6 @@ public class DontFollowMajorityGameManager : MinigameBase
             HandleTimeout();
         }
     }
-
-    // ------------------------------------------------------------------ //
-    // Flujo de rondas
-    // ------------------------------------------------------------------ //
 
     IEnumerator DelayedStart()
     {
@@ -222,18 +183,12 @@ public class DontFollowMajorityGameManager : MinigameBase
         _ui.ShowFinalResult(won, _correct, totalRounds, _score);
     }
 
-    // ------------------------------------------------------------------ //
-    // Puntuación — más puntos por respuesta rápida
-    // ------------------------------------------------------------------ //
     int ComputePoints()
     {
         float ratio = Mathf.Clamp01(1f - _elapsed / responseTime);
         return Mathf.RoundToInt(Mathf.Lerp(60f, 100f, ratio));
     }
 
-    // ------------------------------------------------------------------ //
-    // Helpers
-    // ------------------------------------------------------------------ //
     static void EnsureEventSystem()
     {
         if (FindObjectOfType<EventSystem>() == null)

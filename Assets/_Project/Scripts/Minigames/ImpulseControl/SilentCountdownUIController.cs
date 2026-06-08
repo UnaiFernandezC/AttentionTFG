@@ -4,23 +4,12 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-/// <summary>
-/// Construye y gestiona toda la UI de "Cuenta Atrás Silenciosa".
-/// Estética idéntica al resto de minijuegos del proyecto.
-///
-/// Estados visuales:
-///   READY    → muestra el tiempo objetivo + botón "¡EMPIEZA!"
-///   COUNTING → oculta el tiempo, círculo pulsante, botón "¡YA!"
-///   RESULT   → muestra objetivo / real / diferencia + feedback de color
-///   FINAL    → panel de resultado final
-/// </summary>
 public class SilentCountdownUIController : MonoBehaviour
 {
-    // ── Helpers ──────────────────────────────────────────────────────────
+
     static Vector2 V(float x, float y) => new Vector2(x, y);
     static Color   C(float r, float g, float b, float a = 1f) => new Color(r, g, b, a);
 
-    // ── Paleta (idéntica al resto del proyecto) ───────────────────────────
     static readonly Color BG      = C(0.05f, 0.08f, 0.14f);
     static readonly Color HDR     = C(0.03f, 0.05f, 0.10f);
     static readonly Color PANEL   = C(0.07f, 0.11f, 0.20f);
@@ -30,14 +19,12 @@ public class SilentCountdownUIController : MonoBehaviour
     static readonly Color CGREEN  = C(0.22f, 0.86f, 0.54f);
     static readonly Color CYELLOW = C(0.95f, 0.80f, 0.15f);
 
-    // ── Refs internas ─────────────────────────────────────────────────────
     Image[]          _roundDots;
     TextMeshProUGUI  _scoreText;
 
-    // Zona central
     GameObject       _readyPanel;
-    TextMeshProUGUI  _targetLabel;    // "Objetivo:"
-    TextMeshProUGUI  _targetSeconds;  // "5 segundos"
+    TextMeshProUGUI  _targetLabel;
+    TextMeshProUGUI  _targetSeconds;
     TextMeshProUGUI  _readyHint;
 
     GameObject       _countingPanel;
@@ -50,11 +37,9 @@ public class SilentCountdownUIController : MonoBehaviour
     TextMeshProUGUI  _resultDiff;
     TextMeshProUGUI  _resultRating;
 
-    // Botón central unificado
     Image            _mainBtnImg;
     TextMeshProUGUI  _mainBtnTxt;
 
-    // Panel final
     GameObject       _finalPanel;
     TextMeshProUGUI  _finalTitle;
     TextMeshProUGUI  _finalSub;
@@ -63,13 +48,9 @@ public class SilentCountdownUIController : MonoBehaviour
 
     Coroutine _pulseCoroutine;
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // BuildUI
-    // ═══════════════════════════════════════════════════════════════════════
-
     public void BuildUI(int rounds, Action onMainButton, Action onRestart, Action onMenu)
     {
-        // ── Canvas ─────────────────────────────────────────────────────────
+
         var cGO = new GameObject("Canvas_SilentCountdown");
         cGO.transform.SetParent(transform, false);
         var cv = cGO.AddComponent<Canvas>();
@@ -82,12 +63,10 @@ public class SilentCountdownUIController : MonoBehaviour
         cGO.AddComponent<GraphicRaycaster>();
         var R = cGO.GetComponent<RectTransform>();
 
-        // ── Fondo + cuadrícula ──────────────────────────────────────────────
         MkImg(R, "BG",   BG,                          V(0,0), V(1,1), V(0,0), V(0,0));
         MkImg(R, "Grad", C(0.00f,0.08f,0.18f,0.28f), V(0,0), V(1,1), V(0,0), V(0,0));
         BuildGrid(R);
 
-        // ── Header ─────────────────────────────────────────────────────────
         var hdr = MkImg(R, "Hdr", HDR, V(0,1), V(1,1), V(0,-44f), V(0,88f));
         MkImg(hdr, "LineB", ACCENT, V(0,0),     V(1,0),     V(0,1.5f), V(0,3f));
         MkImg(hdr, "AccL",  ACCENT, V(0,0.18f), V(0,0.82f), V(3f,0),   V(6f,0));
@@ -103,23 +82,18 @@ public class SilentCountdownUIController : MonoBehaviour
 
         _roundDots = BuildRoundDots(hdr, rounds);
 
-        // ── Score ──────────────────────────────────────────────────────────
         _scoreText = MkTxt(R, "Score", "0 pts", DIM, 20,
                            V(0.01f, 0.885f), V(0.16f, 0.935f));
         _scoreText.alignment = TextAlignmentOptions.MidlineLeft;
 
-        // ── Panel lateral izquierdo (instrucciones) ─────────────────────────
         BuildInstructionPanel(R);
 
-        // ── Zona central ───────────────────────────────────────────────────
         BuildReadyPanel(R);
         BuildCountingPanel(R);
         BuildResultPanel(R);
 
-        // ── Botón central ──────────────────────────────────────────────────
         BuildMainButton(R, onMainButton);
 
-        // ── Footer ─────────────────────────────────────────────────────────
         var footer = MkImg(R, "Footer", HDR, V(0,0), V(1,0), V(0,40f), V(0,80f));
         MkImg(footer, "LineT", ACCENT, V(0,1), V(1,1), V(0,-1.5f), V(0,3f));
         MkTxt(footer, "Hint",
@@ -127,9 +101,7 @@ public class SilentCountdownUIController : MonoBehaviour
               C(ACCENT.r, ACCENT.g-0.08f, ACCENT.b-0.05f), 16,
               V(0.01f,0), V(0.78f,1)).alignment = TextAlignmentOptions.MidlineLeft;
         MkImg(footer, "Sep", C(1,1,1,0.10f), V(0.78f,0.1f), V(0.782f,0.9f), V(0,0), V(0,0));
-        MkBtn(footer, "Menú", C(0.14f,0.22f,0.38f), V(0.80f,0.08f), V(0.99f,0.92f), onMenu);
 
-        // ── Flash overlay ───────────────────────────────────────────────────
         var fGO = new GameObject("Flash");
         fGO.transform.SetParent(R, false);
         var fRT = fGO.AddComponent<RectTransform>();
@@ -140,14 +112,11 @@ public class SilentCountdownUIController : MonoBehaviour
         _flashOverlay.raycastTarget = false;
         fGO.SetActive(false);
 
-        // ── Panel resultado final ───────────────────────────────────────────
         BuildFinalPanel(R, onRestart, onMenu);
 
-        // Estado inicial
-        ShowReady(5f); // placeholder, se sobreescribirá con ShowReady real
+        ShowReady(5f);
     }
 
-    // ───────────────────────────────────────────────────────────────────────
     void BuildGrid(RectTransform R)
     {
         for (int i = 1; i < 6; i++)
@@ -222,9 +191,8 @@ public class SilentCountdownUIController : MonoBehaviour
         rt.anchorMax = V(0.85f, 0.84f);
         rt.offsetMin = rt.offsetMax = Vector2.zero;
 
-        // Fondo suave
         var bg = _readyPanel.AddComponent<Image>();
-        bg.color = C(0.06f, 0.09f, 0.16f, 0.0f); // transparente (sólo texto)
+        bg.color = C(0.06f, 0.09f, 0.16f, 0.0f);
 
         _targetLabel = MkTxt(rt, "Label", "MEMORIZA EL TIEMPO",
                              DIM, 18, V(0.05f, 0.72f), V(0.95f, 0.88f));
@@ -251,7 +219,6 @@ public class SilentCountdownUIController : MonoBehaviour
         rt.anchorMax = V(0.85f, 0.84f);
         rt.offsetMin = rt.offsetMax = Vector2.zero;
 
-        // Círculo pulsante de fondo
         var ringGO = new GameObject("PulseRing");
         ringGO.transform.SetParent(rt, false);
         var rRT = ringGO.AddComponent<RectTransform>();
@@ -263,7 +230,6 @@ public class SilentCountdownUIController : MonoBehaviour
         _pulseRing.sprite = MakeCircleSprite(128);
         _pulseRing.color  = C(0.18f, 0.80f, 0.58f, 0.12f);
 
-        // Texto central "?"
         var qMark = MkTxt(rt, "QMark", "?", C(0.18f, 0.80f, 0.58f, 0.35f), 120,
                           V(0.1f, 0.25f), V(0.9f, 0.78f));
         qMark.fontStyle = FontStyles.Bold;
@@ -286,7 +252,6 @@ public class SilentCountdownUIController : MonoBehaviour
         rt.anchorMax = V(0.85f, 0.84f);
         rt.offsetMin = rt.offsetMax = Vector2.zero;
 
-        // Tarjeta
         var cardRT = MkImg(rt, "Card", C(0.06f,0.09f,0.18f,0.90f),
                            V(0.05f,0.05f), V(0.95f,0.95f), V(0,0), V(0,0));
         MkImg(cardRT, "BorderT", ACCENT, V(0,1), V(1,1), V(0,-2), V(0,4));
@@ -296,7 +261,6 @@ public class SilentCountdownUIController : MonoBehaviour
         _resultRating.fontStyle = FontStyles.Bold;
         _resultRating.alignment = TextAlignmentOptions.Center;
 
-        // Fila: objetivo
         MkTxt(cardRT, "TL", "Objetivo:", DIM, 20, V(0.05f, 0.60f), V(0.45f, 0.74f)).alignment =
             TextAlignmentOptions.MidlineRight;
         _resultTarget = MkTxt(cardRT, "TV", "—", Color.white, 22,
@@ -304,7 +268,6 @@ public class SilentCountdownUIController : MonoBehaviour
         _resultTarget.fontStyle = FontStyles.Bold;
         _resultTarget.alignment = TextAlignmentOptions.MidlineLeft;
 
-        // Fila: real
         MkTxt(cardRT, "AL", "Tu tiempo:", DIM, 20, V(0.05f, 0.44f), V(0.45f, 0.58f)).alignment =
             TextAlignmentOptions.MidlineRight;
         _resultActual = MkTxt(cardRT, "AV", "—", Color.white, 22,
@@ -312,7 +275,6 @@ public class SilentCountdownUIController : MonoBehaviour
         _resultActual.fontStyle = FontStyles.Bold;
         _resultActual.alignment = TextAlignmentOptions.MidlineLeft;
 
-        // Fila: diferencia
         MkImg(cardRT, "Sep", C(1,1,1,0.08f), V(0.05f,0.40f), V(0.95f,0.41f), V(0,0), V(0,0));
         MkTxt(cardRT, "DL", "Diferencia:", DIM, 20, V(0.05f, 0.24f), V(0.45f, 0.38f)).alignment =
             TextAlignmentOptions.MidlineRight;
@@ -329,7 +291,7 @@ public class SilentCountdownUIController : MonoBehaviour
 
     void BuildMainButton(RectTransform R, Action onMainButton)
     {
-        // Halo
+
         var haloGO = new GameObject("BtnHalo");
         haloGO.transform.SetParent(R, false);
         var hRT = haloGO.AddComponent<RectTransform>();
@@ -341,7 +303,6 @@ public class SilentCountdownUIController : MonoBehaviour
         hImg.sprite = MakeRoundedRectSprite(330, 100, 20);
         hImg.color  = C(ACCENT.r, ACCENT.g, ACCENT.b, 0.18f);
 
-        // Botón
         var btnGO = new GameObject("MainBtn");
         btnGO.transform.SetParent(R, false);
         var bRT = btnGO.AddComponent<RectTransform>();
@@ -354,7 +315,6 @@ public class SilentCountdownUIController : MonoBehaviour
         _mainBtnImg.sprite = MakeRoundedRectSprite(310, 80, 18);
         _mainBtnImg.color  = ACCENT;
 
-        // Shine
         var shGO = new GameObject("Sh");
         shGO.transform.SetParent(btnGO.transform, false);
         var shRT = shGO.AddComponent<RectTransform>();
@@ -399,17 +359,11 @@ public class SilentCountdownUIController : MonoBehaviour
         _finalSub.alignment    = TextAlignmentOptions.Center;
         _finalSub.lineSpacing  = 10f;
 
-        MkBtn(card, "Jugar de nuevo", ACCENT,               V(0.05f,0.04f), V(0.46f,0.17f), onRestart);
-        MkBtn(card, "Menú",           C(0.14f,0.22f,0.38f), V(0.54f,0.04f), V(0.95f,0.17f), onMenu);
+        MkBtn(card, "Jugar de nuevo", ACCENT,               V(0.05f,0.04f), V(0.95f,0.17f), onRestart);
 
         _finalPanel.SetActive(false);
     }
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // API pública — estados
-    // ═══════════════════════════════════════════════════════════════════════
-
-    /// <summary>Muestra el tiempo objetivo y el botón ¡EMPIEZA!</summary>
     public void ShowReady(float targetSeconds)
     {
         _readyPanel.SetActive(true);
@@ -422,7 +376,6 @@ public class SilentCountdownUIController : MonoBehaviour
         SetMainButton("¡EMPIEZA!", ACCENT);
     }
 
-    /// <summary>Oculta el tiempo y activa la animación de espera.</summary>
     public void ShowCounting()
     {
         _readyPanel.SetActive(false);
@@ -435,7 +388,6 @@ public class SilentCountdownUIController : MonoBehaviour
         _pulseCoroutine = StartCoroutine(PulseRoutine());
     }
 
-    /// <summary>Muestra el resultado de la ronda con feedback de color.</summary>
     public void ShowRoundResult(float target, float actual, float diff, bool signPositive,
                                 string ratingText, Color ratingColor)
     {
@@ -457,7 +409,6 @@ public class SilentCountdownUIController : MonoBehaviour
         SetMainButton("Continuar", C(0.14f, 0.22f, 0.38f));
     }
 
-    /// <summary>Muestra el panel de resultado final.</summary>
     public void ShowFinalResult(bool won, int correct, int total, int score)
     {
         if (_pulseCoroutine != null) { StopCoroutine(_pulseCoroutine); _pulseCoroutine = null; }
@@ -481,7 +432,6 @@ public class SilentCountdownUIController : MonoBehaviour
         _finalSub.text    = msg;
     }
 
-    // ── Helpers de estado ─────────────────────────────────────────────────
     public void SetRoundDot(int index, bool? correct)
     {
         if (_roundDots == null || index >= _roundDots.Length) return;
@@ -540,10 +490,6 @@ public class SilentCountdownUIController : MonoBehaviour
 
     static string FormatSeconds(float s) => $"{s:F1} s";
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // Sprites procedurales
-    // ═══════════════════════════════════════════════════════════════════════
-
     public static Sprite MakeCircleSprite(int res = 128)
     {
         var tex = new Texture2D(res, res, TextureFormat.RGBA32, false);
@@ -580,10 +526,6 @@ public class SilentCountdownUIController : MonoBehaviour
         tex.Apply();
         return Sprite.Create(tex, new Rect(0,0,w,h), V(0.5f,0.5f));
     }
-
-    // ═══════════════════════════════════════════════════════════════════════
-    // Helpers UI
-    // ═══════════════════════════════════════════════════════════════════════
 
     RectTransform MkImg(RectTransform p, string n, Color col,
                         Vector2 am, Vector2 aM, Vector2 pos, Vector2 sd)

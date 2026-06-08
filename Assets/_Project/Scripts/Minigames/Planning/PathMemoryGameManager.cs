@@ -2,40 +2,24 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>
-/// Orquestador principal del minijuego Memoria de Ruta.
-///
-/// Fases por nivel (3 niveles en total):
-///   1. Intro      – MinigameBase muestra el panel explicativo; al pulsar COMENZAR → OnMinigameStart
-///   2. ShowRoute  – se iluminan las celdas de la ruta + cuenta regresiva
-///   3. HideRoute  – se oculta la ruta brevemente ("¡Preparado!")
-///   4. PlayerTurn – el jugador reproduce la ruta haciendo click
-///   5. Result     – overlay de nivel completado / derrota
-///   Al completar los 3 niveles → overlay final de juego completado
-/// </summary>
 public class PathMemoryGameManager : MinigameBase
 {
     static Color C(float r, float g, float b, float a = 1f) => new Color(r, g, b, a);
 
-    // Componentes (creados en OnMinigameStart)
     PathMemoryGridManager  _grid;
     PathMemoryPathManager  _pathMgr;
     PathMemoryPlayerInput  _input;
     PathMemoryUIController _ui;
 
-    // Estado
     List<Vector2Int>              _route;
     PathMemoryPathManager.LevelConfig _cfg;
     int  _currentLevel = 0;
     bool _gameActive   = false;
 
-    // ── Configuración de escena (inspector) ──────────────────────
     [Header("Tiempo de memorización por nivel (segundos)")]
     [SerializeField] float displaySecondsLevel1 = 5f;
     [SerializeField] float displaySecondsLevel2 = 4f;
     [SerializeField] float displaySecondsLevel3 = 3f;
-
-    // ── MinigameBase ─────────────────────────────────────────────
 
     protected override void Start()
     {
@@ -51,17 +35,15 @@ public class PathMemoryGameManager : MinigameBase
 
     protected override void OnMinigameStart()
     {
-        // Crear componentes en tiempo de ejecución (no dependen del YAML de escena)
+
         _grid    = gameObject.AddComponent<PathMemoryGridManager>();
         _pathMgr = gameObject.AddComponent<PathMemoryPathManager>();
         _input   = gameObject.AddComponent<PathMemoryPlayerInput>();
         _ui      = gameObject.AddComponent<PathMemoryUIController>();
 
-        // HUD
         _ui.Init(OnReiniciar, OnSalir);
         _ui.BuildHUD();
 
-        // Suscribir eventos de input
         _input.OnCorrectStep  += HandleCorrectStep;
         _input.OnWrongStep    += HandleWrongStep;
         _input.OnRouteComplete += HandleVictory;
@@ -70,18 +52,15 @@ public class PathMemoryGameManager : MinigameBase
         StartLevel(_currentLevel);
     }
 
-    // ── Iniciar/reiniciar un nivel ───────────────────────────────
-
     void StartLevel(int level)
     {
         _cfg = _pathMgr.GetConfig(level);
-        // Sobreescribir displaySeconds con el valor del inspector
+
         float[] inspectorTimes = { displaySecondsLevel1, displaySecondsLevel2, displaySecondsLevel3 };
         _cfg = new PathMemoryPathManager.LevelConfig
             { gridSize = _cfg.gridSize, displaySeconds = inspectorTimes[Mathf.Clamp(level, 0, 2)] };
         _route = _pathMgr.GetRoute(level);
 
-        // Si el canvas del grid existe de una partida anterior, lo destruimos
         if (_grid != null && _grid.GridCanvas != null)
             Destroy(_grid.GridCanvas.gameObject);
 
@@ -96,8 +75,6 @@ public class PathMemoryGameManager : MinigameBase
         _gameActive = true;
         StartCoroutine(Phase1ShowRoute());
     }
-
-    // ── Fase 1: mostrar ruta ─────────────────────────────────────
 
     IEnumerator Phase1ShowRoute()
     {
@@ -125,8 +102,6 @@ public class PathMemoryGameManager : MinigameBase
         StartCoroutine(Phase2HideRoute());
     }
 
-    // ── Fase 2: ocultar ruta ─────────────────────────────────────
-
     IEnumerator Phase2HideRoute()
     {
         _ui.SetBannerText("¡PREPARADO!", C(1.00f, 0.85f, 0.20f));
@@ -137,8 +112,6 @@ public class PathMemoryGameManager : MinigameBase
         yield return new WaitForSeconds(0.8f);
         StartCoroutine(Phase3PlayerTurn());
     }
-
-    // ── Fase 3: turno del jugador ────────────────────────────────
 
     IEnumerator Phase3PlayerTurn()
     {
@@ -154,8 +127,6 @@ public class PathMemoryGameManager : MinigameBase
 
         yield break;
     }
-
-    // ── Handlers de input ────────────────────────────────────────
 
     void OnCellClicked(Vector2Int pos)
     {
@@ -230,9 +201,6 @@ public class PathMemoryGameManager : MinigameBase
         }
     }
 
-    // ── Acciones de botones ──────────────────────────────────────
-
-    /// <summary>Reinicia el nivel actual (desde resultado o botón de barra).</summary>
     void OnReiniciar()
     {
         _ui.ClearResult();
@@ -252,7 +220,6 @@ public class PathMemoryGameManager : MinigameBase
         StartCoroutine(Phase1ShowRoute());
     }
 
-    /// <summary>Avanza al siguiente nivel.</summary>
     void OnSiguienteNivel()
     {
         _ui.ClearResult();
@@ -265,7 +232,6 @@ public class PathMemoryGameManager : MinigameBase
         StartLevel(_currentLevel);
     }
 
-    /// <summary>Reinicia desde el nivel 1 (tras completar el juego).</summary>
     void OnJugarDeNuevo()
     {
         _ui.ClearResult();
@@ -283,8 +249,6 @@ public class PathMemoryGameManager : MinigameBase
         StopAllCoroutines();
         UnityEngine.SceneManagement.SceneManager.LoadScene("MainMenu");
     }
-
-    // ── MinigameBase abstracts ───────────────────────────────────
 
     protected override void OnMinigameComplete() { }
     protected override void OnMinigameFailed()   { }

@@ -312,19 +312,6 @@ public class OrderGameController : MinigameBase
         _gridContainer.anchoredPosition = new Vector2(0f, 30f);
         _gridContainer.sizeDelta        = new Vector2(600f, 400f);
 
-        var botBar = MakePanel(root, "BotBar",
-            new Color(0.10f, 0.11f, 0.22f),
-            new Vector2(0f, 0f), new Vector2(1f, 0f),
-            new Vector2(0f, 120f), new Vector2(0f, 120f));
-        var botRT = botBar.GetComponent<RectTransform>();
-
-        MakeButton(botRT, "BtnRestart", "Reiniciar", C_BTN_GREY,
-            new Vector2(0.08f, 0.12f), new Vector2(0.48f, 0.88f), Vector2.zero, Vector2.zero,
-            () => { ResetTotals(); StartRound(0); });
-
-        MakeButton(botRT, "BtnMenu", "Volver al menu", C_BTN_BLUE,
-            new Vector2(0.52f, 0.12f), new Vector2(0.92f, 0.88f), Vector2.zero, Vector2.zero,
-            ReturnToGameSelector);
 
         BuildTransitionPanel(root);
 
@@ -437,13 +424,8 @@ public class OrderGameController : MinigameBase
 
         MakeButton(cardRT, "BtnReplay", "Jugar de nuevo", C_BTN_BLUE,
             new Vector2(0.06f, 0f), new Vector2(0.94f, 0f),
-            new Vector2(0f, 90f), new Vector2(0f, 72f),
+            new Vector2(0f, 52f), new Vector2(0f, 72f),
             () => { _endPanel.SetActive(false); ResetTotals(); StartRound(0); });
-
-        MakeButton(cardRT, "BtnMenu", "Menu principal", C_BTN_GREY,
-            new Vector2(0.06f, 0f), new Vector2(0.94f, 0f),
-            new Vector2(0f, 14f), new Vector2(0f, 66f),
-            ReturnToGameSelector);
 
         _endPanel.SetActive(false);
     }

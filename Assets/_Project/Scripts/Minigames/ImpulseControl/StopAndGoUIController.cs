@@ -105,7 +105,6 @@ public class StopAndGoUIController : MonoBehaviour
         var stopTxt = MkTxt(stopRT, "T", "¡PARA!", Color.white, 24, V(0,0), V(1,1));
         stopTxt.fontStyle = FontStyles.Bold;
 
-        MkBtn(footer, "Menú", C(0.14f,0.22f,0.38f), V(0.89f,0.08f), V(0.99f,0.92f), onMenu);
 
         var fGO = new GameObject("Flash");
         fGO.transform.SetParent(R, false);
@@ -288,8 +287,7 @@ public class StopAndGoUIController : MonoBehaviour
         _resultSub.alignment    = TextAlignmentOptions.Center;
         _resultSub.lineSpacing  = 10f;
 
-        MkBtn(card, "Jugar de nuevo", ACCENT,               V(0.05f,0.04f), V(0.46f,0.17f), onRestart);
-        MkBtn(card, "Menú",           C(0.14f,0.22f,0.38f), V(0.54f,0.04f), V(0.95f,0.17f), onMenu);
+        MkBtn(card, "Jugar de nuevo", ACCENT,               V(0.05f,0.04f), V(0.95f,0.17f), onRestart);
 
         _resultPanel.SetActive(false);
     }

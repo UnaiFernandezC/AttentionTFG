@@ -1,38 +1,20 @@
 using System.Collections;
 using UnityEngine;
 
-/// <summary>
-/// Orquestador principal del minijuego "Simón Dice".
-///
-/// Estructura: 3 fases secuenciales por escena.
-/// Cada fase tiene su propio número de pasos objetivo y timings.
-/// Los valores se configuran directamente en el Inspector — sin selección
-/// automática de dificultad. Cada escena (_Easy, _Medium, _Hard) tiene
-/// sus propios valores.
-///
-/// Flujo por fase:
-///   1. La secuencia crece +1 cada ronda hasta alcanzar stepsToWin.
-///   2. Al completar la fase → banner de transición → siguiente fase.
-///   3. Al completar las 3 fases → victoria.
-///   4. Si el jugador falla en cualquier momento → Game Over.
-/// </summary>
 public class SimonGameManager : MinigameBase
 {
-    // ── Componentes hermanos ──────────────────────────────────────────────────
+
     SimonSequenceManager _seq;
     SimonAudioManager    _audio;
     SimonUIController    _ui;
 
-    // ── Estado ────────────────────────────────────────────────────────────────
     enum State { Idle, ShowingSequence, PlayerTurn, RoundWon, GameOver }
     State _state = State.Idle;
 
-    // ── Configuración de escena ───────────────────────────────────────────────
     [Header("Número de colores de la escena")]
     [Tooltip("Cuántos colores distintos usa el juego en esta escena (4 o 5).")]
     [SerializeField] int colorCount = 4;
 
-    // ── Fase 1 ────────────────────────────────────────────────────────────────
     [Header("Fase 1")]
     [Tooltip("La fase termina cuando el jugador alcanza esta longitud de secuencia.")]
     [SerializeField] int   stepsToWin1   = 3;
@@ -43,14 +25,12 @@ public class SimonGameManager : MinigameBase
     [Tooltip("Pausa antes del turno del jugador (segundos).")]
     [SerializeField] float previewPause1 = 0.90f;
 
-    // ── Fase 2 ────────────────────────────────────────────────────────────────
     [Header("Fase 2")]
     [SerializeField] int   stepsToWin2   = 4;
     [SerializeField] float stepDuration2 = 0.60f;
     [SerializeField] float stepGap2      = 0.28f;
     [SerializeField] float previewPause2 = 0.70f;
 
-    // ── Fase 3 ────────────────────────────────────────────────────────────────
     [Header("Fase 3")]
     [SerializeField] int   stepsToWin3   = 5;
     [SerializeField] float stepDuration3 = 0.45f;
@@ -60,21 +40,16 @@ public class SimonGameManager : MinigameBase
     [Header("Puntuación")]
     [SerializeField] int pointsPerStep = 100;
 
-    // ── Runtime ───────────────────────────────────────────────────────────────
     float _stepDuration;
     float _stepGap;
     float _previewPause;
-    int   _currentPhase;     // 0-based
+    int   _currentPhase;
     int   _accumulatedScore;
 
     const string PREF_RECORD = "simon_record";
     int _record;
 
     Coroutine _gameLoop;
-
-    // ═════════════════════════════════════════════════════════════════════════
-    // MinigameBase overrides
-    // ═════════════════════════════════════════════════════════════════════════
 
     protected override void Start()
     {
@@ -109,7 +84,7 @@ public class SimonGameManager : MinigameBase
         foreach (var btn in _ui.Buttons)
         {
             btn.SetInteractive(false);
-            btn.OnPressed += _ => { }; // registrado en GameLoop
+            btn.OnPressed += _ => { };
         }
 
         _ui.OnRestartPressed += () => RestartMinigame();
@@ -122,10 +97,6 @@ public class SimonGameManager : MinigameBase
     protected override void OnMinigameComplete() { }
     protected override void OnMinigameFailed()   { }
 
-    // ═════════════════════════════════════════════════════════════════════════
-    // Flujo principal
-    // ═════════════════════════════════════════════════════════════════════════
-
     IEnumerator GameLoop()
     {
         int[] stepsToWin     = { stepsToWin1,   stepsToWin2,   stepsToWin3   };
@@ -135,39 +106,34 @@ public class SimonGameManager : MinigameBase
 
         for (_currentPhase = 0; _currentPhase < 3; _currentPhase++)
         {
-            // Aplicar configuración de esta fase
+
             _stepDuration = durations[_currentPhase];
             _stepGap      = gaps[_currentPhase];
             _previewPause = previews[_currentPhase];
             int phaseSteps = stepsToWin[_currentPhase];
 
-            // Reiniciar secuencia para la nueva fase
             _seq.ResetSequence();
 
             _ui.SetPhase(_currentPhase + 1, 3);
             _ui.SetRound(0);
 
-            // Bucle interno de la fase
             bool gameOver = false;
 
             while (_seq.Round < phaseSteps)
             {
-                // 1. Añadir paso
+
                 _seq.AddStep();
                 _ui.SetRound(_seq.Round);
                 SetAllInteractive(false);
 
-                // 2. Pausa breve → mostrar secuencia
                 _state = State.ShowingSequence;
                 _ui.SetStatus("Observa la secuencia…", new Color(0.38f, 0.52f, 0.68f));
                 yield return new WaitForSeconds(0.55f);
 
                 yield return ShowSequence();
 
-                // 3. Pausa antes del turno del jugador
                 yield return new WaitForSeconds(_previewPause);
 
-                // 4. Turno del jugador
                 _state = State.PlayerTurn;
                 _ui.SetStatus("¡Tu turno!", new Color(0.22f, 0.86f, 0.54f));
                 SetAllInteractive(true);
@@ -182,7 +148,6 @@ public class SimonGameManager : MinigameBase
                     break;
                 }
 
-                // 5. Ronda correcta
                 _state = State.RoundWon;
                 _accumulatedScore += pointsPerStep * _seq.Round;
                 _ui.SetStatus("¡Correcto! +1 color", new Color(0.96f, 0.78f, 0.18f));
@@ -196,16 +161,12 @@ public class SimonGameManager : MinigameBase
                 yield break;
             }
 
-            // Fase completada — si no es la última, transición
             if (_currentPhase < 2)
                 yield return PhaseTransition(_currentPhase + 1);
         }
 
-        // Las 3 fases completadas
         yield return HandleWin();
     }
-
-    // ── Mostrar secuencia ─────────────────────────────────────────────────────
 
     IEnumerator ShowSequence()
     {
@@ -217,8 +178,6 @@ public class SimonGameManager : MinigameBase
             yield return new WaitForSeconds(_stepGap);
         }
     }
-
-    // ── Esperar input del jugador ─────────────────────────────────────────────
 
     IEnumerator WaitForPlayerInput(bool[] failedOut)
     {
@@ -253,8 +212,6 @@ public class SimonGameManager : MinigameBase
         failedOut[0] = failed;
     }
 
-    // ── Transición entre fases ────────────────────────────────────────────────
-
     IEnumerator PhaseTransition(int nextPhase)
     {
         _state = State.Idle;
@@ -268,15 +225,13 @@ public class SimonGameManager : MinigameBase
         _ui.SetStatus("");
     }
 
-    // ── Game Over ─────────────────────────────────────────────────────────────
-
     IEnumerator HandleGameOver()
     {
         _state = State.GameOver;
         _ui.SetStatus("¡Oh no! Secuencia incorrecta", new Color(0.90f, 0.22f, 0.28f));
 
         bool newRecord = false;
-        int totalSteps = _seq.Round + _currentPhase * 10; // puntuación aproximada de récord
+        int totalSteps = _seq.Round + _currentPhase * 10;
         if (totalSteps > _record)
         {
             _record = totalSteps;
@@ -291,8 +246,6 @@ public class SimonGameManager : MinigameBase
         _ui.ShowResult(newRecord, _seq.Round, _record);
     }
 
-    // ── Victoria ──────────────────────────────────────────────────────────────
-
     IEnumerator HandleWin()
     {
         _state = State.GameOver;
@@ -300,7 +253,7 @@ public class SimonGameManager : MinigameBase
         _audio.PlaySuccess();
 
         bool newRecord = false;
-        int totalSteps = 999; // ganar siempre bate el récord anterior si era <999
+        int totalSteps = 999;
         if (_record < totalSteps)
         {
             newRecord = true;
@@ -314,8 +267,6 @@ public class SimonGameManager : MinigameBase
         yield return new WaitForSeconds(0.80f);
         _ui.ShowWin(newRecord, 3, 3);
     }
-
-    // ── Helpers ───────────────────────────────────────────────────────────────
 
     void SetAllInteractive(bool value)
     {

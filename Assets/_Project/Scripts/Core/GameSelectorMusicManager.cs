@@ -1,18 +1,5 @@
 using UnityEngine;
 
-/// <summary>
-/// Manages looping background music on GameSelector and EscenasEleccion screens.
-///
-/// SETUP:
-/// 1. Place this script on a new empty GameObject called "MusicManager" in each
-///    GameSelector scene (GameSelector, GameSelector 1, GameSelector 2).
-/// 2. Assign your MP3 file to the "Background Music" field in the Inspector.
-/// 3. The music will play automatically on loop, persist across EscenasEleccion
-///    sub-scenes, and stop when leaving the GameSelector flow.
-///
-/// MP3 IMPORT: drag your .mp3 into Assets/_Project/Audio/, then drag the resulting
-/// AudioClip asset into the "Background Music" slot on this component.
-/// </summary>
 [RequireComponent(typeof(AudioSource))]
 public class GameSelectorMusicManager : MonoBehaviour
 {
@@ -71,20 +58,12 @@ public class GameSelectorMusicManager : MonoBehaviour
         _audioSource.volume = volume;
     }
 
-    /// <summary>
-    /// Call this from any minigame scene to stop the music when the player
-    /// actually starts playing (optional — music persists by default).
-    /// </summary>
     public static void StopMusic()
     {
         if (_instance != null)
             _instance._audioSource.Stop();
     }
 
-    /// <summary>
-    /// Destroys the music manager when leaving the GameSelector flow entirely
-    /// (e.g. returning to MainMenu). Call from MainMenu's Awake/Start.
-    /// </summary>
     public static void DestroyInstance()
     {
         if (_instance != null)

@@ -385,18 +385,6 @@ public class PatternGameController : MinigameBase
         cTmp.alignment = TMPro.TextAlignmentOptions.Center;
         _confirmBtn.SetActive(false);
 
-        var botBar = MakePanel(root, "BotBar", C_HEADER,
-            new Vector2(0f, 0f), new Vector2(1f, 0f),
-            new Vector2(0f, 45f), new Vector2(0f, 90f));
-        var botRT = botBar.GetComponent<RectTransform>();
-
-        MakeButton(botRT, "BtnRestart", "Reiniciar", C_BTN_GREY,
-            new Vector2(0.06f, 0.12f), new Vector2(0.46f, 0.88f), Vector2.zero, Vector2.zero,
-            () => { StopAllCoroutines(); ResetSession(); StartRound(0); });
-
-        MakeButton(botRT, "BtnMenu", "Volver al menu", C_BTN_BLUE,
-            new Vector2(0.54f, 0.12f), new Vector2(0.94f, 0.88f), Vector2.zero, Vector2.zero,
-            ReturnToGameSelector);
 
         BuildTransitionPanel(root);
 
@@ -479,11 +467,6 @@ public class PatternGameController : MinigameBase
             new Vector2(0.06f, 0f), new Vector2(0.94f, 0f),
             new Vector2(0f, 84f), new Vector2(0f, 66f),
             () => { _endPanel.SetActive(false); StopAllCoroutines(); ResetSession(); StartRound(0); });
-
-        MakeButton(cardRT, "BtnMenu", "Menu principal", C_BTN_GREY,
-            new Vector2(0.06f, 0f), new Vector2(0.94f, 0f),
-            new Vector2(0f, 14f), new Vector2(0f, 62f),
-            ReturnToGameSelector);
 
         _endPanel.SetActive(false);
     }

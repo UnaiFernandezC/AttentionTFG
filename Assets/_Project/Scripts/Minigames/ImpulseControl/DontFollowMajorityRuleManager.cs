@@ -1,31 +1,13 @@
 using UnityEngine;
 
-/// <summary>
-/// Dirección de respuesta del minijuego "No sigas la mayoría".
-/// </summary>
 public enum DFMDirection { Left, Right, Up, Down }
 
-/// <summary>
-/// Genera y almacena la regla de cada ronda:
-///   - MajorityDirection → dirección incorrecta (la mayoría de flechas)
-///   - CorrectDirection  → dirección correcta   (la minoría de flechas)
-/// </summary>
 public class DontFollowMajorityRuleManager : MonoBehaviour
 {
-    // ------------------------------------------------------------------ //
-    // Estado de la ronda actual
-    // ------------------------------------------------------------------ //
+
     public DFMDirection CorrectDirection  { get; private set; }
     public DFMDirection MajorityDirection { get; private set; }
 
-    // ------------------------------------------------------------------ //
-    // Generación
-    // ------------------------------------------------------------------ //
-
-    /// <summary>
-    /// Selecciona dos direcciones distintas al azar:
-    /// una para la mayoría (incorrecta) y otra para la minoría (correcta).
-    /// </summary>
     public void GenerateRound()
     {
         var all = new[] { DFMDirection.Left, DFMDirection.Right,
@@ -35,18 +17,12 @@ public class DontFollowMajorityRuleManager : MonoBehaviour
         int b;
         do { b = Random.Range(0, 4); } while (b == a);
 
-        CorrectDirection  = all[a];   // minoría → respuesta correcta
-        MajorityDirection = all[b];   // mayoría → trampa
+        CorrectDirection  = all[a];
+        MajorityDirection = all[b];
     }
 
-    // ------------------------------------------------------------------ //
-    // Evaluación
-    // ------------------------------------------------------------------ //
     public bool IsCorrect(DFMDirection pressed) => pressed == CorrectDirection;
 
-    // ------------------------------------------------------------------ //
-    // Helpers estáticos
-    // ------------------------------------------------------------------ //
     public static string ArrowSymbol(DFMDirection d)
     {
         switch (d)

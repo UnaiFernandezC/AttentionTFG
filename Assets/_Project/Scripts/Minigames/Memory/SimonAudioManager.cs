@@ -1,35 +1,19 @@
 using UnityEngine;
 
-/// <summary>
-/// Genera y reproduce sonidos procedurales para el juego Simón Dice.
-/// No requiere archivos de audio externos — todo se genera via PCM en tiempo de ejecución.
-///
-/// Frecuencias asignadas por color:
-///   0 Rojo   → Do4  (261.6 Hz) — tono grave y cálido
-///   1 Azul   → Mi4  (329.6 Hz) — tono medio
-///   2 Verde  → Sol4 (392.0 Hz) — tono medio-agudo
-///   3 Amarillo → Do5 (523.3 Hz) — tono agudo y brillante
-/// </summary>
 public class SimonAudioManager : MonoBehaviour
 {
-    // ── Config ────────────────────────────────────────────────────────────────
+
     private const int   SAMPLE_RATE = 44100;
-    private const float TONE_DURATION  = 0.55f;   // duración del tono de color
+    private const float TONE_DURATION  = 0.55f;
     private const float SUCCESS_DURATION = 0.80f;
     private const float FAIL_DURATION    = 0.70f;
 
-    // Frecuencias: Do4, Mi4, Sol4, Do5
     private static readonly float[] COLOR_FREQS = { 261.6f, 329.6f, 392.0f, 523.3f };
 
-    // ── Runtime ───────────────────────────────────────────────────────────────
     private AudioClip[] _colorClips;
     private AudioClip   _successClip;
     private AudioClip   _failClip;
     private AudioSource _source;
-
-    // ═════════════════════════════════════════════════════════════════════════
-    // Unity lifecycle
-    // ═════════════════════════════════════════════════════════════════════════
 
     private void Awake()
     {
@@ -40,26 +24,15 @@ public class SimonAudioManager : MonoBehaviour
         GenerateAllClips();
     }
 
-    // ═════════════════════════════════════════════════════════════════════════
-    // API pública
-    // ═════════════════════════════════════════════════════════════════════════
-
-    /// <summary>Reproduce el tono asociado a un color (0-3).</summary>
     public void PlayColor(int colorIndex)
     {
         if (colorIndex < 0 || colorIndex >= _colorClips.Length) return;
         _source.PlayOneShot(_colorClips[colorIndex]);
     }
 
-    /// <summary>Reproduce el acorde de éxito (ronda completada).</summary>
     public void PlaySuccess() => _source.PlayOneShot(_successClip);
 
-    /// <summary>Reproduce el sonido de fallo.</summary>
     public void PlayFail() => _source.PlayOneShot(_failClip);
-
-    // ═════════════════════════════════════════════════════════════════════════
-    // Generación de clips PCM
-    // ═════════════════════════════════════════════════════════════════════════
 
     private void GenerateAllClips()
     {
@@ -71,10 +44,8 @@ public class SimonAudioManager : MonoBehaviour
         _failClip    = GenerateFail();
     }
 
-    // ── Formas de onda disponibles ────────────────────────────────────────────
     private enum WaveShape { Sine, Square, Triangle }
 
-    /// <summary>Genera un clip de tono puro con envolvente suave (ADSR simplificado).</summary>
     private static AudioClip GenerateTone(float freq, float duration, float amplitude,
                                            WaveShape shape = WaveShape.Sine)
     {
@@ -88,7 +59,6 @@ public class SimonAudioManager : MonoBehaviour
         {
             float t = (float)i / SAMPLE_RATE;
 
-            // Envolvente: attack → sostenido → release
             float env;
             if (t < attackTime)
                 env = t / attackTime;
@@ -112,7 +82,6 @@ public class SimonAudioManager : MonoBehaviour
         return clip;
     }
 
-    /// <summary>Genera un acorde ascendente de tres notas (Do-Mi-Sol).</summary>
     private static AudioClip GenerateSuccess()
     {
         float[] freqs    = { 523.3f, 659.3f, 784.0f };
@@ -140,13 +109,11 @@ public class SimonAudioManager : MonoBehaviour
         return clip;
     }
 
-    /// <summary>Genera un buzzer disonante descendente para el fallo.</summary>
     private static AudioClip GenerateFail()
     {
         int     samples = Mathf.RoundToInt(SAMPLE_RATE * FAIL_DURATION);
         float[] data    = new float[samples];
 
-        // Dos frecuencias disonantes mezcladas, pitch bajando
         float baseFreq = 220f;
 
         for (int i = 0; i < samples; i++)
@@ -155,7 +122,6 @@ public class SimonAudioManager : MonoBehaviour
             float env  = Mathf.Clamp01(1f - t / FAIL_DURATION) * 0.5f;
             float freq = Mathf.Lerp(baseFreq, baseFreq * 0.55f, t / FAIL_DURATION);
 
-            // Ondas cuadradas disonantes
             float w1 = Mathf.Sign(Mathf.Sin(2f * Mathf.PI * freq * t));
             float w2 = Mathf.Sign(Mathf.Sin(2f * Mathf.PI * freq * 1.41f * t));
 

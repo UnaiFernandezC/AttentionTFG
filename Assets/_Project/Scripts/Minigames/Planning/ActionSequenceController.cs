@@ -382,7 +382,6 @@ public class ActionSequenceController : MinigameBase
             if (_endPanel   != null) _endPanel.SetActive(false);
             StartRound(_round);
         });
-        MkBtn(bot, "Volver al menu", GREY, V2(0.65f, 0.12f), V2(0.96f, 0.88f), () => ReturnToGameSelector());
 
         BuildTransPanel(_canvasRT);
 
@@ -423,13 +422,12 @@ public class ActionSequenceController : MinigameBase
         _endTitle.fontStyle = FontStyles.Bold;
         _endSub   = MkTxt(card, "Su", "", DIM, 28, V2(0.05f, 0.28f), V2(0.95f, 0.55f));
 
-        MkBtn(card, "Jugar de nuevo", ACCENT, V2(0.06f, 0.04f), V2(0.46f, 0.22f), () =>
+        MkBtn(card, "Jugar de nuevo", ACCENT, V2(0.06f, 0.04f), V2(0.95f, 0.22f), () =>
         {
             StopAllCoroutines();
             _endPanel.SetActive(false);
             StartRound(0);
         });
-        MkBtn(card, "Menu", GREY, V2(0.54f, 0.04f), V2(0.94f, 0.22f), () => ReturnToGameSelector());
 
         _endPanel.SetActive(false);
     }

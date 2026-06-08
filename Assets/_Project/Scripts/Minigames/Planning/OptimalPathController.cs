@@ -435,8 +435,7 @@ public class OptimalPathController : MinigameBase
         glg.constraintCount   = 4;
 
         RectTransform bot = MkImg(R, "Bot", HDR, V2(0,0), V2(1,0), V2(0,45), V2(0,90));
-        MkBtn(bot, "Reiniciar ronda", GREY,   V2(0.04f,0.12f), V2(0.35f,0.88f), () => ResetRound());
-        MkBtn(bot, "Volver al menu",  GREY,   V2(0.65f,0.12f), V2(0.96f,0.88f), () => ReturnToGameSelector());
+        MkBtn(bot, "Reiniciar ronda", GREY,   V2(0.04f,0.12f), V2(0.96f,0.88f), () => ResetRound());
 
         BuildTransPanel(R);
 
@@ -502,14 +501,13 @@ public class OptimalPathController : MinigameBase
         _endTitle.fontStyle = FontStyles.Bold;
         _endSub   = MkTxt(card, "Su", "", DIM, 30, V2(0.05f,0.27f), V2(0.95f,0.55f));
 
-        MkBtn(card, "Jugar de nuevo", ACCENT, V2(0.06f,0.04f), V2(0.46f,0.22f), () =>
+        MkBtn(card, "Jugar de nuevo", ACCENT, V2(0.06f,0.04f), V2(0.94f,0.22f), () =>
         {
             StopAllCoroutines();
             _totalSteps = 0; _totalOptimal = 0;
             _endPanel.SetActive(false);
             StartRound(0);
         });
-        MkBtn(card, "Menu", GREY, V2(0.54f,0.04f), V2(0.94f,0.22f), () => ReturnToGameSelector());
 
         _endPanel.SetActive(false);
     }

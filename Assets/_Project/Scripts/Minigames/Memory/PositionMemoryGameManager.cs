@@ -36,7 +36,6 @@ public class PositionMemoryGameManager : MinigameBase
         "Confirma tu eleccion con CONFIRMAR o [ESPACIO].\n" +
         "Gana " + roundsToWin + " de " + totalRounds + " rondas para completar el juego.";
 
-
     void ApplyDifficulty()
     {
         var diff = GameManager.Instance != null

@@ -4,21 +4,17 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-/// <summary>
-/// Construye dinámicamente el grid del minijuego Memoria de Ruta.
-/// Cada casilla es un botón clickable con colores controlados por código.
-/// </summary>
 public class PathMemoryGridManager : MonoBehaviour
 {
     public enum CellState
     {
-        Normal,         // gris oscuro (suelo)
-        Start,          // azul  (posición inicial)
-        Goal,           // oro   (destino)
-        Route,          // naranja (ruta iluminada durante fase de memoria)
-        PlayerCorrect,  // verde  (casilla acertada por el jugador)
-        PlayerWrong,    // rojo   (casilla errónea)
-        PlayerCurrent   // azul claro (posición actual del jugador)
+        Normal,
+        Start,
+        Goal,
+        Route,
+        PlayerCorrect,
+        PlayerWrong,
+        PlayerCurrent
     }
 
     const float CellSize = 96f;
@@ -48,8 +44,6 @@ public class PathMemoryGridManager : MonoBehaviour
     public RectTransform GridRoot   => _gridRoot;
     public int           Cols       => _cols;
     public int           Rows       => _rows;
-
-    // ── Construcción ─────────────────────────────────────────────
 
     public void BuildGrid(int rows, int cols)
     {
@@ -84,7 +78,7 @@ public class PathMemoryGridManager : MonoBehaviour
 
     void BuildCell(Vector2Int pos, float W, float H)
     {
-        // Outer GO — border + Button hitbox
+
         var go = new GameObject($"Cell_{pos.x}_{pos.y}");
         var rt = go.AddComponent<RectTransform>();
         rt.SetParent(_gridRoot, false);
@@ -97,7 +91,6 @@ public class PathMemoryGridManager : MonoBehaviour
         var borderImg = go.AddComponent<Image>();
         borderImg.color = ColBorder;
 
-        // Inner GO — colored fill
         var inner = new GameObject("Fill");
         var irt   = inner.AddComponent<RectTransform>();
         irt.SetParent(rt, false);
@@ -108,7 +101,6 @@ public class PathMemoryGridManager : MonoBehaviour
         fillImg.color = ColFloor;
         _cellInnerImages[pos] = fillImg;
 
-        // Label GO — step numbers / icons
         var lblGo = new GameObject("Lbl");
         var lrt   = lblGo.AddComponent<RectTransform>();
         lrt.SetParent(rt, false);
@@ -121,15 +113,12 @@ public class PathMemoryGridManager : MonoBehaviour
         tmp.overflowMode = TextOverflowModes.Overflow;
         _cellLabels[pos] = tmp;
 
-        // Button — transition None so we control colors entirely
         var btn = go.AddComponent<Button>();
         btn.targetGraphic = borderImg;
         btn.transition    = Selectable.Transition.None;
         Vector2Int p = pos;
         btn.onClick.AddListener(() => { if (_inputEnabled) CellClicked?.Invoke(p); });
     }
-
-    // ── Estado de celdas ─────────────────────────────────────────
 
     public void SetCellState(Vector2Int pos, CellState state, string label = "")
     {
@@ -155,8 +144,6 @@ public class PathMemoryGridManager : MonoBehaviour
 
     public void SetInputEnabled(bool enabled) => _inputEnabled = enabled;
 
-    // ── Coordenadas ──────────────────────────────────────────────
-
     Vector2 CellLocalPos(Vector2Int pos, float W, float H) =>
         new Vector2(
             -W / 2f + pos.x * CellSize + CellSize / 2f,
@@ -171,8 +158,6 @@ public class PathMemoryGridManager : MonoBehaviour
 
     public bool IsInBounds(Vector2Int pos) =>
         pos.x >= 0 && pos.x < _cols && pos.y >= 0 && pos.y < _rows;
-
-    // ── Helpers ──────────────────────────────────────────────────
 
     static Color StateColor(CellState s)
     {

@@ -221,11 +221,6 @@ public class EmotionalBalanceController : MinigameBase
 
         BuildControlButtons(R);
 
-        var bot = MkImg(R, "Bot", HDR, V2(0,0), V2(1,0), V2(0,45), V2(0,90));
-        MkImg(bot, "BL", ACCENT, V2(0,1), V2(1,1), V2(0,-1.5f), V2(0,3));
-        MkBtn(bot, "Volver al menu", GREY, V2(0.30f,0.12f), V2(0.70f,0.88f),
-            () => ReturnToGameSelector());
-
         BuildEndPanel(R);
     }
 
@@ -361,7 +356,7 @@ public class EmotionalBalanceController : MinigameBase
         _endSub    = MkTxt(card, "Su", "", DIM, 26, V2(0.05f,0.28f), V2(0.95f,0.55f));
         _endSub.overflowMode = TextOverflowModes.Overflow;
 
-        MkBtn(card, "Jugar de nuevo", ACCENT, V2(0.06f,0.04f), V2(0.46f,0.22f), () =>
+        MkBtn(card, "Jugar de nuevo", ACCENT, V2(0.06f,0.04f), V2(0.94f,0.22f), () =>
         {
             StopAllCoroutines();
             _endPanel.SetActive(false);
@@ -379,7 +374,6 @@ public class EmotionalBalanceController : MinigameBase
                         _stabilitySquares[i].enabled = false;
             if (_timerLbl != null) _timerLbl.text = "0";
         });
-        MkBtn(card, "Menu", GREY, V2(0.54f,0.04f), V2(0.94f,0.22f), () => ReturnToGameSelector());
 
         _endPanel.SetActive(false);
     }

@@ -147,7 +147,7 @@ public class DontPressGameManager : MinigameBase
 
     IEnumerator FakeGreenRoutine()
     {
-        // Wait a random portion of the min wait time before flashing fake green
+
         float delay = UnityEngine.Random.Range(waitMin * 0.3f, waitMin * 0.8f);
         float elapsed = 0f;
         while (elapsed < delay)
@@ -157,17 +157,14 @@ public class DontPressGameManager : MinigameBase
             yield return null;
         }
 
-        // Only trigger if still in waiting phase
         if (!_waitingPhase || !_roundActive) yield break;
 
-        // Flash green visuals but show "Aun no!" warning
         _ui.ButtonCtrl.SetActive();
         _ui.SetStatusText("Aun no!", TXT_RED);
         _ui.Flash(C_YELLOW);
 
         yield return new WaitForSeconds(0.8f);
 
-        // Restore waiting state if round still ongoing
         if (_waitingPhase && _roundActive)
         {
             _ui.ButtonCtrl.SetWaiting();
