@@ -258,8 +258,10 @@ public class SimonUIController : MonoBehaviour
         _resultRecord = MkTxt(card, "RR", "", CYELLOW, 20, V(0.04f, 0.36f), V(0.96f, 0.52f));
         _resultRecord.alignment = TextAlignmentOptions.Center;
 
-        MkBtn(card, "↺  Jugar de nuevo", ACCENT,  V(0.04f,0.06f), V(0.96f,0.20f),
+        MkBtn(card, "↺  Jugar de nuevo", ACCENT,              V(0.04f,0.06f), V(0.49f,0.22f),
               () => OnRestartPressed?.Invoke());
+        MkBtn(card, "Elegir minijuego",  C(0.18f,0.24f,0.38f), V(0.51f,0.06f), V(0.96f,0.22f),
+              () => OnMenuPressed?.Invoke());
 
         _resultPanel.SetActive(false);
     }

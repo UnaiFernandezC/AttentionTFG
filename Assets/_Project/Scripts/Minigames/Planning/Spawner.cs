@@ -79,7 +79,7 @@ public class Spawner : MonoBehaviour
         Collider colliderObjetivo = (prefab == objetoA) ? colliderA : colliderB;
         colliderObjetivo.isTrigger = true;
 
-        DetectorColision detector = instancia.AddComponent<DetectorColision>();
+        CollisionDetector detector = instancia.AddComponent<CollisionDetector>();
         detector.Inicializar(this, colliderObjetivo);
     }
 

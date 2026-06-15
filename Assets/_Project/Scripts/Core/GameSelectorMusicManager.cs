@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 [RequireComponent(typeof(AudioSource))]
 public class GameSelectorMusicManager : MonoBehaviour
@@ -37,13 +38,32 @@ public class GameSelectorMusicManager : MonoBehaviour
     {
         if (backgroundMusic == null)
         {
-            Debug.LogWarning("GameSelectorMusicManager: no hay ningún AudioClip asignado. " +
-                             "Arrastra tu MP3 al campo 'Background Music' en el Inspector.");
+            Debug.LogWarning("GameSelectorMusicManager: no hay ningún AudioClip asignado.");
             return;
         }
 
         _audioSource.Play();
         StartCoroutine(FadeIn());
+        SceneManager.sceneLoaded += OnSceneLoaded;
+    }
+
+    void OnDestroy()
+    {
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+
+    void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        if (_audioSource.isPlaying || backgroundMusic == null) return;
+
+        string n = scene.name;
+        bool isMinigame = n.Contains("_Easy") || n.Contains("_Medium") || n.Contains("_Hard");
+        if (!isMinigame)
+        {
+            _audioSource.volume = 0f;
+            _audioSource.Play();
+            StartCoroutine(FadeIn());
+        }
     }
 
     private System.Collections.IEnumerator FadeIn()

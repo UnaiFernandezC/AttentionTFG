@@ -18,9 +18,8 @@ public abstract class MinigameBase : MonoBehaviour
 
     protected virtual void Start()
     {
-        GameSelectorMusicManager.DestroyInstance();
-        if (UIAudioManager.Instance != null)
-            UIAudioManager.Instance.StopMusic();
+        GameSelectorMusicManager.StopMusic();
+        if (UIAudioManager.Instance != null) UIAudioManager.Instance.StopMusic();
         BuildIntroPanel();
         StartCoroutine(WaitForSpaceKey());
     }
@@ -96,7 +95,7 @@ public abstract class MinigameBase : MonoBehaviour
 
     protected void ReturnToGameSelector()
     {
-        SceneLoader.LoadGameSelector();
+        SceneLoader.LoadCategorySelector(category);
     }
 
     protected void RestartMinigame()

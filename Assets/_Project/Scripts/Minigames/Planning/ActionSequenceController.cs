@@ -422,12 +422,15 @@ public class ActionSequenceController : MinigameBase
         _endTitle.fontStyle = FontStyles.Bold;
         _endSub   = MkTxt(card, "Su", "", DIM, 28, V2(0.05f, 0.28f), V2(0.95f, 0.55f));
 
-        MkBtn(card, "Jugar de nuevo", ACCENT, V2(0.06f, 0.04f), V2(0.95f, 0.22f), () =>
+        MkBtn(card, "Jugar de nuevo", ACCENT, V2(0.06f, 0.04f), V2(0.48f, 0.22f), () =>
         {
             StopAllCoroutines();
             _endPanel.SetActive(false);
             StartRound(0);
         });
+
+        MkBtn(card, "Elegir minijuego", new Color(0.18f,0.22f,0.36f), V2(0.52f,0.04f), V2(0.95f,0.22f),
+              () => ReturnToGameSelector());
 
         _endPanel.SetActive(false);
     }

@@ -7,14 +7,14 @@ public static class SceneLoader
     public const string MAIN_MENU          = "PrimeraPantalla";
     public const string DIFFICULTY_SELECTOR = "DifficultySelector";
 
-    public const string GAME_SELECTOR_EASY   = "GameSelector";
-    public const string GAME_SELECTOR_MEDIUM = "GameSelector 1";
-    public const string GAME_SELECTOR_HARD   = "GameSelector 2";
+    public const string GAME_SELECTOR_EASY   = "EasyMenu";
+    public const string GAME_SELECTOR_MEDIUM = "MediumMenu";
+    public const string GAME_SELECTOR_HARD   = "HardMenu";
 
     public const string ESCENAS_ATENCION_EASY     = "Atencion";
     public const string ESCENAS_IMPULSOS_EASY     = "ContoImpulsos";
     public const string ESCENAS_EMOCIONAL_EASY    = "ControlEmocional";
-    public const string ESCENAS_MEMORIA_EASY      = "MemoriaTrabajo1 2";
+    public const string ESCENAS_MEMORIA_EASY      = "MemoriaTrabajo_Easy";
     public const string ESCENAS_PLANIF_EASY       = "Planificacion";
 
     public const string ESCENAS_ATENCION_MEDIUM   = "Atencion_Medium";
@@ -48,6 +48,10 @@ public static class SceneLoader
     public const string ATTENTION_ALGO_NO_CUADRA_EASY   = "Attention_AlgoNoCuadra_Easy";
     public const string ATTENTION_ALGO_NO_CUADRA_MEDIUM = "Attention_AlgoNoCuadra_Medium";
     public const string ATTENTION_ALGO_NO_CUADRA_HARD   = "Attention_AlgoNoCuadra_Hard";
+
+    public const string ATTENTION_LASER_PATH_EASY   = "Attention_LaserPath_Easy";
+    public const string ATTENTION_LASER_PATH_MEDIUM = "Attention_LaserPath_Medium";
+    public const string ATTENTION_LASER_PATH_HARD   = "Attention_LaserPath_Hard";
 
     public const string EMOTION_ATTRACTION_CONTROL_EASY   = "Emotional_AttractionControl_Easy";
     public const string EMOTION_ATTRACTION_CONTROL_MEDIUM = "Emotional_AttractionControl_Medium";
@@ -156,6 +160,50 @@ public static class SceneLoader
             case DifficultyLevel.Hard:   LoadScene(GAME_SELECTOR_HARD);   break;
             default:                     LoadScene(GAME_SELECTOR_EASY);   break;
         }
+    }
+
+    /// <summary>
+    /// Vuelve a la pantalla de seleccion de minijuegos de la categoria y dificultad actuales.
+    /// </summary>
+    public static void LoadCategorySelector(MinigameCategory cat)
+    {
+        DifficultyLevel diff = GameManager.Instance != null
+            ? GameManager.Instance.CurrentDifficulty
+            : DifficultyLevel.Easy;
+
+        string scene;
+        switch (cat)
+        {
+            case MinigameCategory.Attention:
+                scene = diff == DifficultyLevel.Easy   ? ESCENAS_ATENCION_EASY
+                      : diff == DifficultyLevel.Medium  ? ESCENAS_ATENCION_MEDIUM
+                      :                                   ESCENAS_ATENCION_HARD;
+                break;
+            case MinigameCategory.ImpulseControl:
+                scene = diff == DifficultyLevel.Easy   ? ESCENAS_IMPULSOS_EASY
+                      : diff == DifficultyLevel.Medium  ? ESCENAS_IMPULSOS_MEDIUM
+                      :                                   ESCENAS_IMPULSOS_HARD;
+                break;
+            case MinigameCategory.EmotionalManagement:
+                scene = diff == DifficultyLevel.Easy   ? ESCENAS_EMOCIONAL_EASY
+                      : diff == DifficultyLevel.Medium  ? ESCENAS_EMOCIONAL_MEDIUM
+                      :                                   ESCENAS_EMOCIONAL_HARD;
+                break;
+            case MinigameCategory.Memory:
+                scene = diff == DifficultyLevel.Easy   ? ESCENAS_MEMORIA_EASY
+                      : diff == DifficultyLevel.Medium  ? ESCENAS_MEMORIA_MEDIUM
+                      :                                   ESCENAS_MEMORIA_HARD;
+                break;
+            case MinigameCategory.Planning:
+                scene = diff == DifficultyLevel.Easy   ? ESCENAS_PLANIF_EASY
+                      : diff == DifficultyLevel.Medium  ? ESCENAS_PLANIF_MEDIUM
+                      :                                   ESCENAS_PLANIF_HARD;
+                break;
+            default:
+                LoadGameSelector();
+                return;
+        }
+        LoadScene(scene);
     }
 
     public static void ReloadCurrentScene()

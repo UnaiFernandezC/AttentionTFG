@@ -207,7 +207,8 @@ public class PositionMemoryUIController : MonoBehaviour
         _resultSub = MkTxt(card, "RS", "", C(0.48f, 0.62f, 0.80f), 23, V(0.05f, 0.24f), V(0.95f, 0.72f));
         _resultSub.overflowMode = TextOverflowModes.Overflow;
 
-        MkBtn(card, "Jugar de nuevo", ACCENT,                V(0.05f, 0.04f), V(0.95f, 0.18f), onRestart);
+        MkBtn(card, "Jugar de nuevo",   ACCENT,                V(0.05f, 0.04f), V(0.48f, 0.18f), onRestart);
+        MkBtn(card, "Elegir minijuego", C(0.18f,0.24f,0.38f), V(0.52f, 0.04f), V(0.95f, 0.18f), onMenu);
 
         _resultPanel.SetActive(false);
     }

@@ -359,7 +359,8 @@ public class SilentCountdownUIController : MonoBehaviour
         _finalSub.alignment    = TextAlignmentOptions.Center;
         _finalSub.lineSpacing  = 10f;
 
-        MkBtn(card, "Jugar de nuevo", ACCENT,               V(0.05f,0.04f), V(0.95f,0.17f), onRestart);
+        MkBtn(card, "Jugar de nuevo",   ACCENT,                V(0.05f,0.04f), V(0.48f,0.17f), onRestart);
+        MkBtn(card, "Elegir minijuego", C(0.18f,0.24f,0.38f), V(0.52f,0.04f), V(0.95f,0.17f), onMenu);
 
         _finalPanel.SetActive(false);
     }

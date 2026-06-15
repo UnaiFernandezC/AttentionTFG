@@ -423,9 +423,14 @@ public class OrderGameController : MinigameBase
         _statScore  = BuildStatRow(cardRT, "Puntuacion",         "0",    rowTop - rowH * 3f);
 
         MakeButton(cardRT, "BtnReplay", "Jugar de nuevo", C_BTN_BLUE,
-            new Vector2(0.06f, 0f), new Vector2(0.94f, 0f),
+            new Vector2(0.06f, 0f), new Vector2(0.49f, 0f),
             new Vector2(0f, 52f), new Vector2(0f, 72f),
             () => { _endPanel.SetActive(false); ResetTotals(); StartRound(0); });
+
+        MakeButton(cardRT, "BtnMenu", "Elegir minijuego", new Color(0.18f,0.22f,0.36f),
+            new Vector2(0.51f, 0f), new Vector2(0.94f, 0f),
+            new Vector2(0f, 52f), new Vector2(0f, 72f),
+            () => ReturnToGameSelector());
 
         _endPanel.SetActive(false);
     }

@@ -247,7 +247,7 @@ public class PathMemoryGameManager : MinigameBase
     void OnSalir()
     {
         StopAllCoroutines();
-        UnityEngine.SceneManagement.SceneManager.LoadScene("MainMenu");
+        ReturnToGameSelector();
     }
 
     protected override void OnMinigameComplete() { }

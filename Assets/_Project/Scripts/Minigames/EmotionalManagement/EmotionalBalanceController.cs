@@ -356,7 +356,7 @@ public class EmotionalBalanceController : MinigameBase
         _endSub    = MkTxt(card, "Su", "", DIM, 26, V2(0.05f,0.28f), V2(0.95f,0.55f));
         _endSub.overflowMode = TextOverflowModes.Overflow;
 
-        MkBtn(card, "Jugar de nuevo", ACCENT, V2(0.06f,0.04f), V2(0.94f,0.22f), () =>
+        MkBtn(card, "Jugar de nuevo", ACCENT, V2(0.06f,0.04f), V2(0.48f,0.22f), () =>
         {
             StopAllCoroutines();
             _endPanel.SetActive(false);
@@ -374,6 +374,9 @@ public class EmotionalBalanceController : MinigameBase
                         _stabilitySquares[i].enabled = false;
             if (_timerLbl != null) _timerLbl.text = "0";
         });
+
+        MkBtn(card, "Elegir minijuego", new Color(0.18f,0.22f,0.36f), V2(0.52f,0.04f), V2(0.94f,0.22f),
+              () => ReturnToGameSelector());
 
         _endPanel.SetActive(false);
     }

@@ -104,11 +104,6 @@ public class MainMenuBackgroundController : MonoBehaviour
         BuildNodes();
         BuildConnections();
 
-        MkImg(_root, "LineT", C(ACCENT.r,ACCENT.g,ACCENT.b,0.20f),
-              V(0,0.994f), V(1,1),     V(0,0), V(0,0));
-        MkImg(_root, "LineB", C(ACCENT.r,ACCENT.g,ACCENT.b,0.20f),
-              V(0,0),      V(1,0.006f),V(0,0), V(0,0));
-
         var sGO = new GameObject("ScanLine");
         sGO.transform.SetParent(_root, false);
         _scanLine = sGO.AddComponent<RectTransform>();

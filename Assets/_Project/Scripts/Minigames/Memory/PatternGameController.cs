@@ -464,9 +464,14 @@ public class PatternGameController : MinigameBase
         _statScore  = BuildStatRow(cardRT, "Puntuacion total",   "0",    rowTop - rowH * 2f);
 
         MakeButton(cardRT, "BtnReplay", "Jugar de nuevo", C_BTN_BLUE,
-            new Vector2(0.06f, 0f), new Vector2(0.94f, 0f),
+            new Vector2(0.06f, 0f), new Vector2(0.49f, 0f),
             new Vector2(0f, 84f), new Vector2(0f, 66f),
             () => { _endPanel.SetActive(false); StopAllCoroutines(); ResetSession(); StartRound(0); });
+
+        MakeButton(cardRT, "BtnMenu", "Elegir minijuego", new Color(0.18f, 0.22f, 0.36f),
+            new Vector2(0.51f, 0f), new Vector2(0.94f, 0f),
+            new Vector2(0f, 84f), new Vector2(0f, 66f),
+            () => ReturnToGameSelector());
 
         _endPanel.SetActive(false);
     }

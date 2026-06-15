@@ -382,7 +382,8 @@ public class ResourceGameController : MinigameBase
         _endSub = Txt(card, "Su", "", DIM, 26, V(0.05f,0.28f), V(0.95f,0.50f));
         _endSub.alignment = TextAlignmentOptions.Center;
 
-        MkBtn(card, "Jugar de nuevo", ACCENT, V(0.08f,0.04f), V(0.48f,0.24f), () => Reset());
+        MkBtn(card, "Jugar de nuevo",   ACCENT,  V(0.08f,0.04f), V(0.48f,0.24f), () => Reset());
+        MkBtn(card, "Elegir minijuego", BTN_OFF, V(0.52f,0.04f), V(0.92f,0.24f), () => ReturnToGameSelector());
 
         _endPanel.SetActive(false);
     }

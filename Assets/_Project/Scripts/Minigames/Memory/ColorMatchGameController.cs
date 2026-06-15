@@ -273,8 +273,12 @@ public class ColorMatchGameController : MinigameBase
             AnchorRect(0.08f, 0f, 0.92f, 0f, 0, 116f, 0, 118f));
 
         MakeButton(card.transform, "BtnAgain", "Jugar de nuevo",
-            C_BTN_BLUE, new Vector2(0f, 70f), new Vector2(580f, 72f),
+            C_BTN_BLUE, new Vector2(-150f, 70f), new Vector2(270f, 72f),
             () => RestartMinigame());
+
+        MakeButton(card.transform, "BtnMenu", "Elegir minijuego",
+            C_BTN_GREY, new Vector2(150f, 70f), new Vector2(270f, 72f),
+            () => ReturnToGameSelector());
 
         _winPanel.SetActive(false);
     }

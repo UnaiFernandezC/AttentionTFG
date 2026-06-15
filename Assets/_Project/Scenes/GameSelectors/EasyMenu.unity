@@ -2390,7 +2390,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 96e2425c2525f5b4ba195b5d91152816, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  sceneToLoad: MemoriaTrabajo1 2
+  sceneToLoad: MemoriaTrabajo_Easy
 --- !u!114 &2027068249
 MonoBehaviour:
   m_ObjectHideFlags: 0
