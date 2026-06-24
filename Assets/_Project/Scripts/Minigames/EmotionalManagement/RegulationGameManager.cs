@@ -14,6 +14,7 @@ public class RegulationGameManager : MinigameBase
 
     RegulationEmotionManager _emotionMgr;
     RegulationUIController   _ui;
+    int _errors;
 
     protected override string GetIntroDescription() =>
         "El nivel de emocion esta muy alto. Tienes que calmarlo.\n\n" +
@@ -48,6 +49,7 @@ public class RegulationGameManager : MinigameBase
 
         _emotionMgr = new RegulationEmotionManager(startLevel, regenerationPerTurn);
         _ui         = GetComponent<RegulationUIController>();
+        _errors     = 0;
 
         _ui.BuildUI(
             idx => HandleAction(idx),
@@ -70,6 +72,19 @@ public class RegulationGameManager : MinigameBase
 
         RefreshUI();
         _ui.ShowFeedback(action, _emotionMgr.CurrentLevel, regenerationPerTurn);
+
+        if (action.impact + regenerationPerTurn > 0f)
+            _errors++;
+
+        if (_errors >= 3 && !_emotionMgr.IsWon)
+        {
+            FailMinigame();
+            _ui.ShowResult(won: false,
+                           steps: _emotionMgr.StepsTaken,
+                           score: 0,
+                           finalLevel: Mathf.RoundToInt(_emotionMgr.CurrentLevel));
+            return;
+        }
 
         if (_emotionMgr.IsWon)
         {

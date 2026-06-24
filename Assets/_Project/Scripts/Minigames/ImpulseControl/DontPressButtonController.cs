@@ -8,6 +8,7 @@ public class DontPressButtonController : MonoBehaviour
     static readonly Color COL_IDLE    = new Color(0.14f, 0.19f, 0.30f, 1f);
     static readonly Color COL_WAIT    = new Color(0.80f, 0.18f, 0.22f, 1f);
     static readonly Color COL_FAKE    = new Color(0.92f, 0.75f, 0.10f, 1f);
+    static readonly Color COL_ORANGE  = new Color(0.96f, 0.50f, 0.10f, 1f);
     static readonly Color COL_ACTIVE  = new Color(0.18f, 0.80f, 0.45f, 1f);
     static readonly Color COL_CORRECT = new Color(0.20f, 0.60f, 0.90f, 1f);
     static readonly Color COL_EARLY   = new Color(0.55f, 0.10f, 0.15f, 1f);
@@ -16,6 +17,7 @@ public class DontPressButtonController : MonoBehaviour
     const string TXT_IDLE    = "Preparado";
     const string TXT_WAIT    = "NO\nPULSES";
     const string TXT_FAKE    = "¡NO!";
+    const string TXT_ORANGE  = "¡NO!";
     const string TXT_ACTIVE  = "¡PULSA\nAHORA!";
     const string TXT_CORRECT = "¡BIEN\nHECHO!";
     const string TXT_EARLY   = "¡DEMASIADO\nPRONTO!";
@@ -25,7 +27,7 @@ public class DontPressButtonController : MonoBehaviour
     [HideInInspector] public Image           GlowImage;
     [HideInInspector] public TextMeshProUGUI ButtonText;
 
-    public enum State { Idle, Waiting, FakeOut, Active, Correct, Early, Missed }
+    public enum State { Idle, Waiting, FakeOut, Orange, Active, Correct, Early, Missed }
     State   _state   = State.Idle;
     float   _pulseT  = 0f;
     bool    _pulsing = false;
@@ -33,6 +35,7 @@ public class DontPressButtonController : MonoBehaviour
     public void SetIdle()    => Apply(State.Idle,    COL_IDLE,    TXT_IDLE,    pulse: false);
     public void SetWaiting() => Apply(State.Waiting, COL_WAIT,    TXT_WAIT,    pulse: true);
     public void SetFakeOut() => Apply(State.FakeOut, COL_FAKE,    TXT_FAKE,    pulse: false);
+    public void SetOrange()  => Apply(State.Orange,  COL_ORANGE,  TXT_ORANGE,  pulse: false);
     public void SetActive()  => Apply(State.Active,  COL_ACTIVE,  TXT_ACTIVE,  pulse: false);
     public void SetCorrect() => Apply(State.Correct, COL_CORRECT, TXT_CORRECT, pulse: false);
     public void SetEarly()   => Apply(State.Early,   COL_EARLY,   TXT_EARLY,   pulse: false);

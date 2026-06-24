@@ -17,7 +17,7 @@ public class StartScreenFadeText : MonoBehaviour
 
         if (Input.GetKeyDown(KeyCode.Return))
         {
-            SceneManager.LoadScene("DifficultySelector");
+            SceneTransition.LoadScene("DifficultySelector");
         }
     }
 }

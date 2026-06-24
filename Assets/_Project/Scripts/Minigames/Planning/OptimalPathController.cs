@@ -30,6 +30,7 @@ public class OptimalPathController : MinigameBase
     int _round;
     int _totalSteps;
     int _totalOptimal;
+    int _errors;
 
     int    _cols, _rows, _numObs;
     bool[] _blocked;
@@ -90,6 +91,7 @@ public class OptimalPathController : MinigameBase
         _round        = 0;
         _totalSteps   = 0;
         _totalOptimal = 0;
+        _errors       = 0;
         BuildUI();
         StartRound(0);
     }
@@ -199,6 +201,9 @@ public class OptimalPathController : MinigameBase
         int tr = target    / _cols, tc = target    % _cols;
         if (Mathf.Abs(pr - tr) + Mathf.Abs(pc - tc) != 1) return;
 
+        int oldDist = BFS(_playerIdx, _goalIdx);
+        int newDist = BFS(target, _goalIdx);
+
         _playerIdx       = target;
         _steps++;
         _visited[target] = true;
@@ -210,6 +215,23 @@ public class OptimalPathController : MinigameBase
         {
             _roundOver = true;
             StartCoroutine(HandleRoundEnd());
+            return;
+        }
+
+        if (newDist >= 0 && oldDist >= 0 && newDist > oldDist)
+        {
+            _errors++;
+            if (_errors >= 3)
+            {
+                _errors = 0;
+                _round  = 0;
+                _totalSteps   = 0;
+                _totalOptimal = 0;
+                StopAllCoroutines();
+                if (_statusLbl != null)
+                    _statusLbl.text = "Demasiados desvios. Vuelves a la ronda 1.";
+                StartRound(0);
+            }
         }
     }
 
@@ -499,18 +521,21 @@ public class OptimalPathController : MinigameBase
         _endBar   = MkImg(card, "Bar", GREEN, V2(0,1), V2(1,1), V2(0,-13), V2(0,26)).GetComponent<Image>();
         _endTitle = MkTxt(card, "Ti", "", Color.white, 54, V2(0.05f,0.55f), V2(0.95f,0.92f));
         _endTitle.fontStyle = FontStyles.Bold;
-        _endSub   = MkTxt(card, "Su", "", DIM, 30, V2(0.05f,0.27f), V2(0.95f,0.55f));
+        _endSub   = MkTxt(card, "Su", "", DIM, 30, V2(0.05f,0.40f), V2(0.95f,0.55f));
 
-        MkBtn(card, "Jugar de nuevo", ACCENT, V2(0.06f,0.04f), V2(0.48f,0.22f), () =>
+        MkBtn(card, "Jugar de nuevo", ACCENT, V2(0.06f,0.20f), V2(0.48f,0.33f), () =>
         {
             StopAllCoroutines();
-            _totalSteps = 0; _totalOptimal = 0;
+            _totalSteps = 0; _totalOptimal = 0; _errors = 0;
             _endPanel.SetActive(false);
             StartRound(0);
         });
 
-        MkBtn(card, "Elegir minijuego", new Color(0.18f,0.22f,0.36f), V2(0.52f,0.04f), V2(0.94f,0.22f),
+        MkBtn(card, "Volver a la seccion", new Color(0.18f,0.22f,0.36f), V2(0.52f,0.20f), V2(0.94f,0.33f),
               () => ReturnToGameSelector());
+
+        MkBtn(card, "Menu principal", new Color(0.10f,0.13f,0.22f), V2(0.06f,0.05f), V2(0.94f,0.17f),
+              () => SceneLoader.GoToMainMenu());
 
         _endPanel.SetActive(false);
     }

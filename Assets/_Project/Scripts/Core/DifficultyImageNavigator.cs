@@ -47,7 +47,7 @@ public class DifficultyImageNavigator : MonoBehaviour
                 if (target == mediumScene) GameManager.Instance.SetDifficulty(DifficultyLevel.Medium);
                 if (target == hardScene)   GameManager.Instance.SetDifficulty(DifficultyLevel.Hard);
             }
-            SceneManager.LoadScene(target);
+            SceneTransition.LoadScene(target);
         });
 
         Debug.Log($"[DifficultyImageNavigator] '{objectName}' → '{sceneName}'");

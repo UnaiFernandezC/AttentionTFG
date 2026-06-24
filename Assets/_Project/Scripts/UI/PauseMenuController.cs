@@ -203,7 +203,7 @@ public class PauseMenuController : MonoBehaviour
         Time.timeScale = 1f;
         _isOpen = false;
         SetVisible(false, instant: true);
-        UnityEngine.SceneManagement.SceneManager.LoadScene("DifficultySelector");
+        SceneTransition.LoadScene("DifficultySelector");
     }
 
     void SetVisible(bool v, bool instant = false)

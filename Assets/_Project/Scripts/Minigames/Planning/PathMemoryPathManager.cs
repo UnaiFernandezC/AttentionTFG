@@ -46,8 +46,46 @@ public class PathMemoryPathManager : MonoBehaviour
 
     public List<Vector2Int> GetRoute(int level)
     {
-        int l = Mathf.Clamp(level, 0, _routes.Length - 1);
-        return new List<Vector2Int>(_routes[l]);
+        var cfg = GetConfig(level);
+        int size = cfg.gridSize;
+        return GenerateRandomRoute(size, level + 4 + level * 2);
+    }
+
+    List<Vector2Int> GenerateRandomRoute(int gridSize, int length)
+    {
+        var route = new List<Vector2Int>();
+        var visited = new HashSet<Vector2Int>();
+        var start = new Vector2Int(0, 0);
+        route.Add(start);
+        visited.Add(start);
+        var dirs = new Vector2Int[]{ Vector2Int.right, Vector2Int.up, Vector2Int.left, Vector2Int.down };
+        var current = start;
+        int attempts = 0;
+        while (route.Count < length && attempts < 500)
+        {
+            attempts++;
+            var shuffled = new List<Vector2Int>(dirs);
+            for (int i = shuffled.Count - 1; i > 0; i--)
+            {
+                int j = Random.Range(0, i + 1);
+                var tmp = shuffled[i]; shuffled[i] = shuffled[j]; shuffled[j] = tmp;
+            }
+            bool moved = false;
+            foreach (var d in shuffled)
+            {
+                var next = current + d;
+                if (next.x >= 0 && next.x < gridSize && next.y >= 0 && next.y < gridSize && !visited.Contains(next))
+                {
+                    route.Add(next);
+                    visited.Add(next);
+                    current = next;
+                    moved = true;
+                    break;
+                }
+            }
+            if (!moved) break;
+        }
+        return route;
     }
 
     public LevelConfig GetConfig(int level)

@@ -231,7 +231,7 @@ public class SimonUIController : MonoBehaviour
         MkImg(ft, "LineT", C(ACCENT.r,ACCENT.g,ACCENT.b,0.30f),
               V(0,1), V(1,1), V(0,-1.5f), V(0,3));
 
-        MkBtn(ft, "↺  Reiniciar", PANEL2, V(0.02f,0.10f), V(0.55f,0.90f), () => OnRestartPressed?.Invoke());
+        MkBtn(ft, "Reiniciar", PANEL2, V(0.25f,0.10f), V(0.75f,0.90f), () => OnRestartPressed?.Invoke());
     }
 
     void BuildResultPanel(RectTransform R)
@@ -258,10 +258,12 @@ public class SimonUIController : MonoBehaviour
         _resultRecord = MkTxt(card, "RR", "", CYELLOW, 20, V(0.04f, 0.36f), V(0.96f, 0.52f));
         _resultRecord.alignment = TextAlignmentOptions.Center;
 
-        MkBtn(card, "↺  Jugar de nuevo", ACCENT,              V(0.04f,0.06f), V(0.49f,0.22f),
+        MkBtn(card, "Jugar de nuevo",     ACCENT,               V(0.05f,0.20f), V(0.48f,0.33f),
               () => OnRestartPressed?.Invoke());
-        MkBtn(card, "Elegir minijuego",  C(0.18f,0.24f,0.38f), V(0.51f,0.06f), V(0.96f,0.22f),
+        MkBtn(card, "Volver a la seccion", C(0.18f,0.24f,0.38f), V(0.52f,0.20f), V(0.95f,0.33f),
               () => OnMenuPressed?.Invoke());
+        MkBtn(card, "Menu principal",     C(0.10f,0.13f,0.22f),  V(0.05f,0.05f), V(0.95f,0.17f),
+              () => SceneLoader.GoToMainMenu());
 
         _resultPanel.SetActive(false);
     }

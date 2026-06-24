@@ -54,12 +54,13 @@ public class GameSelectorMusicManager : MonoBehaviour
 
     void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        if (_audioSource.isPlaying || backgroundMusic == null) return;
+        if (backgroundMusic == null) return;
 
         string n = scene.name;
         bool isMinigame = n.Contains("_Easy") || n.Contains("_Medium") || n.Contains("_Hard");
         if (!isMinigame)
         {
+            _audioSource.Stop();
             _audioSource.volume = 0f;
             _audioSource.Play();
             StartCoroutine(FadeIn());

@@ -22,6 +22,8 @@ public class ActionSequenceController : MinigameBase
 
     const int ROUNDS = 3;
     int _round;
+    int _maxErrors = 3;
+    int _errors;
 
     string[] _sequence;
     string[] _shuffled;
@@ -72,8 +74,23 @@ public class ActionSequenceController : MinigameBase
     protected override void OnMinigameStart()
     {
         EnsureES();
+        ApplyDifficulty();
         BuildUI();
         StartRound(0);
+    }
+
+    void ApplyDifficulty()
+    {
+        var diff = GameManager.Instance != null
+            ? GameManager.Instance.CurrentDifficulty
+            : DifficultyLevel.Easy;
+        switch (diff)
+        {
+            case DifficultyLevel.Easy:   _maxErrors = 5; break;
+            case DifficultyLevel.Medium: _maxErrors = 3; break;
+            case DifficultyLevel.Hard:   _maxErrors = 1; break;
+        }
+        _errors = 0;
     }
 
     protected override void OnMinigameComplete() { }
@@ -133,18 +150,10 @@ public class ActionSequenceController : MinigameBase
     IEnumerator Transition()
     {
         _transPanel.SetActive(true);
-        _transTitle.text = "Ronda " + (_round + 1) + " completada!";
-        _transSub.text   = "Preparate para la siguiente...";
-
-        yield return new WaitForSeconds(1f);
-        for (int i = 3; i >= 1; i--)
-        {
-            _transSub.text = "Siguiente ronda en " + i + "...";
-            yield return new WaitForSeconds(1f);
-        }
-
-        _transPanel.SetActive(false);
-        StartRound(_round + 1);
+        _transPanel.transform.SetAsLastSibling();
+        _transTitle.text = "Ronda " + (_round + 1) + " completada";
+        _transSub.text   = "Pulsa Continuar para la siguiente ronda";
+        yield break;
     }
 
     void OnActionPressed(int shuffleIdx)
@@ -193,6 +202,20 @@ public class ActionSequenceController : MinigameBase
         _progress = 0;
         RefreshProgress();
         ResetButtonColors();
+
+        _errors++;
+        if (_errors >= _maxErrors)
+        {
+            _locked = true;
+            FailMinigame();
+            _endBar.color  = RED;
+            _endTitle.text = "Demasiados errores";
+            _endSub.text   = "Has fallado " + _errors + " veces. Intentalo de nuevo.";
+            _endPanel.SetActive(true);
+            _endPanel.transform.SetAsLastSibling();
+            yield break;
+        }
+
         _locked = false;
     }
 
@@ -397,12 +420,18 @@ public class ActionSequenceController : MinigameBase
         tr.sizeDelta = Vector2.zero; tr.anchoredPosition = Vector2.zero;
         _transPanel.AddComponent<Image>().color = new Color(0, 0, 0, 0.82f);
 
-        RectTransform card = MkImg(tr, "Card", PANEL, V2(0.5f, 0.5f), V2(0.5f, 0.5f), V2(0, 0), V2(680, 300));
+        RectTransform card = MkImg(tr, "Card", PANEL, V2(0.5f, 0.5f), V2(0.5f, 0.5f), V2(0, 0), V2(680, 380));
         MkImg(card, "Bar", GREEN, V2(0, 1), V2(1, 1), V2(0, -12), V2(0, 24));
 
-        _transTitle = MkTxt(card, "Ti", "", Color.white, 52, V2(0.05f, 0.50f), V2(0.95f, 0.90f));
+        _transTitle = MkTxt(card, "Ti", "", Color.white, 52, V2(0.05f, 0.60f), V2(0.95f, 0.90f));
         _transTitle.fontStyle = FontStyles.Bold;
-        _transSub   = MkTxt(card, "Su", "", DIM, 30, V2(0.05f, 0.08f), V2(0.95f, 0.50f));
+        _transSub   = MkTxt(card, "Su", "", DIM, 30, V2(0.05f, 0.32f), V2(0.95f, 0.58f));
+
+        MkBtn(card, "Continuar", GREEN, V2(0.30f, 0.06f), V2(0.70f, 0.24f), () =>
+        {
+            _transPanel.SetActive(false);
+            StartRound(_round + 1);
+        });
 
         _transPanel.SetActive(false);
     }
@@ -420,17 +449,20 @@ public class ActionSequenceController : MinigameBase
         _endBar   = MkImg(card, "Bar", GREEN, V2(0, 1), V2(1, 1), V2(0, -13), V2(0, 26)).GetComponent<Image>();
         _endTitle = MkTxt(card, "Ti", "", Color.white, 58, V2(0.05f, 0.55f), V2(0.95f, 0.92f));
         _endTitle.fontStyle = FontStyles.Bold;
-        _endSub   = MkTxt(card, "Su", "", DIM, 28, V2(0.05f, 0.28f), V2(0.95f, 0.55f));
+        _endSub   = MkTxt(card, "Su", "", DIM, 28, V2(0.05f, 0.40f), V2(0.95f, 0.55f));
 
-        MkBtn(card, "Jugar de nuevo", ACCENT, V2(0.06f, 0.04f), V2(0.48f, 0.22f), () =>
+        MkBtn(card, "Jugar de nuevo", ACCENT, V2(0.06f, 0.20f), V2(0.48f, 0.33f), () =>
         {
             StopAllCoroutines();
             _endPanel.SetActive(false);
             StartRound(0);
         });
 
-        MkBtn(card, "Elegir minijuego", new Color(0.18f,0.22f,0.36f), V2(0.52f,0.04f), V2(0.95f,0.22f),
+        MkBtn(card, "Volver a la seccion", new Color(0.18f,0.22f,0.36f), V2(0.52f,0.20f), V2(0.95f,0.33f),
               () => ReturnToGameSelector());
+
+        MkBtn(card, "Menu principal", new Color(0.10f,0.13f,0.22f), V2(0.06f,0.05f), V2(0.95f,0.17f),
+              () => SceneLoader.GoToMainMenu());
 
         _endPanel.SetActive(false);
     }

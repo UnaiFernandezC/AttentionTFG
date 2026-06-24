@@ -24,6 +24,7 @@ public class DontFollowMajorityGameManager : MinigameBase
 
     int   _round;
     int   _correct;
+    int   _errors;
     int   _score;
     float _elapsed;
     bool  _waitingForNext;
@@ -83,6 +84,7 @@ public class DontFollowMajorityGameManager : MinigameBase
 
         _round          = 0;
         _correct        = 0;
+        _errors         = 0;
         _score          = 0;
         _elapsed        = 0f;
         _waitingForNext = false;
@@ -142,6 +144,10 @@ public class DontFollowMajorityGameManager : MinigameBase
             _correct++;
             _score += pts;
         }
+        else
+        {
+            _errors++;
+        }
 
         _ui.SetRoundDot(_round - 1, correct);
         _ui.SetScore(_score);
@@ -170,16 +176,19 @@ public class DontFollowMajorityGameManager : MinigameBase
 
         _gen.Clear();
 
-        if (_round >= totalRounds)
+        if (_errors >= 3)
+            EndGame(forceFail: true);
+        else if (_round >= totalRounds)
             EndGame();
         else
             NextRound();
     }
 
-    void EndGame()
+    void EndGame(bool forceFail = false)
     {
-        bool won = _correct >= passCount;
-        CompleteMinigame(won ? _score : 0);
+        bool won = !forceFail && _correct >= passCount;
+        if (won) CompleteMinigame(_score);
+        else     FailMinigame();
         _ui.ShowFinalResult(won, _correct, totalRounds, _score);
     }
 

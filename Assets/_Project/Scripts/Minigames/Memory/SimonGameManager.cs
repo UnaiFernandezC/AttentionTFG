@@ -45,6 +45,7 @@ public class SimonGameManager : MinigameBase
     float _previewPause;
     int   _currentPhase;
     int   _accumulatedScore;
+    int   _totalErrors;
 
     const string PREF_RECORD = "simon_record";
     int _record;
@@ -74,6 +75,7 @@ public class SimonGameManager : MinigameBase
         _record           = PlayerPrefs.GetInt(PREF_RECORD, 0);
         _accumulatedScore = 0;
         _currentPhase     = 0;
+        _totalErrors      = 0;
 
         _ui.BuildUI(colorCount);
         _ui.SetRecord(_record);
@@ -193,10 +195,18 @@ public class SimonGameManager : MinigameBase
 
             if (!correct)
             {
+                _totalErrors++;
                 _audio.PlayFail();
                 StartCoroutine(_ui.FlashError());
-                failed = true;
-                done   = true;
+                if (_totalErrors >= 3)
+                {
+                    failed = true;
+                    done   = true;
+                }
+                else
+                {
+                    _ui.SetStatus("¡Cuidado! Fallo " + _totalErrors + "/3", new Color(0.90f, 0.45f, 0.20f));
+                }
             }
             else
             {

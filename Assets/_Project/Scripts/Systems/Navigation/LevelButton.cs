@@ -27,7 +27,7 @@ public class LevelButton : MonoBehaviour
     {
         if (!string.IsNullOrEmpty(sceneToLoad))
         {
-            SceneManager.LoadScene(sceneToLoad);
+            SceneTransition.LoadScene(sceneToLoad);
         }
         else
         {

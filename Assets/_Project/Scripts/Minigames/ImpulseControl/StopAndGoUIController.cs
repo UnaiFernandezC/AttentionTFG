@@ -79,8 +79,8 @@ public class StopAndGoUIController : MonoBehaviour
         _roundDots = BuildDotRow(hdr, rounds, 0.76f, 0.04f, 26f);
 
         _scoreText = MkTxt(R, "Score", "0 pts", Color.white, 30,
-                           V(0.75f, 0.885f), V(0.99f, 0.935f));
-        _scoreText.alignment = TextAlignmentOptions.MidlineLeft;
+                           V(0.72f, 0.88f), V(0.98f, 0.97f));
+        _scoreText.alignment = TextAlignmentOptions.MidlineRight;
 
         BuildLegendPanel(R, stopsPerRound);
 
@@ -282,13 +282,14 @@ public class StopAndGoUIController : MonoBehaviour
         _resultTitle.fontSizeMin = 26f; _resultTitle.fontSizeMax = 46f;
 
         _resultSub = MkTxt(card, "RS", "", C(0.50f,0.68f,0.80f), 22,
-                           V(0.05f,0.22f), V(0.95f,0.74f));
+                           V(0.05f,0.37f), V(0.95f,0.74f));
         _resultSub.overflowMode = TextOverflowModes.Overflow;
         _resultSub.alignment    = TextAlignmentOptions.Center;
         _resultSub.lineSpacing  = 10f;
 
-        MkBtn(card, "Jugar de nuevo",   ACCENT,                V(0.05f,0.04f), V(0.48f,0.17f), onRestart);
-        MkBtn(card, "Elegir minijuego", C(0.18f,0.24f,0.38f), V(0.52f,0.04f), V(0.95f,0.17f), onMenu);
+        MkBtn(card, "Jugar de nuevo",     ACCENT,                V(0.05f,0.20f), V(0.48f,0.33f), onRestart);
+        MkBtn(card, "Volver a la seccion", C(0.18f,0.24f,0.38f), V(0.52f,0.20f), V(0.95f,0.33f), onMenu);
+        MkBtn(card, "Menu principal",     C(0.10f,0.13f,0.22f),  V(0.05f,0.05f), V(0.95f,0.17f), () => SceneLoader.GoToMainMenu());
 
         _resultPanel.SetActive(false);
     }

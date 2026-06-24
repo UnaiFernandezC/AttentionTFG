@@ -113,8 +113,9 @@ public class FindChangeUIController : MonoBehaviour
         _resultSub   = MkTxt(card,"RS","",DIM,24,V(0.05f,0.52f),V(0.95f,0.72f));
         _resultSub.overflowMode = TextOverflowModes.Overflow;
 
-        MkBtn(card, "Jugar de nuevo",   ACCENT,                V(0.05f,0.05f), V(0.48f,0.18f), onRestart);
-        MkBtn(card, "Elegir minijuego", C(0.18f,0.24f,0.38f), V(0.52f,0.05f), V(0.95f,0.18f), onMenu);
+        MkBtn(card, "Jugar de nuevo",     ACCENT,                V(0.05f,0.20f), V(0.48f,0.34f), onRestart);
+        MkBtn(card, "Volver a la seccion", C(0.18f,0.24f,0.38f), V(0.52f,0.20f), V(0.95f,0.34f), onMenu);
+        MkBtn(card, "Menu principal",     C(0.10f,0.13f,0.22f),  V(0.05f,0.04f), V(0.95f,0.17f), () => SceneLoader.GoToMainMenu());
         _resultPanel.SetActive(false);
     }
 

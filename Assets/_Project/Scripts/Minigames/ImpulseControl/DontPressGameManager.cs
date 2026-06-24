@@ -24,11 +24,16 @@ public class DontPressGameManager : MinigameBase
     [Tooltip("Probabilidad de que aparezca una señal verde falsa antes del verde real (0=nunca, 1=siempre)")]
     [SerializeField] float fakeGreenChance = 0.4f;
 
+    [Header("Distractor naranja")]
+    [Tooltip("Probabilidad de que aparezca el color naranja (no pulsar) durante la espera")]
+    [SerializeField] float fakeOutChance = 0.3f;
+
     DontPressTimerManager  _timer;
     DontPressUIController  _ui;
 
     int  _currentRound;
     int  _correctCount;
+    int  _errors;
     long _totalReactionMs;
     int  _validReactions;
     bool _roundActive;
@@ -98,6 +103,7 @@ public class DontPressGameManager : MinigameBase
 
         _currentRound     = 0;
         _correctCount     = 0;
+        _errors           = 0;
         _totalReactionMs  = 0;
         _validReactions   = 0;
         _roundActive      = false;
@@ -143,6 +149,35 @@ public class DontPressGameManager : MinigameBase
 
         if (UnityEngine.Random.value < fakeGreenChance)
             StartCoroutine(FakeGreenRoutine());
+
+        if (UnityEngine.Random.value < fakeOutChance)
+            StartCoroutine(OrangeDistractorRoutine());
+    }
+
+    IEnumerator OrangeDistractorRoutine()
+    {
+        float delay = UnityEngine.Random.Range(waitMin * 0.4f, waitMin * 0.9f);
+        float elapsed = 0f;
+        while (elapsed < delay)
+        {
+            if (!_waitingPhase || !_roundActive) yield break;
+            elapsed += Time.deltaTime;
+            yield return null;
+        }
+
+        if (!_waitingPhase || !_roundActive) yield break;
+
+        _ui.ButtonCtrl.SetOrange();
+        _ui.SetStatusText("¡Naranja! No pulses", TXT_YELLOW);
+        _ui.Flash(C_YELLOW);
+
+        yield return new WaitForSeconds(0.7f);
+
+        if (_waitingPhase && _roundActive)
+        {
+            _ui.ButtonCtrl.SetWaiting();
+            _ui.SetStatusText("Espera... no pulses todavia", TXT_DIM);
+        }
     }
 
     IEnumerator FakeGreenRoutine()
@@ -245,6 +280,7 @@ public class DontPressGameManager : MinigameBase
         }
         else if (tooEarly)
         {
+            _errors++;
             _ui.ButtonCtrl.SetEarly();
             _ui.SetStatusText("Demasiado pronto — impulso no controlado", TXT_RED);
             _ui.Flash(C_RED);
@@ -260,15 +296,21 @@ public class DontPressGameManager : MinigameBase
         _ui.HideCountdown();
         _currentRound++;
 
-        int remaining   = rounds - _currentRound;
-        bool alreadyWon = _correctCount >= roundsToWin;
-        bool canStillWin= (_correctCount + remaining) >= roundsToWin;
-        bool allDone    = _currentRound >= rounds;
+        bool allDone = _currentRound >= rounds;
 
-        if (alreadyWon || allDone || !canStillWin)
-            StartCoroutine(FinishGame(alreadyWon));
+        if (_errors >= 3)
+        {
+            StartCoroutine(FinishGame(false));
+        }
+        else if (allDone)
+        {
+            bool won = _correctCount >= roundsToWin;
+            StartCoroutine(FinishGame(won));
+        }
         else
+        {
             StartCoroutine(StartRoundDelayed(pauseBetweenRounds));
+        }
     }
 
     IEnumerator FinishGame(bool won)

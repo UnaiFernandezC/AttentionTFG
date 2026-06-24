@@ -172,18 +172,25 @@ public class PathMemoryUIController : MonoBehaviour
 
         Color retryCol = win ? C(0.18f, 0.56f, 0.32f) : C(0.18f, 0.38f, 0.72f);
         var bgRe = MkImg(card, "Re", retryCol,
-                         V(0.08f, 0.10f), V(0.48f, 0.32f), Vector2.zero, Vector2.zero);
+                         V(0.06f, 0.19f), V(0.48f, 0.31f), Vector2.zero, Vector2.zero);
         MkTxt(bgRe, "L", retryLabel, ColWhite, 20, V(0f, 0f), V(1f, 1f));
         var btnRe = bgRe.gameObject.AddComponent<Button>();
         btnRe.targetGraphic = bgRe.GetComponent<Image>();
         btnRe.onClick.AddListener(() => onRetry?.Invoke());
 
         var bgMe = MkImg(card, "Me", C(0.22f, 0.22f, 0.34f),
-                         V(0.52f, 0.10f), V(0.92f, 0.32f), Vector2.zero, Vector2.zero);
-        MkTxt(bgMe, "L", "MENU", ColDim, 20, V(0f, 0f), V(1f, 1f));
+                         V(0.52f, 0.19f), V(0.94f, 0.31f), Vector2.zero, Vector2.zero);
+        MkTxt(bgMe, "L", "VOLVER A LA SECCION", ColDim, 16, V(0f, 0f), V(1f, 1f));
         var btnMe = bgMe.gameObject.AddComponent<Button>();
         btnMe.targetGraphic = bgMe.GetComponent<Image>();
         btnMe.onClick.AddListener(() => onMenu?.Invoke());
+
+        var bgMa = MkImg(card, "Ma", C(0.14f, 0.16f, 0.26f),
+                         V(0.06f, 0.05f), V(0.94f, 0.16f), Vector2.zero, Vector2.zero);
+        MkTxt(bgMa, "L", "MENU PRINCIPAL", ColDim, 16, V(0f, 0f), V(1f, 1f));
+        var btnMa = bgMa.gameObject.AddComponent<Button>();
+        btnMa.targetGraphic = bgMa.GetComponent<Image>();
+        btnMa.onClick.AddListener(() => SceneLoader.GoToMainMenu());
     }
 
     public void ClearResult()

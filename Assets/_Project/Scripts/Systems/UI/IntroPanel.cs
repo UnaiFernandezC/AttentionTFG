@@ -121,6 +121,10 @@ public static class IntroPanel
         btnT.fontStyle = FontStyles.Bold;
         btnT.characterSpacing = 3f;
 
+        UITween.FadeIn(cvGO, 0.30f);
+        UITween.PopIn(card, 0.45f, 0.85f, 0.05f);
+        UITween.PulseOnce(btnBg, 1.06f, 0.5f);
+
         return cvGO;
     }
 

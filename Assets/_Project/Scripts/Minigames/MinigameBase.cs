@@ -13,6 +13,8 @@ public abstract class MinigameBase : MonoBehaviour
     public int Score { get; protected set; } = 0;
     public bool IsPlaying { get; protected set; } = false;
 
+    public static MinigameCategory? ActiveCategory { get; private set; }
+
     bool        _gameStarted;
     GameObject  _introCvGO;
 
@@ -40,6 +42,7 @@ public abstract class MinigameBase : MonoBehaviour
         _gameStarted = true;
         if (_introCvGO != null) Destroy(_introCvGO);
         IsPlaying = true;
+        ActiveCategory = category;
         OnMinigameStart();
     }
 
@@ -95,11 +98,13 @@ public abstract class MinigameBase : MonoBehaviour
 
     protected void ReturnToGameSelector()
     {
+        ActiveCategory = null;
         SceneLoader.LoadCategorySelector(category);
     }
 
     protected void RestartMinigame()
     {
+        ActiveCategory = null;
         SceneLoader.ReloadCurrentScene();
     }
 }

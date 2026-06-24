@@ -176,8 +176,9 @@ public class TrackingUIController : MonoBehaviour
         _resultSub   = MkTxt(card,"RS","",C(0.48f,0.62f,0.80f),24,V(0.05f,0.26f),V(0.95f,0.72f));
         _resultSub.overflowMode = TextOverflowModes.Overflow;
 
-        MkBtn(card,"Jugar de nuevo",ACCENT,  V(0.05f,0.05f),V(0.49f,0.20f),onRestart);
-        MkBtn(card,"Menu",           C(0.20f,0.26f,0.38f), V(0.51f,0.05f),V(0.95f,0.20f),onMenu);
+        MkBtn(card,"Jugar de nuevo",ACCENT,  V(0.05f,0.21f),V(0.49f,0.34f),onRestart);
+        MkBtn(card,"Volver a la seccion", C(0.20f,0.26f,0.38f), V(0.51f,0.21f),V(0.95f,0.34f),onMenu);
+        MkBtn(card,"Menu principal", C(0.10f,0.13f,0.22f), V(0.05f,0.05f),V(0.95f,0.18f),() => SceneLoader.GoToMainMenu());
 
         _resultPanel.SetActive(false);
     }

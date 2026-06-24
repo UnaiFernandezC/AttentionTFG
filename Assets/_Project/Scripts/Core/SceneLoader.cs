@@ -141,7 +141,7 @@ public static class SceneLoader
             return;
         }
         Debug.Log($"[SceneLoader] Cargando escena: {sceneName}");
-        SceneManager.LoadScene(sceneName);
+        SceneTransition.LoadScene(sceneName);
     }
 
     public static void LoadGameSelector()

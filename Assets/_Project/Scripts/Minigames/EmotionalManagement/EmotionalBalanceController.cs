@@ -208,8 +208,10 @@ public class EmotionalBalanceController : MinigameBase
 
         var instrT = MkTxt(R, "Instr",
             "Mantén el indicador dentro de la zona verde",
-            DIM, 28, V2(0.05f,0.86f), V2(0.95f,0.93f));
-        instrT.alignment = TextAlignmentOptions.Center;
+            DIM, 28, V2(0.0f,0.86f), V2(0.90f,0.93f));
+        instrT.alignment           = TextAlignmentOptions.Center;
+        instrT.overflowMode        = TextOverflowModes.Overflow;
+        instrT.enableWordWrapping  = false;
 
         BuildEmotionalBar(R);
 
@@ -353,7 +355,7 @@ public class EmotionalBalanceController : MinigameBase
         _endBarImg = MkImg(card, "Bar", CGREEN, V2(0,1), V2(1,1), V2(0,-13), V2(0,26)).GetComponent<Image>();
         _endTitle  = MkTxt(card, "Ti", "", Color.white, 52, V2(0.05f,0.55f), V2(0.95f,0.92f));
         _endTitle.fontStyle = FontStyles.Bold;
-        _endSub    = MkTxt(card, "Su", "", DIM, 26, V2(0.05f,0.28f), V2(0.95f,0.55f));
+        _endSub    = MkTxt(card, "Su", "", DIM, 26, V2(0.05f,0.40f), V2(0.95f,0.55f));
         _endSub.overflowMode = TextOverflowModes.Overflow;
 
         MkBtn(card, "Jugar de nuevo", ACCENT, V2(0.06f,0.04f), V2(0.48f,0.22f), () =>
@@ -375,8 +377,11 @@ public class EmotionalBalanceController : MinigameBase
             if (_timerLbl != null) _timerLbl.text = "0";
         });
 
-        MkBtn(card, "Elegir minijuego", new Color(0.18f,0.22f,0.36f), V2(0.52f,0.04f), V2(0.94f,0.22f),
+        MkBtn(card, "Volver a la seccion", new Color(0.18f,0.22f,0.36f), V2(0.52f,0.20f), V2(0.94f,0.33f),
               () => ReturnToGameSelector());
+
+        MkBtn(card, "Menu principal", new Color(0.10f,0.13f,0.22f), V2(0.06f,0.05f), V2(0.94f,0.17f),
+              () => SceneLoader.GoToMainMenu());
 
         _endPanel.SetActive(false);
     }

@@ -23,6 +23,7 @@ public class FindChangeGameManager : MinigameBase
     RectTransform  _gameArea;
     int            _currentRound;
     int            _correctCount;
+    int            _errors;
     bool           _roundOver;
 
     enum Phase { Observe, Transition, Find, Result }
@@ -67,6 +68,7 @@ public class FindChangeGameManager : MinigameBase
 
         _currentRound = 0;
         _correctCount = 0;
+        _errors       = 0;
 
         _gameArea = _ui.BuildUI(() => RestartMinigame(), () => ReturnToGameSelector());
         StartCoroutine(RunRound());
@@ -158,6 +160,7 @@ public class FindChangeGameManager : MinigameBase
         }
         else
         {
+            _errors++;
             _ui.HighlightWrong(wrong, corr);
         }
 
@@ -169,6 +172,15 @@ public class FindChangeGameManager : MinigameBase
         yield return new WaitForSeconds(delay);
 
         _phase = Phase.Result;
+
+        if (_errors >= 3)
+        {
+            FailMinigame();
+            _ui.SetPhase("Fin", new Color(0.90f, 0.28f, 0.32f));
+            _ui.ShowResult(false, "Has fallado demasiadas veces.\nInténtalo de nuevo.");
+            yield break;
+        }
+
         bool moreRounds = _currentRound < rounds;
 
         if (!moreRounds || (!correct && _correctCount < roundsToWin && (rounds - _currentRound) < (roundsToWin - _correctCount)))

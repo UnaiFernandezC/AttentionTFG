@@ -227,12 +227,14 @@ public class DontFollowMajorityUIController : MonoBehaviour
         _finalTitle.enableAutoSizing = true;
         _finalTitle.fontSizeMin = 26f; _finalTitle.fontSizeMax = 46f;
 
-        _finalSub = MkTxt(card, "FS", "", C(0.50f,0.68f,0.80f), 22, V(0.05f,0.22f), V(0.95f,0.74f));
+        _finalSub = MkTxt(card, "FS", "", C(0.50f,0.68f,0.80f), 22, V(0.05f,0.37f), V(0.95f,0.74f));
         _finalSub.overflowMode = TextOverflowModes.Overflow;
         _finalSub.alignment    = TextAlignmentOptions.Center;
         _finalSub.lineSpacing  = 10f;
 
-        MkBtn(card, "Jugar de nuevo", ACCENT,               V(0.05f,0.04f), V(0.95f,0.17f), onRestart);
+        MkBtn(card, "Jugar de nuevo",     ACCENT,                V(0.05f,0.20f), V(0.48f,0.33f), onRestart);
+        MkBtn(card, "Volver a la seccion", C(0.18f,0.24f,0.38f), V(0.52f,0.20f), V(0.95f,0.33f), onMenu);
+        MkBtn(card, "Menu principal",     C(0.10f,0.13f,0.22f),  V(0.05f,0.05f), V(0.95f,0.17f), () => SceneLoader.GoToMainMenu());
 
         _finalPanel.SetActive(false);
     }
@@ -271,7 +273,7 @@ public class DontFollowMajorityUIController : MonoBehaviour
             ? "CORRECTO: " + correctDirName
             : "INCORRECTO — era " + correctDirName;
 
-        if (_feedbackText) { _feedbackText.text = txt; _feedbackText.color = textCol; }
+        if (_feedbackText) { _feedbackText.text = txt; _feedbackText.color = textCol; _feedbackText.transform.SetAsLastSibling(); }
 
         if (_flashOverlay != null)
         {

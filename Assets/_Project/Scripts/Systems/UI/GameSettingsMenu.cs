@@ -13,6 +13,7 @@ public class GameSettingsMenu : MonoBehaviour
     Toggle          _musicToggle;
     TextMeshProUGUI _musicValLbl;
     TextMeshProUGUI _clickValLbl;
+    Button          _backToSectionBtn;
 
     bool _built = false;
 
@@ -41,13 +42,17 @@ public class GameSettingsMenu : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyCode.M))
             Toggle();
-        if (Input.GetKeyDown(KeyCode.Escape) && _panel.activeSelf)
-            Close();
     }
 
     public void Toggle() { if (_panel.activeSelf) Close(); else Open(); }
-    public void Open()   { _panel.SetActive(true);  RefreshFromManager(); }
+    public void Open()   { _panel.SetActive(true);  RefreshFromManager(); UpdateBackButton(); }
     public void Close()  { _panel.SetActive(false); }
+
+    void UpdateBackButton()
+    {
+        if (_backToSectionBtn != null)
+            _backToSectionBtn.gameObject.SetActive(MinigameBase.ActiveCategory != null);
+    }
 
     void RefreshFromManager()
     {
@@ -138,8 +143,20 @@ public class GameSettingsMenu : MonoBehaviour
             UpdateLabels();
         });
 
+        _backToSectionBtn = MkBtn(card, "Volver a la seccion", BTNC,
+              new Vector2(0.15f, 0.165f), new Vector2(0.85f, 0.255f), () =>
+        {
+            if (MinigameBase.ActiveCategory != null)
+            {
+                var cat = MinigameBase.ActiveCategory.Value;
+                Close();
+                SceneLoader.LoadCategorySelector(cat);
+            }
+        });
+        _backToSectionBtn.gameObject.SetActive(false);
+
         MkBtn(card, "Cerrar", ACCENT,
-              new Vector2(0.25f, 0.04f), new Vector2(0.75f, 0.15f), Close);
+              new Vector2(0.25f, 0.04f), new Vector2(0.75f, 0.14f), Close);
 
         UpdateLabels();
     }
@@ -284,7 +301,7 @@ public class GameSettingsMenu : MonoBehaviour
         return t;
     }
 
-    void MkBtn(RectTransform p, string lbl, Color bg, Vector2 am, Vector2 aM,
+    Button MkBtn(RectTransform p, string lbl, Color bg, Vector2 am, Vector2 aM,
                System.Action click)
     {
         var rt = MkImg(p, "Btn_" + lbl, bg, am, aM, Vector2.zero, Vector2.zero);
@@ -299,5 +316,6 @@ public class GameSettingsMenu : MonoBehaviour
         b.onClick.AddListener(() => click?.Invoke());
         var t = MkTxt(rt, "T", lbl, Color.white, 26, Vector2.zero, Vector2.one);
         t.fontStyle = FontStyles.Bold;
+        return b;
     }
 }

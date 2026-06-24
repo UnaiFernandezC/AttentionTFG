@@ -44,6 +44,7 @@ public class ColorMatchGameController : MinigameBase
     private TextMeshProUGUI  _roundLabel;
     private GameObject       _roundBanner;
     private TextMeshProUGUI  _roundBannerText;
+    private TextMeshProUGUI  _roundBannerSub;
     private GameObject       _winPanel;
     private TextMeshProUGUI  _winTitle;
     private TextMeshProUGUI  _statsPairs;
@@ -147,14 +148,16 @@ public class ColorMatchGameController : MinigameBase
     {
         if (_roundBanner)
         {
-            if (_roundBannerText) _roundBannerText.text = $"¡Ronda {_currentRound} completada!\nPreparate para la siguiente...";
+            if (_roundBannerText) _roundBannerText.text = $"Ronda {_currentRound} completada";
+            if (_roundBannerSub)  _roundBannerSub.text  = $"Puntuacion: {_accumulatedScore} pts";
             _roundBanner.SetActive(true);
         }
+        yield break;
+    }
 
-        yield return new WaitForSeconds(2f);
-
+    private void OnContinuePressed()
+    {
         if (_roundBanner) _roundBanner.SetActive(false);
-
         StartRound();
     }
 
@@ -232,14 +235,23 @@ public class ColorMatchGameController : MinigameBase
             new Color(0f, 0f, 0f, 0.80f), Stretch()).gameObject;
 
         var card = MakePanel(_roundBanner.transform, "Card", C_PANEL,
-            CenterRect(680f, 220f)).gameObject;
+            CenterRect(680f, 340f)).gameObject;
 
         MakePanel(card.transform, "TopBorder", C_GREEN, AnchorRect(0, 1, 1, 1, 0, -5f, 0, 0));
 
         _roundBannerText = MakeLabel(card.transform, "BannerText",
-            "¡Ronda completada!", C_WHITE, 36f, FontStyles.Bold);
-        PlaceRT(_roundBannerText.gameObject, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
-                Vector2.zero, new Vector2(620f, 160f));
+            "Ronda completada", C_WHITE, 44f, FontStyles.Bold);
+        PlaceRT(_roundBannerText.gameObject, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
+                new Vector2(0f, -90f), new Vector2(620f, 70f));
+
+        _roundBannerSub = MakeLabel(card.transform, "BannerSub",
+            "", C_ACCENT, 28f, FontStyles.Normal);
+        PlaceRT(_roundBannerSub.gameObject, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                new Vector2(0f, 10f), new Vector2(620f, 50f));
+
+        MakeButton(card.transform, "BtnContinue", "Continuar",
+            C_GREEN, new Vector2(0f, -110f), new Vector2(300f, 72f),
+            () => OnContinuePressed());
 
         _roundBanner.SetActive(false);
     }
@@ -273,12 +285,16 @@ public class ColorMatchGameController : MinigameBase
             AnchorRect(0.08f, 0f, 0.92f, 0f, 0, 116f, 0, 118f));
 
         MakeButton(card.transform, "BtnAgain", "Jugar de nuevo",
-            C_BTN_BLUE, new Vector2(-150f, 70f), new Vector2(270f, 72f),
+            C_BTN_BLUE, new Vector2(-150f, 108f), new Vector2(270f, 72f),
             () => RestartMinigame());
 
-        MakeButton(card.transform, "BtnMenu", "Elegir minijuego",
-            C_BTN_GREY, new Vector2(150f, 70f), new Vector2(270f, 72f),
+        MakeButton(card.transform, "BtnMenu", "Volver a la seccion",
+            C_BTN_GREY, new Vector2(150f, 108f), new Vector2(270f, 72f),
             () => ReturnToGameSelector());
+
+        MakeButton(card.transform, "BtnMain", "Menu principal",
+            new Color(0.10f, 0.13f, 0.22f), new Vector2(0f, 26f), new Vector2(560f, 68f),
+            () => SceneLoader.GoToMainMenu());
 
         _winPanel.SetActive(false);
     }

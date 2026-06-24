@@ -42,6 +42,7 @@ public class OrderGameController : MinigameBase
     private Image[]                   _roundDots;
 
     private GameObject                _transPanel;
+    private int                       _transNextRound;
     private TMPro.TextMeshProUGUI     _transTitle;
     private TMPro.TextMeshProUGUI     _transSubtitle;
 
@@ -189,21 +190,18 @@ public class OrderGameController : MinigameBase
 
     private IEnumerator RoundTransition(int completedRound)
     {
-
         _transPanel.SetActive(true);
-        _transTitle.text    = $"Ronda {completedRound + 1} completada!";
-        _transSubtitle.text = "Preparate para la siguiente...";
+        _transPanel.transform.SetAsLastSibling();
+        _transTitle.text    = $"Ronda {completedRound + 1} completada";
+        _transSubtitle.text = "Pulsa Continuar para la siguiente ronda";
+        _transNextRound     = completedRound + 1;
+        yield break;
+    }
 
-        yield return new WaitForSeconds(0.6f);
-
-        for (int i = 3; i >= 1; i--)
-        {
-            _transSubtitle.text = $"Siguiente ronda en {i}...";
-            yield return new WaitForSeconds(1f);
-        }
-
+    private void OnTransContinue()
+    {
         _transPanel.SetActive(false);
-        StartRound(completedRound + 1);
+        StartRound(_transNextRound);
     }
 
     private void Update()
@@ -376,9 +374,14 @@ public class OrderGameController : MinigameBase
         _transTitle.alignment = TMPro.TextAlignmentOptions.Center;
 
         _transSubtitle = MakeLabel(cardRT, "TransSub", "Siguiente ronda en 3...",
-            C_TEXT_DIM, 38f,
-            new Vector2(0.05f, 0f), new Vector2(0.95f, 0.45f), Vector2.zero, Vector2.zero);
+            C_TEXT_DIM, 34f,
+            new Vector2(0.05f, 0.30f), new Vector2(0.95f, 0.55f), Vector2.zero, Vector2.zero);
         _transSubtitle.alignment = TMPro.TextAlignmentOptions.Center;
+
+        MakeButton(cardRT, "BtnContinue", "Continuar", C_GREEN,
+            new Vector2(0.30f, 0f), new Vector2(0.70f, 0f),
+            new Vector2(0f, 56f), new Vector2(0f, 72f),
+            () => OnTransContinue());
 
         _transPanel.SetActive(false);
     }
@@ -424,13 +427,18 @@ public class OrderGameController : MinigameBase
 
         MakeButton(cardRT, "BtnReplay", "Jugar de nuevo", C_BTN_BLUE,
             new Vector2(0.06f, 0f), new Vector2(0.49f, 0f),
-            new Vector2(0f, 52f), new Vector2(0f, 72f),
+            new Vector2(0f, 150f), new Vector2(0f, 72f),
             () => { _endPanel.SetActive(false); ResetTotals(); StartRound(0); });
 
-        MakeButton(cardRT, "BtnMenu", "Elegir minijuego", new Color(0.18f,0.22f,0.36f),
+        MakeButton(cardRT, "BtnMenu", "Volver a la seccion", new Color(0.18f,0.22f,0.36f),
             new Vector2(0.51f, 0f), new Vector2(0.94f, 0f),
-            new Vector2(0f, 52f), new Vector2(0f, 72f),
+            new Vector2(0f, 150f), new Vector2(0f, 72f),
             () => ReturnToGameSelector());
+
+        MakeButton(cardRT, "BtnMain", "Menu principal", new Color(0.10f,0.13f,0.22f),
+            new Vector2(0.06f, 0f), new Vector2(0.94f, 0f),
+            new Vector2(0f, 64f), new Vector2(0f, 66f),
+            () => SceneLoader.GoToMainMenu());
 
         _endPanel.SetActive(false);
     }

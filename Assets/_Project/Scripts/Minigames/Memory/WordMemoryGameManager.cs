@@ -41,6 +41,7 @@ public class WordMemoryGameManager : MinigameBase
     int          _currentRound;
     int          _score;
     int          _roundsWon;
+    int          _errors;
     bool         _confirmed;
 
     List<string> _currentTargets;
@@ -85,6 +86,7 @@ public class WordMemoryGameManager : MinigameBase
         _currentRound = 0;
         _score        = 0;
         _roundsWon    = 0;
+        _errors       = 0;
         _confirmed    = false;
 
         _ui.BuildUI(
@@ -191,7 +193,17 @@ public class WordMemoryGameManager : MinigameBase
             _ui.SetPhaseLabel(msg, col);
             _ui.SetInfoLabel("Verde = correcto · Naranja = te faltaba · Rojo = error");
 
+            _errors += wrong;
+
             yield return new WaitForSeconds(feedbackTime);
+
+            if (_errors >= 3)
+            {
+                FailMinigame();
+                _ui.ShowFinalResult(false,
+                    "Has fallado demasiadas veces.\nPuntuacion: " + _score + " pts");
+                yield break;
+            }
         }
 
         yield return new WaitForSeconds(0.3f);

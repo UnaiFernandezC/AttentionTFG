@@ -20,7 +20,9 @@ public class MonedaUIManager : MonoBehaviour
 
     public void AgregarMonedas(int cantidad)
     {
+        if (monedas >= metaMonedas) return;
         monedas += cantidad;
+        monedas = Mathf.Min(monedas, metaMonedas);
         ActualizarContador();
 
         if (mensajeCoroutine != null)
