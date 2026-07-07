@@ -1,3 +1,4 @@
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -187,6 +188,182 @@ public class ConsequencesSituationManager : MonoBehaviour
                     "Pedir ayuda a un adulto de confianza si se repite",
                     "Buscar ayuda cuando la necesitas es una señal de madurez, no de debilidad.",
                     AnswerQuality.Positive),
+            }),
+
+        new EmotionalSituation(
+            "Estas jugando a un juego de mesa con tus amigos y pierdes la partida.",
+            new SituationOption[]
+            {
+                new SituationOption(
+                    "Tirar las fichas y decir que el juego es tonto",
+                    "Tus amigos ya no quieren jugar contigo. Enfadarse al perder estropea la diversion de todos.",
+                    AnswerQuality.Negative),
+                new SituationOption(
+                    "Respirar hondo y felicitar a quien ha ganado",
+                    "Tus amigos disfrutan jugando contigo y querran repetir. Perder tambien es parte de jugar.",
+                    AnswerQuality.Positive),
+                new SituationOption(
+                    "Decir que hicieron trampas sin ser verdad",
+                    "Acusar sin razon hace daño y crea peleas. Y la proxima vez nadie te creera.",
+                    AnswerQuality.Negative),
+                new SituationOption(
+                    "Quedarte callado y dejar de jugar un rato",
+                    "No empeoras nada, pero te pierdes la diversion. Contar como te sientes ayuda mas.",
+                    AnswerQuality.Neutral),
+            }),
+
+        new EmotionalSituation(
+            "Se te cae sin querer el juguete favorito de tu amigo y se rompe.",
+            new SituationOption[]
+            {
+                new SituationOption(
+                    "Decirle la verdad, pedir perdon y ayudar a arreglarlo",
+                    "Tu amigo se pone triste, pero valora tu honestidad. Decir la verdad cuida la amistad.",
+                    AnswerQuality.Positive),
+                new SituationOption(
+                    "Esconderlo y no decir nada",
+                    "Cuando lo descubra se sentira doblemente mal: por el juguete y por el engaño.",
+                    AnswerQuality.Negative),
+                new SituationOption(
+                    "Decir que lo rompio otro niño",
+                    "Mentir mete en problemas a alguien inocente, y la verdad casi siempre se descubre.",
+                    AnswerQuality.Negative),
+                new SituationOption(
+                    "Pedir a un adulto que se lo cuente por ti",
+                    "El problema se soluciona, aunque contarlo tu mismo habria sido aun mas valiente.",
+                    AnswerQuality.Neutral),
+            }),
+
+        new EmotionalSituation(
+            "En el parque hay mucha cola para el tobogan y te toca esperar.",
+            new SituationOption[]
+            {
+                new SituationOption(
+                    "Colarte por delante de los demas",
+                    "Los demas se enfadan contigo, y con razon: a nadie le gusta que se cuelen.",
+                    AnswerQuality.Negative),
+                new SituationOption(
+                    "Esperar tu turno entretenido mirando o contando",
+                    "El tiempo pasa volando y disfrutas del tobogan sin pelearte. La paciencia tiene premio.",
+                    AnswerQuality.Positive),
+                new SituationOption(
+                    "Gritar y quejarte de que la cola va lenta",
+                    "Gritar no hace que la cola avance y molesta a los que esperan igual que tu.",
+                    AnswerQuality.Negative),
+                new SituationOption(
+                    "Irte a otro juego sin esperar",
+                    "Evitas la espera, pero te quedas sin probar el tobogan que tanto querias.",
+                    AnswerQuality.Neutral),
+            }),
+
+        new EmotionalSituation(
+            "Tu hermano pequeño coge tu juguete favorito sin pedirte permiso.",
+            new SituationOption[]
+            {
+                new SituationOption(
+                    "Quitarselo de un tiron y gritarle",
+                    "Tu hermano llora y los dos acabais regañados. La fuerza no arregla las cosas.",
+                    AnswerQuality.Negative),
+                new SituationOption(
+                    "Pedirselo con calma y ofrecerle otro juguete",
+                    "Te lo devuelve y acabais jugando juntos. Hablar con calma funciona mejor que gritar.",
+                    AnswerQuality.Positive),
+                new SituationOption(
+                    "Ir a contarselo a papa o mama",
+                    "Un adulto lo soluciona, aunque muchas veces puedes intentar resolverlo tu primero.",
+                    AnswerQuality.Neutral),
+                new SituationOption(
+                    "Coger tu algo suyo para vengarte",
+                    "Ahora los dos estais enfadados y el problema es el doble de grande.",
+                    AnswerQuality.Negative),
+            }),
+
+        new EmotionalSituation(
+            "Mañana actuas en la funcion del colegio y sientes muchos nervios.",
+            new SituationOption[]
+            {
+                new SituationOption(
+                    "Respirar despacio y ensayar una vez mas",
+                    "Respirar te calma y ensayar te da seguridad. Los nervios se hacen pequeñitos.",
+                    AnswerQuality.Positive),
+                new SituationOption(
+                    "Decir que estas malito para no actuar",
+                    "Te libras hoy, pero el miedo crecera y la proxima vez sera mas dificil.",
+                    AnswerQuality.Negative),
+                new SituationOption(
+                    "No pensar en ello y ponerte a ver la tele",
+                    "Distraerse ayuda un rato, pero preparar lo que te da miedo ayuda mucho mas.",
+                    AnswerQuality.Neutral),
+                new SituationOption(
+                    "Enfadarte y decir que el teatro es una tonteria",
+                    "El enfado esconde tu miedo, pero no lo quita. Y te pierdes algo divertido.",
+                    AnswerQuality.Negative),
+            }),
+
+        new EmotionalSituation(
+            "Tus padres pasan mucho rato cuidando a tu prima pequeña y sientes celos.",
+            new SituationOption[]
+            {
+                new SituationOption(
+                    "Contarles como te sientes y pedir un rato juntos",
+                    "Tus padres te abrazan y buscan tiempo para ti. Decir lo que sientes hace que te entiendan.",
+                    AnswerQuality.Positive),
+                new SituationOption(
+                    "Portarte mal para llamar la atencion",
+                    "Consigues atencion, pero es atencion de regañina y te hace sentir peor.",
+                    AnswerQuality.Negative),
+                new SituationOption(
+                    "Tratar mal a tu prima",
+                    "Ella no tiene la culpa. Hacer daño a otros nunca hace que los celos se vayan.",
+                    AnswerQuality.Negative),
+                new SituationOption(
+                    "Ponerte a jugar solo sin decir nada",
+                    "Te distraes un poco, pero los celos siguen ahi porque nadie sabe como te sientes.",
+                    AnswerQuality.Neutral),
+            }),
+
+        new EmotionalSituation(
+            "Llevas un buen rato con un ejercicio de mates y no te sale.",
+            new SituationOption[]
+            {
+                new SituationOption(
+                    "Romper la hoja y tirar el lapiz",
+                    "El ejercicio sigue sin salir y ademas tienes que copiarlo de nuevo. La rabia no resuelve problemas.",
+                    AnswerQuality.Negative),
+                new SituationOption(
+                    "Descansar cinco minutos, respirar y volver a intentarlo",
+                    "Con la mente descansada lo ves mas claro y lo consigues. Parar un momento no es rendirse.",
+                    AnswerQuality.Positive),
+                new SituationOption(
+                    "Dejarlo y pasar al siguiente ejercicio",
+                    "Avanzas con lo demas, pero ese ejercicio te seguira esperando.",
+                    AnswerQuality.Neutral),
+                new SituationOption(
+                    "Copiar el resultado de un compañero",
+                    "Parece que terminas antes, pero no aprendes y el proximo sera aun mas dificil.",
+                    AnswerQuality.Negative),
+            }),
+
+        new EmotionalSituation(
+            "Ves a tu amigo sentado solo en el recreo con cara triste.",
+            new SituationOption[]
+            {
+                new SituationOption(
+                    "Acercarte, preguntarle que le pasa y escucharle",
+                    "Tu amigo se siente acompañado y se anima. Escuchar es una forma de dar un abrazo.",
+                    AnswerQuality.Positive),
+                new SituationOption(
+                    "Reirte de el por estar triste",
+                    "Le haces sentir peor y puede dejar de confiar en ti. Las burlas duelen mucho.",
+                    AnswerQuality.Negative),
+                new SituationOption(
+                    "Dejarle solo pensando que ya se le pasara",
+                    "A veces se pasa solo, pero un amigo cerca hace que la tristeza pese menos.",
+                    AnswerQuality.Neutral),
+                new SituationOption(
+                    "Avisar a la profesora de que esta triste",
+                    "Buscar ayuda esta bien, aunque tu compañia tambien es una gran ayuda.",
+                    AnswerQuality.Neutral),
             }),
     };
 

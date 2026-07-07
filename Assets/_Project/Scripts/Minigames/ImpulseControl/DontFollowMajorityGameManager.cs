@@ -1,41 +1,47 @@
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 using System.Collections;
 using UnityEngine;
-using UnityEngine.EventSystems;
 
+/// <summary>
+/// NO SIGAS A LA MAYORIA — tarea de flancos (Flanker) infantil:
+/// una fila de peces nada en pantalla; casi todos miran al mismo lado, pero el
+/// pez NARANJA del centro puede mirar al contrario. El niño debe pulsar la
+/// direccion del pez CENTRAL ignorando a la mayoria (◄ ► o flechas del teclado).
+/// Mide RT y aciertos, con rondas incongruentes como medida de interferencia.
+/// </summary>
 public class DontFollowMajorityGameManager : MinigameBase
 {
+    // ------------- parametros de dificultad (se fijan en ApplyDifficulty)
+    int   _rounds           = 12;
+    float _incongruentRatio = 0.40f;
+    float _timeLimit        = 0f;      // 0 = sin limite
+    int   _fishCount        = 5;
 
-    [Header("Rondas")]
-    public int   totalRounds  = 10;
-    public int   passCount    = 7;
-
-    [Header("Tiempo de respuesta (segundos)")]
-    public float responseTime         = 3.5f;
-    public float pauseAfterResponse   = 0.70f;
-
-    [Header("Estímulos")]
-    public int totalArrows   = 10;
-    public int minorityCount = 2;
-
-    DontFollowMajorityRuleManager       _rule;
+    DontFollowMajorityUIController     _ui;
+    DontFollowMajorityInputHandler     _input;
     DontFollowMajorityStimulusGenerator _gen;
-    DontFollowMajorityInputHandler      _input;
-    DontFollowMajorityUIController      _ui;
 
     int   _round;
     int   _correct;
-    int   _errors;
-    int   _score;
-    float _elapsed;
-    bool  _waitingForNext;
+    int   _incongruentTotal;
+    int   _incongruentCorrect;
+    long  _rtSum;
+    int   _rtCount;
+    bool  _centerRight;
+    bool  _isIncongruent;
+    bool  _answered;
+    float _shownAt;
+    bool  _ended;
+    Coroutine _timeoutCo;
+
+    static readonly Color TXT_GREEN  = new Color(0.25f, 0.90f, 0.52f);
+    static readonly Color TXT_RED    = new Color(0.95f, 0.35f, 0.35f);
+    static readonly Color TXT_ORANGE = new Color(0.96f, 0.62f, 0.18f);
 
     protected override string GetIntroDescription()
     {
-        return
-            "Ves muchas flechas apuntando a distintos lados.\n" +
-            "Tu tarea: elegir la direccion que tiene MENOS flechas.\n\n" +
-            "No hagas lo que hace la mayoria!\n" +
-            "Piensa antes de pulsar.";
+        return "Mira SOLO al pez NARANJA del centro.\n" +
+               "Pulsa hacia donde mira EL... ¡aunque los demas miren al reves!";
     }
 
     void ApplyDifficulty()
@@ -43,21 +49,17 @@ public class DontFollowMajorityGameManager : MinigameBase
         var diff = GameManager.Instance != null
             ? GameManager.Instance.CurrentDifficulty
             : DifficultyLevel.Easy;
+
         switch (diff)
         {
             case DifficultyLevel.Medium:
-                totalRounds   = 10;
-                passCount     = 7;
-                responseTime  = 3.0f;
-                totalArrows   = 12;
-                minorityCount = 2;
+                _rounds = 16; _incongruentRatio = 0.50f; _timeLimit = 2.0f; _fishCount = 5;
                 break;
             case DifficultyLevel.Hard:
-                totalRounds   = 12;
-                passCount     = 9;
-                responseTime  = 2.5f;
-                totalArrows   = 15;
-                minorityCount = 2;
+                _rounds = 20; _incongruentRatio = 0.60f; _timeLimit = 1.4f; _fishCount = 7;
+                break;
+            default:
+                _rounds = 12; _incongruentRatio = 0.40f; _timeLimit = 0f;   _fishCount = 5;
                 break;
         }
     }
@@ -65,146 +67,157 @@ public class DontFollowMajorityGameManager : MinigameBase
     protected override void OnMinigameStart()
     {
         ApplyDifficulty();
-        EnsureEventSystem();
+        KidUI.EnsureEventSystem();
 
-        _rule  = GetComponent<DontFollowMajorityRuleManager>();
-        _gen   = GetComponent<DontFollowMajorityStimulusGenerator>();
-        _input = GetComponent<DontFollowMajorityInputHandler>();
         _ui    = GetComponent<DontFollowMajorityUIController>();
+        _input = GetComponent<DontFollowMajorityInputHandler>();
+        _gen   = GetComponent<DontFollowMajorityStimulusGenerator>();
 
-        _gen.totalArrows   = totalArrows;
-        _gen.minorityCount = minorityCount;
+        _gen.BuildPlan(_rounds, _incongruentRatio);
+        _ui.BuildUI(_fishCount, _timeLimit > 0f, _input);
 
-        _ui.BuildUI(totalRounds,
-                    d => _input.PressDirection(d),
-                    () => RestartMinigame(),
-                    () => ReturnToGameSelector());
+        _input.OnAnswer   += HandleAnswer;
+        _input.AcceptInput = false;
 
-        _input.OnDirectionInput += HandleResponse;
+        _round = 0; _correct = 0;
+        _incongruentTotal = 0; _incongruentCorrect = 0;
+        _rtSum = 0; _rtCount = 0;
+        _ended = false;
 
-        _round          = 0;
-        _correct        = 0;
-        _errors         = 0;
-        _score          = 0;
-        _elapsed        = 0f;
-        _waitingForNext = false;
-
-        _ui.SetScore(0);
-        StartCoroutine(DelayedStart());
+        StartCoroutine(RunRound(0.7f));
     }
 
     protected override void OnMinigameComplete() { }
     protected override void OnMinigameFailed()   { }
 
-    void Update()
+    IEnumerator RunRound(float delay)
     {
-        if (!IsPlaying || _waitingForNext || !_input.AcceptInput) return;
+        _ui.HideFish();
+        _ui.SetProgress(_correct, _round, _rounds);
+        yield return new WaitForSeconds(delay);
+        if (!IsPlaying) yield break;
 
-        _elapsed += Time.deltaTime;
-        _ui.SetTimerBar(1f - _elapsed / responseTime);
+        _centerRight   = _gen.RandomRight();
+        _isIncongruent = _gen.IsIncongruent(_round);
+        if (_isIncongruent) _incongruentTotal++;
 
-        if (_elapsed >= responseTime)
-        {
-            _input.AcceptInput = false;
-            HandleTimeout();
-        }
-    }
+        bool majorityRight = _isIncongruent ? !_centerRight : _centerRight;
 
-    IEnumerator DelayedStart()
-    {
-        yield return new WaitForSeconds(0.35f);
-        NextRound();
-    }
-
-    void NextRound()
-    {
-        if (!IsPlaying) return;
-
-        _round++;
-        _elapsed = 0f;
-        _ui.HideFeedback();
-        _ui.SetTimerBar(1f);
-
-        _rule.GenerateRound();
-        _gen.Generate(_ui.StimulusContainer,
-                      _rule.MajorityDirection,
-                      _rule.CorrectDirection);
-
+        _answered = false;
+        _ui.ShowFish(_centerRight, majorityRight, _fishCount);
+        _shownAt = Time.time;
         _input.AcceptInput = true;
+
+        if (_timeLimit > 0f)
+            _timeoutCo = StartCoroutine(TimeoutRoutine());
     }
 
-    void HandleResponse(DFMDirection dir)
+    IEnumerator TimeoutRoutine()
     {
-        if (!IsPlaying || _waitingForNext) return;
+        float t = 0f;
+        while (t < _timeLimit)
+        {
+            if (_answered || !IsPlaying) yield break;
+            t += Time.deltaTime;
+            _ui.UpdateTimerBar(1f - t / _timeLimit);
+            yield return null;
+        }
+        if (_answered || !IsPlaying) yield break;
 
-        bool correct = _rule.IsCorrect(dir);
+        // Sin respuesta a tiempo
+        _answered = true;
+        _input.AcceptInput = false;
+        ReportEvent(false, -1f);
+
+        GameFeel.PlayError();
+        GameFeel.FloatingText("¡Muy lento!", TXT_ORANGE, new Vector2(0f, 200f), 40f);
+        _ui.ShowRoundFeedback(false, "Se acabo el tiempo", TXT_ORANGE);
+        NextOrEnd();
+    }
+
+    void HandleAnswer(bool right)
+    {
+        if (!IsPlaying || _answered) return;
+        _answered = true;
+        _input.AcceptInput = false;
+        if (_timeoutCo != null) { StopCoroutine(_timeoutCo); _timeoutCo = null; }
+
+        float rtMs = (Time.time - _shownAt) * 1000f;
+        bool correct = (right == _centerRight);
+        ReportEvent(correct, rtMs);   // RT real tambien en errores (interferencia)
+
         if (correct)
         {
-            int pts = ComputePoints();
             _correct++;
-            _score += pts;
+            _rtSum += (long)rtMs;
+            _rtCount++;
+            if (_isIncongruent) _incongruentCorrect++;
+
+            GameFeel.PlaySuccess();
+            GameFeel.FloatingText(Mathf.RoundToInt(rtMs) + " ms", TXT_GREEN,
+                                  new Vector2(0f, 200f), 40f);
+            _ui.ShowRoundFeedback(true,
+                _isIncongruent ? "¡No te engañaron!" : "¡Bien visto!", TXT_GREEN);
         }
         else
         {
-            _errors++;
+            GameFeel.Error(_ui.CenterFishRect);
+            GameFeel.FloatingText(
+                _isIncongruent ? "¡Te llevaron los demas!" : "¡Mira al naranja!",
+                TXT_RED, new Vector2(0f, 200f), 38f);
+            _ui.ShowRoundFeedback(false, "El del centro miraba al otro lado", TXT_RED);
         }
 
-        _ui.SetRoundDot(_round - 1, correct);
-        _ui.SetScore(_score);
-        _ui.ShowFeedback(correct,
-                         DontFollowMajorityRuleManager.DirectionName(_rule.CorrectDirection));
-
-        StartCoroutine(AdvanceAfterDelay());
+        NextOrEnd();
     }
 
-    void HandleTimeout()
+    void NextOrEnd()
     {
-        if (_waitingForNext) return;
+        _round++;
+        _ui.SetProgress(_correct, _round, _rounds);
 
-        _ui.SetRoundDot(_round - 1, false);
-        _ui.ShowFeedback(false,
-                         DontFollowMajorityRuleManager.DirectionName(_rule.CorrectDirection));
-
-        StartCoroutine(AdvanceAfterDelay());
+        if (_round >= _rounds) StartCoroutine(EndGame());
+        else                   StartCoroutine(RunRound(0.85f));
     }
 
-    IEnumerator AdvanceAfterDelay()
+    IEnumerator EndGame()
     {
-        _waitingForNext = true;
-        yield return new WaitForSeconds(pauseAfterResponse);
-        _waitingForNext = false;
+        if (_ended) yield break;
+        _ended = true;
 
-        _gen.Clear();
+        yield return new WaitForSeconds(0.9f);
 
-        if (_errors >= 3)
-            EndGame(forceFail: true);
-        else if (_round >= totalRounds)
-            EndGame();
-        else
-            NextRound();
-    }
+        float ratio = _rounds > 0 ? (float)_correct / _rounds : 0f;
+        bool  won   = _correct >= Mathf.CeilToInt(_rounds * 0.6f);
+        long  avgMs = _rtCount > 0 ? _rtSum / _rtCount : 0;
 
-    void EndGame(bool forceFail = false)
-    {
-        bool won = !forceFail && _correct >= passCount;
-        if (won) CompleteMinigame(_score);
+        int score = 0;
+        if (won)
+        {
+            int speedBonus = _rtCount > 0
+                ? Mathf.Max(0, Mathf.RoundToInt((900f - avgMs) * 0.4f))
+                : 0;
+            score = 250 + _correct * 40 + _incongruentCorrect * 40 + speedBonus;
+        }
+
+        if (won) CompleteMinigame(score);
         else     FailMinigame();
-        _ui.ShowFinalResult(won, _correct, totalRounds, _score);
-    }
 
-    int ComputePoints()
-    {
-        float ratio = Mathf.Clamp01(1f - _elapsed / responseTime);
-        return Mathf.RoundToInt(Mathf.Lerp(60f, 100f, ratio));
-    }
+        int stars = GameFeel.StarsFromRatio(won, ratio);
 
-    static void EnsureEventSystem()
-    {
-        if (FindObjectOfType<EventSystem>() == null)
-        {
-            var go = new GameObject("EventSystem");
-            go.AddComponent<EventSystem>();
-            go.AddComponent<StandaloneInputModule>();
-        }
+        string rtStat = _rtCount > 0
+            ? "Velocidad media: " + avgMs + " ms"
+            : "Velocidad media: -";
+
+        ShowResults(won, stars, score,
+            new[]
+            {
+                "Aciertos: " + _correct + "/" + _rounds,
+                "Trampas superadas: " + _incongruentCorrect + "/" + _incongruentTotal,
+                rtStat
+            },
+            null,
+            won ? "¡No te dejaste llevar por la mayoria!"
+                : "Fijate solo en el pez naranja del centro");
     }
 }

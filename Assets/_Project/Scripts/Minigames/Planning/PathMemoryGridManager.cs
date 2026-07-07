@@ -1,3 +1,4 @@
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -14,7 +15,9 @@ public class PathMemoryGridManager : MonoBehaviour
         Route,
         PlayerCorrect,
         PlayerWrong,
-        PlayerCurrent
+        PlayerCurrent,
+        Blocked,
+        Detour
     }
 
     const float CellSize = 96f;
@@ -28,6 +31,8 @@ public class PathMemoryGridManager : MonoBehaviour
     static readonly Color ColCorrect = C(0.18f, 0.78f, 0.38f);
     static readonly Color ColWrong   = C(0.92f, 0.22f, 0.22f);
     static readonly Color ColCurrent = C(0.62f, 0.88f, 1.00f);
+    static readonly Color ColBlocked = C(0.42f, 0.14f, 0.18f);
+    static readonly Color ColDetour  = C(0.45f, 0.62f, 0.85f);
     static readonly Color ColBorder  = C(0.06f, 0.08f, 0.12f);
 
     Canvas        _canvas;
@@ -169,6 +174,8 @@ public class PathMemoryGridManager : MonoBehaviour
             case CellState.PlayerCorrect: return ColCorrect;
             case CellState.PlayerWrong:   return ColWrong;
             case CellState.PlayerCurrent: return ColCurrent;
+            case CellState.Blocked:       return ColBlocked;
+            case CellState.Detour:        return ColDetour;
             default:                      return ColFloor;
         }
     }

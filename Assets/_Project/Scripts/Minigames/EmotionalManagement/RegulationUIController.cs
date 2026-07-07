@@ -1,3 +1,4 @@
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 using System;
 using UnityEngine;
 using UnityEngine.UI;
@@ -35,13 +36,14 @@ public class RegulationUIController : MonoBehaviour
     Image[]           _actionCDOverlay;
     TextMeshProUGUI[] _actionCDLbl;
 
-    GameObject      _resultPanel;
-    TextMeshProUGUI _resultTitle;
-    TextMeshProUGUI _resultSub;
+    RectTransform     _barBG;
+    Image             _barFlash;
+    EmotionFaceWidget _face;
+    float             _lastMoodBand = -1f;
 
     Action<int> _onAction;
 
-    public void BuildUI(Action<int> onAction, Action onRestart, Action onMenu)
+    public void BuildUI(Action<int> onAction)
     {
         _onAction = onAction;
 
@@ -99,12 +101,10 @@ public class RegulationUIController : MonoBehaviour
         var bot = MkImg(R, "Bot", HDR, V(0,0), V(1,0), V(0,40), V(0,80));
         MkImg(bot, "BotLine", ACCENT, V(0,1), V(1,1), V(0,-1.5f), V(0,3));
         MkTxt(bot, "Instr",
-              "El nivel sube automaticamente cada turno  •  Las acciones tienen recarga de 2 turnos",
+              "El nivel sube automaticamente cada turno  •  Cada accion necesita recargarse antes de repetirla",
               C(ACCENT.r+0.08f, ACCENT.g-0.12f, ACCENT.b-0.10f, 1f),
               16, V(0.01f,0), V(0.78f,1)).alignment = TextAlignmentOptions.MidlineLeft;
         MkImg(bot, "Sep", C(1,1,1,0.10f), V(0.78f,0.1f), V(0.782f,0.9f), V(0,0), V(0,0));
-
-        BuildResultPanel(R, onRestart, onMenu);
     }
 
     void BuildEmotionBar(RectTransform R)
@@ -119,6 +119,7 @@ public class RegulationUIController : MonoBehaviour
 
         var barBG = MkImg(R, "BarBG", C(0.04f,0.07f,0.14f),
                           V(0.06f,0.810f), V(0.94f,0.856f), V(0,0), V(0,0));
+        _barBG = barBG;
         MkImg(barBG, "BorderT", C(1,1,1,0.08f), V(0,1), V(1,1), V(0,-1), V(0,2));
         MkImg(barBG, "BorderB", C(0,0,0,0.25f), V(0,0), V(1,0), V(0, 1), V(0,2));
 
@@ -135,10 +136,20 @@ public class RegulationUIController : MonoBehaviour
         _barFill.fillAmount = 1f;
         MkImg(barBG, "Shine", C(1,1,1,0.10f), V(0,0.5f), V(1,1), V(0,0), V(0,0));
 
+        // Overlay rojo que parpadea cuando el nivel SUBE (refuerzo visual).
+        var flashRT = MkImg(barBG, "RiseFlash", C(1f, 0.15f, 0.15f, 0f),
+                            V(0,0), V(1,1), V(0,0), V(0,0));
+        _barFlash = flashRT.GetComponent<Image>();
+        _barFlash.raycastTarget = false;
+
         _levelLbl = MkTxt(R, "LevelNum", "100", Color.white, 76,
                           V(0.38f,0.720f), V(0.62f,0.808f));
         _levelLbl.fontStyle = FontStyles.Bold;
         _levelLbl.alignment = TextAlignmentOptions.Center;
+
+        // Carita grande: enfadada -> neutral -> feliz segun baja el nivel.
+        _face = EmotionFaceWidget.Build(R, V(0.78f, 0.762f), 100f);
+        _face.SetMood(0f);
 
         _stateLbl = MkTxt(R, "StateLabel", "MUY ALTERADO", CRED, 22,
                           V(0.06f,0.720f), V(0.38f,0.808f));
@@ -190,25 +201,30 @@ public class RegulationUIController : MonoBehaviour
         _actionCDOverlay = new Image[n];
         _actionCDLbl     = new TextMeshProUGUI[n];
 
-        MkTxt(R, "ActTitle", "ACCIONES  (recarga: 2 turnos)", DIM, 15,
+        MkTxt(R, "ActTitle", "ACCIONES  (cada una necesita recargarse)", DIM, 15,
               V(0.06f,0.414f), V(0.94f,0.430f)).characterSpacing = 0.8f;
 
         float colAMin = 0.06f, colAMax = 0.47f;
         float colBMin = 0.53f, colBMax = 0.94f;
-        float[] rowMins = { 0.310f, 0.198f, 0.086f };
-        float[] rowMaxs = { 0.408f, 0.296f, 0.184f };
+
+        // Filas calculadas para que quepan todas las acciones (2 columnas).
+        int   rows    = (n + 1) / 2;
+        float areaTop = 0.408f, areaBot = 0.078f, gap = 0.014f;
+        float rowH    = (areaTop - areaBot - gap * (rows - 1)) / rows;
 
         for (int i = 0; i < n; i++)
         {
             bool  colB = (i % 2) == 1;
             int   row  = i / 2;
+            float rMax = areaTop - row * (rowH + gap);
+            float rMin = rMax - rowH;
             float xMin = colB ? colBMin : colAMin;
             float xMax = colB ? colBMax : colAMax;
             int capturedIdx = i;
             var action = RegulationEmotionManager.ACTIONS[i];
 
             var btnRT = MkImg(R, "Btn_" + i, BTN_N,
-                              V(xMin, rowMins[row]), V(xMax, rowMaxs[row]), V(0,0), V(0,0));
+                              V(xMin, rMin), V(xMax, rMax), V(0,0), V(0,0));
             MkImg(btnRT, "Sh",   C(1,1,1,0.06f),                      V(0,0.5f),  V(1,1),     V(0,0), V(0,0));
             MkImg(btnRT, "AccL", C(ACCENT.r,ACCENT.g,ACCENT.b,0.55f), V(0,0.12f), V(0,0.88f), V(4,0), V(8,0));
 
@@ -217,15 +233,19 @@ public class RegulationUIController : MonoBehaviour
                           : action.impact <= -12 ? CYELLOW
                           : CRED;
             var impLbl = MkTxt(btnRT, "Imp", impStr, impCol, 20,
-                               V(0.68f,0.55f), V(0.98f,0.98f));
+                               V(0.68f,0.50f), V(0.98f,0.96f));
             impLbl.fontStyle = FontStyles.Bold;
             impLbl.alignment = TextAlignmentOptions.TopRight;
 
-            var txt = MkTxt(btnRT, "T", action.name, Color.white, 21,
-                            V(0.05f,0.08f), V(0.88f,0.92f));
+            var cdInfo = MkTxt(btnRT, "CDInfo", "recarga " + action.cooldownTurns + "t",
+                               DIM, 12, V(0.60f,0.04f), V(0.98f,0.40f));
+            cdInfo.alignment = TextAlignmentOptions.BottomRight;
+
+            var txt = MkTxt(btnRT, "T", action.name, Color.white, 20,
+                            V(0.05f,0.08f), V(0.66f,0.92f));
             txt.alignment        = TextAlignmentOptions.MidlineLeft;
             txt.enableAutoSizing = true;
-            txt.fontSizeMin = 13f; txt.fontSizeMax = 21f;
+            txt.fontSizeMin = 12f; txt.fontSizeMax = 20f;
 
             var cdOvGO = new GameObject("CDOverlay");
             cdOvGO.transform.SetParent(btnRT, false);
@@ -252,41 +272,9 @@ public class RegulationUIController : MonoBehaviour
             bc.disabledColor    = C(0.35f,0.35f,0.35f,0.55f);
             btn.colors = bc;
             btn.onClick.AddListener(() => _onAction?.Invoke(capturedIdx));
+            ButtonJuice.Attach(btnRT.gameObject);
             _actionBtns[i] = btn;
         }
-    }
-
-    void BuildResultPanel(RectTransform R, Action onRestart, Action onMenu)
-    {
-        _resultPanel = new GameObject("ResultPanel");
-        _resultPanel.transform.SetParent(R, false);
-        var er = _resultPanel.AddComponent<RectTransform>();
-        er.anchorMin = V(0,0); er.anchorMax = V(1,1);
-        er.sizeDelta = V(0,0); er.anchoredPosition = V(0,0);
-        _resultPanel.AddComponent<Image>().color = C(0,0,0,0.88f);
-
-        var card = MkImg(er, "Card", PANEL, V(0.5f,0.5f), V(0.5f,0.5f), V(0,0), V(900f,480f));
-        MkImg(card, "Sh",    C(1,1,1,0.03f), V(0,0.5f),  V(1,1),     V(0,0),  V(0,0));
-        MkImg(card, "LineT", ACCENT,          V(0,1),     V(1,1),     V(0,-4), V(0,8));
-        MkImg(card, "AccL",  ACCENT,          V(0,0.08f), V(0,0.92f), V(4,0),  V(8,0));
-
-        _resultTitle = MkTxt(card, "RT", "", Color.white, 42,
-                             V(0.05f,0.76f), V(0.95f,0.97f));
-        _resultTitle.fontStyle = FontStyles.Bold;
-        _resultTitle.enableAutoSizing = true;
-        _resultTitle.fontSizeMin = 24f; _resultTitle.fontSizeMax = 46f;
-
-        _resultSub = MkTxt(card, "RS", "", C(0.50f,0.68f,0.80f), 21,
-                           V(0.05f,0.37f), V(0.95f,0.74f));
-        _resultSub.overflowMode = TextOverflowModes.Overflow;
-        _resultSub.alignment    = TextAlignmentOptions.Center;
-        _resultSub.lineSpacing  = 10f;
-
-        MkBtn(card, "Jugar de nuevo",     ACCENT,                V(0.05f,0.20f), V(0.48f,0.33f), onRestart);
-        MkBtn(card, "Volver a la seccion", C(0.18f,0.24f,0.38f), V(0.52f,0.20f), V(0.95f,0.33f), onMenu);
-        MkBtn(card, "Menu principal",     C(0.10f,0.13f,0.22f),  V(0.05f,0.05f), V(0.95f,0.17f), () => SceneLoader.GoToMainMenu());
-
-        _resultPanel.SetActive(false);
     }
 
     public void UpdateBar(float level, int stepsTaken, int maxSteps, float regenPerTurn)
@@ -294,6 +282,19 @@ public class RegulationUIController : MonoBehaviour
 
         float displayFrac = Mathf.Clamp01(level / 100f);
         _barFill.fillAmount = displayFrac;
+
+        // Carita: enfadada (nivel alto) -> neutral -> feliz (en calma).
+        if (_face != null)
+        {
+            float mood = 1f - Mathf.Clamp01(level / 100f);
+            _face.SetMood(mood);
+            float band = Mathf.Floor(mood * 4f);
+            if (!Mathf.Approximately(band, _lastMoodBand))
+            {
+                if (_lastMoodBand >= 0f) _face.Pulse();
+                _lastMoodBand = band;
+            }
+        }
 
         if (level > 100f)
         {
@@ -372,31 +373,27 @@ public class RegulationUIController : MonoBehaviour
         _feedbackLbl.color = col;
     }
 
-    public void ShowResult(bool won, int steps, int score, int finalLevel)
+    /// <summary>La barra pulsa en rojo cuando el nivel emocional SUBE.</summary>
+    public void PulseBarRise()
     {
-        if (won)
+        if (_barBG != null) UITween.PulseOnce(_barBG, 1.03f, 0.30f);
+        if (_barFlash != null) StartCoroutine(BarFlashRoutine());
+    }
+
+    System.Collections.IEnumerator BarFlashRoutine()
+    {
+        float t = 0f;
+        const float DUR = 0.55f;
+        while (t < DUR)
         {
-            _resultTitle.text  = "Nivel emocional regulado";
-            _resultTitle.color = CGREEN;
-            _resultSub.text    =
-                "Nivel final:   " + finalLevel + "\n" +
-                "Acciones usadas:   " + steps + "\n" +
-                "Puntuacion:   " + score + " pts\n\n" +
-                (steps <= 9
-                    ? "Excelente regulacion. Dominaste la tension automatica."
-                    : "Lo conseguiste. Con practica podras hacerlo en menos pasos.");
+            if (_barFlash == null) yield break;
+            t += Time.unscaledDeltaTime;
+            float p = t / DUR;
+            float a = p < 0.25f ? (p / 0.25f) : 1f - (p - 0.25f) / 0.75f;
+            _barFlash.color = new Color(1f, 0.15f, 0.15f, a * 0.45f);
+            yield return null;
         }
-        else
-        {
-            _resultTitle.text  = "Se agotaron las acciones";
-            _resultTitle.color = CRED;
-            _resultSub.text    =
-                "Nivel final:   " + finalLevel + "  (objetivo: 10 o menos)\n\n" +
-                "Recuerda: el nivel sube automaticamente +8 cada turno.\n" +
-                "Solo Respirar, Hablar y Caminar tienen efecto neto negativo.\n" +
-                "Ignorar y Reaccionar con ira empeoran la situacion.";
-        }
-        _resultPanel.SetActive(true);
+        _barFlash.color = new Color(1f, 0.15f, 0.15f, 0f);
     }
 
     RectTransform MkImg(RectTransform p, string n, Color col,
@@ -426,20 +423,5 @@ public class RegulationUIController : MonoBehaviour
         t.alignment = TextAlignmentOptions.Center;
         t.overflowMode = TextOverflowModes.Overflow;
         return t;
-    }
-
-    void MkBtn(RectTransform p, string lbl, Color bg, Vector2 am, Vector2 aM, Action click)
-    {
-        var rt = MkImg(p, "Btn_" + lbl, bg, am, aM, V(0,0), V(0,0));
-        MkImg(rt, "Sh", C(1,1,1,0.09f), V(0,0.5f), V(1,1), V(0,0), V(0,0));
-        var b = rt.gameObject.AddComponent<Button>();
-        b.targetGraphic = rt.GetComponent<Image>();
-        var cb = b.colors;
-        cb.normalColor = Color.white; cb.highlightedColor = C(1,1,1,0.82f);
-        cb.pressedColor = C(0.72f,0.72f,0.72f);
-        b.colors = cb;
-        b.onClick.AddListener(() => click?.Invoke());
-        var t = MkTxt(rt, "T", lbl, Color.white, 24, V(0,0), V(1,1));
-        t.fontStyle = FontStyles.Bold;
     }
 }

@@ -1,41 +1,47 @@
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
+using System.Collections;
 using UnityEngine;
-using UnityEngine.EventSystems;
 
+/// <summary>
+/// EL SEMAFORO ESCONDIDO (inhibicion + espera paciente):
+/// una cuenta atras visible se OCULTA en los ultimos segundos y el niño debe
+/// pulsar exactamente cuando cree que llega a 0.
+///  - Pulsar mientras el numero aun es visible = impulsivo (fallo claro).
+///  - Acierto si la pulsacion cae dentro de la ventana de precision.
+/// 5 rondas. ReportEvent(acierto, |desvio| en ms).
+/// </summary>
 public class SilentCountdownGameManager : MinigameBase
 {
+    const int ROUNDS      = 5;
+    const int NEED_TO_WIN = 3;
 
-    [Header("Configuración de rondas")]
-    public int totalRounds = 3;
-    public int roundsToWin = 2;
-
-    [Header("Tiempos objetivo por ronda (segundos)")]
-    public float[] roundTargets = { 3f, 5f, 7f };
-
-    [Header("Márgenes de precisión (segundos)")]
-    [Tooltip("Diferencia máxima para calificación PERFECTO (100 pts)")]
-    public float perfectMargin = 0.40f;
-    [Tooltip("Diferencia máxima para calificación BIEN (60–99 pts). Por encima → FALLO")]
-    public float goodMargin    = 1.00f;
+    // ------------- parametros de dificultad (se fijan en ApplyDifficulty)
+    int   _startCount = 5;     // numero inicial de la cuenta
+    int   _hideAt     = 2;     // al llegar a este numero, se esconde
+    float _window     = 0.8f;  // ventana de acierto (± segundos)
 
     SilentCountdownTimerManager   _timer;
     SilentCountdownInputHandler   _input;
-    SilentCountdownScoreEvaluator _evaluator;
     SilentCountdownUIController   _ui;
+    SilentCountdownScoreEvaluator _eval;
 
-    enum Phase { Ready, Counting, Result, Final }
-    Phase _phase;
-    int   _currentRound;
-    int   _correctCount;
-    int   _totalScore;
-    float _targetTime;
+    int   _round;
+    int   _hits;
+    int   _impulsive;
+    int   _score;
+    float _devSumMs;
+    int   _devCount;
+    bool  _roundResolved;
+    bool  _ended;
+
+    static readonly Color TXT_GREEN  = new Color(0.25f, 0.90f, 0.52f);
+    static readonly Color TXT_RED    = new Color(0.95f, 0.35f, 0.35f);
+    static readonly Color TXT_ORANGE = new Color(0.96f, 0.62f, 0.18f);
 
     protected override string GetIntroDescription()
     {
-        return
-            "Se muestra un tiempo. Memorízalo bien.\n" +
-            "Pulsa ¡EMPIEZA! y cuenta mentalmente.\n" +
-            "Cuando creas que ha pasado, pulsa ¡YA!\n" +
-            "¡Sin mirar el reloj! Solo tú y el tiempo.";
+        return "La cuenta atras se esconde antes de llegar a 0.\n" +
+               "¡Sigue contando en tu cabeza y pulsa justo en el 0!";
     }
 
     void ApplyDifficulty()
@@ -43,17 +49,17 @@ public class SilentCountdownGameManager : MinigameBase
         var diff = GameManager.Instance != null
             ? GameManager.Instance.CurrentDifficulty
             : DifficultyLevel.Easy;
+
         switch (diff)
         {
             case DifficultyLevel.Medium:
-                totalRounds  = 4;
-                roundsToWin  = 3;
-                roundTargets = new float[] { 3f, 5f, 7f, 9f };
+                _startCount = 5; _hideAt = 3; _window = 0.5f;
                 break;
             case DifficultyLevel.Hard:
-                totalRounds  = 5;
-                roundsToWin  = 4;
-                roundTargets = new float[] { 3f, 5f, 7f, 9f, 12f };
+                _startCount = 6; _hideAt = 4; _window = 0.35f;
+                break;
+            default:
+                _startCount = 5; _hideAt = 2; _window = 0.8f;
                 break;
         }
     }
@@ -61,163 +67,172 @@ public class SilentCountdownGameManager : MinigameBase
     protected override void OnMinigameStart()
     {
         ApplyDifficulty();
-        EnsureEventSystem();
+        KidUI.EnsureEventSystem();
 
-        _timer     = GetComponent<SilentCountdownTimerManager>();
-        _input     = GetComponent<SilentCountdownInputHandler>();
-        _evaluator = GetComponent<SilentCountdownScoreEvaluator>();
-        _ui        = GetComponent<SilentCountdownUIController>();
+        _timer = GetComponent<SilentCountdownTimerManager>();
+        _input = GetComponent<SilentCountdownInputHandler>();
+        _ui    = GetComponent<SilentCountdownUIController>();
+        _eval  = GetComponent<SilentCountdownScoreEvaluator>();
 
-        _ui.BuildUI(totalRounds,
-                    OnMainButton,
-                    () => RestartMinigame(),
-                    () => ReturnToGameSelector());
+        _ui.BuildUI(ROUNDS, _input);
 
-        _evaluator.perfectMargin = perfectMargin;
-        _evaluator.goodMargin    = goodMargin;
+        _timer.OnTick        += HandleTick;
+        _timer.OnHidden      += HandleHidden;
+        _timer.OnZeroTimeout += HandleTimeout;
+        _input.OnPress       += HandlePress;
+        _input.AcceptInput    = false;
 
-        _input.OnPlayerPressed += OnPlayerPressed;
+        _round = 0; _hits = 0; _impulsive = 0; _score = 0;
+        _devSumMs = 0f; _devCount = 0;
+        _ended = false;
 
-        _currentRound = 0;
-        _correctCount = 0;
-        _totalScore   = 0;
-
-        BeginRound();
+        StartCoroutine(RunRound(0.6f));
     }
 
     protected override void OnMinigameComplete() { }
     protected override void OnMinigameFailed()   { }
 
-    void Update()
+    IEnumerator RunRound(float delay)
     {
+        yield return new WaitForSeconds(delay);
+        if (!IsPlaying) yield break;
 
-        if (_phase == Phase.Result && Input.GetKeyDown(KeyCode.Space))
-        {
-            AdvanceRound();
-        }
-    }
+        _roundResolved = false;
+        _ui.SetRoundLabel(_round + 1, ROUNDS);
+        _ui.ShowGetReady(_hideAt);
 
-    void BeginRound()
-    {
-        _targetTime        = GetTargetForRound(_currentRound);
-        _timer.Reset();
-        _input.AcceptInput = false;
-        _phase             = Phase.Ready;
-        _ui.ShowReady(_targetTime);
-    }
+        yield return new WaitForSeconds(0.9f);
+        if (!IsPlaying) yield break;
 
-    void OnMainButton()
-    {
-        switch (_phase)
-        {
-            case Phase.Ready:
-                StartCounting();
-                break;
-
-            case Phase.Counting:
-
-                _input.PressButton();
-                break;
-
-            case Phase.Result:
-                AdvanceRound();
-                break;
-        }
-    }
-
-    void OnPlayerPressed()
-    {
-        if (_phase != Phase.Counting) return;
-        float actual = _timer.StopCounting();
-        ShowResult(actual);
-    }
-
-    void StartCounting()
-    {
-        _phase             = Phase.Counting;
         _input.AcceptInput = true;
-        _timer.StartCounting();
-        _ui.ShowCounting();
+        _timer.StartCountdown(_startCount, _hideAt, 2.2f);
     }
 
-    void ShowResult(float actual)
+    void HandleTick(int number)
     {
+        if (!IsPlaying) return;
+        GameFeel.PlayPop();
+        _ui.ShowNumber(number);
+    }
+
+    void HandleHidden()
+    {
+        if (!IsPlaying) return;
+        _ui.HideNumber();
+    }
+
+    void HandlePress()
+    {
+        if (!IsPlaying || _roundResolved || !_timer.Running) return;
+        _roundResolved = true;
         _input.AcceptInput = false;
-        _phase             = Phase.Result;
 
-        var  result  = _evaluator.Evaluate(_targetTime, actual);
-        bool correct = _evaluator.IsCorrect(result);
+        bool  wasHidden = _timer.IsHidden;
+        float deviation = _timer.Elapsed - _timer.TargetTime;   // + tarde, - pronto
+        _timer.Stop();
 
-        if (correct) _correctCount++;
-        _totalScore += result.Points;
+        bool roundHit = false;
 
-        _ui.SetRoundDot(_currentRound, correct);
-        _ui.SetScore(_totalScore);
-
-        string ratingText;
-        Color  ratingColor;
-
-        switch (result.Rating)
+        if (!wasHidden)
         {
-            case SilentCountdownScoreEvaluator.Rating.Perfect:
-                ratingText  = "¡PERFECTO!";
-                ratingColor = new Color(0.22f, 0.86f, 0.54f);
-                _ui.Flash(new Color(0.22f, 0.86f, 0.54f, 0.28f));
-                break;
-            case SilentCountdownScoreEvaluator.Rating.Good:
-                ratingText  = "¡BIEN!";
-                ratingColor = new Color(0.95f, 0.80f, 0.15f);
-                _ui.Flash(new Color(0.95f, 0.80f, 0.15f, 0.18f));
-                break;
-            default:
-                ratingText  = "FALLASTE";
-                ratingColor = new Color(0.90f, 0.22f, 0.28f);
-                _ui.Flash(new Color(0.90f, 0.22f, 0.28f, 0.18f));
-                break;
+            // Pulsacion impulsiva: el numero todavia se veia
+            _impulsive++;
+            ReportEvent(false, -1f);
+
+            GameFeel.Error(_ui.ButtonRect);
+            _ui.ShowRoundFeedback(false, "¡Aun se veia el numero!", TXT_RED);
+            GameFeel.FloatingText("¡Espera a que se esconda!", TXT_ORANGE,
+                                  new Vector2(0f, 220f), 40f);
         }
-
-        _ui.ShowRoundResult(
-            _targetTime,
-            actual,
-            result.Difference,
-            result.SignedDiff >= 0f,
-            ratingText,
-            ratingColor
-        );
-    }
-
-    void AdvanceRound()
-    {
-        _currentRound++;
-
-        if (_currentRound >= totalRounds)
-            EndGame();
         else
-            BeginRound();
-    }
-
-    void EndGame()
-    {
-        _phase = Phase.Final;
-        bool won = _correctCount >= roundsToWin;
-        CompleteMinigame(won ? _totalScore : 0);
-        _ui.ShowFinalResult(won, _correctCount, totalRounds, _totalScore);
-    }
-
-    float GetTargetForRound(int round)
-    {
-        if (roundTargets != null && round < roundTargets.Length)
-            return roundTargets[round];
-        return 3f + round * 2f;
-    }
-
-    static void EnsureEventSystem()
-    {
-        if (FindObjectOfType<EventSystem>() == null)
         {
-            var go = new GameObject("EventSystem");
-            go.AddComponent<EventSystem>();
-            go.AddComponent<StandaloneInputModule>();
+            var res = _eval.Evaluate(deviation, _window);
+            float devMs = Mathf.Abs(deviation) * 1000f;
+            ReportEvent(res.Acierto, devMs);
+
+            if (res.Acierto)
+            {
+                roundHit = true;
+                _hits++;
+                _score += res.Points;
+                _devSumMs += devMs;
+                _devCount++;
+
+                GameFeel.Success(_ui.SemaphoreRect);
+                GameFeel.FloatingText(res.Label, TXT_GREEN, new Vector2(0f, 220f), 46f);
+                if (res.Points >= 200) GameFeel.Confetti(25);
+            }
+            else
+            {
+                _devSumMs += devMs;
+                _devCount++;
+                GameFeel.Error(_ui.SemaphoreRect);
+            }
+
+            _ui.ShowRoundFeedback(res.Acierto,
+                res.Label + "  (" + FormatDeviation(deviation) + ")",
+                res.Acierto ? TXT_GREEN : TXT_RED);
         }
+
+        _ui.SetRoundDot(_round, roundHit);
+        NextOrEnd();
+    }
+
+    void HandleTimeout()
+    {
+        if (!IsPlaying || _roundResolved) return;
+        _roundResolved = true;
+        _input.AcceptInput = false;
+
+        ReportEvent(false, -1f);
+        GameFeel.PlayError();
+        _ui.ShowRoundFeedback(false, "El 0 se escapo... ¡pulsa antes!", TXT_RED);
+        _ui.SetRoundDot(_round, false);
+        NextOrEnd();
+    }
+
+    void NextOrEnd()
+    {
+        _round++;
+        if (_round >= ROUNDS) StartCoroutine(EndGame());
+        else                  StartCoroutine(RunRound(1.5f));
+    }
+
+    IEnumerator EndGame()
+    {
+        if (_ended) yield break;
+        _ended = true;
+
+        yield return new WaitForSeconds(1.2f);
+
+        bool  won   = _hits >= NEED_TO_WIN;
+        float ratio = (float)_hits / ROUNDS;
+        int   final = won ? _score + _hits * 50 : 0;
+
+        if (won) CompleteMinigame(final);
+        else     FailMinigame();
+
+        int stars = GameFeel.StarsFromRatio(won, ratio);
+
+        string devStat = _devCount > 0
+            ? "Desvio medio: " + Mathf.RoundToInt(_devSumMs / _devCount) + " ms"
+            : "Desvio medio: -";
+
+        ShowResults(won, stars, final,
+            new[]
+            {
+                "Aciertos: " + _hits + "/" + ROUNDS,
+                devStat,
+                "Pulsaciones impulsivas: " + _impulsive
+            },
+            null,
+            won ? "¡Que paciencia y que punteria!"
+                : "Cuenta despacio en tu cabeza: 3... 2... 1...");
+    }
+
+    static string FormatDeviation(float dev)
+    {
+        string sign = dev >= 0f ? "+" : "-";
+        return sign + Mathf.Abs(dev).ToString("0.0") + " s";
     }
 }

@@ -1,59 +1,44 @@
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 using UnityEngine;
 
+/// <summary>
+/// Evalua la precision de una pulsacion respecto al 0 de la cuenta atras.
+/// La ventana de acierto la marca la dificultad (±0.8 / ±0.5 / ±0.35 s).
+/// </summary>
 public class SilentCountdownScoreEvaluator : MonoBehaviour
 {
-
-    [Header("Márgenes de precisión (segundos)")]
-    public float perfectMargin = 0.40f;
-    public float goodMargin    = 1.00f;
-
-    public enum Rating { Perfect, Good, Miss }
-
     public struct EvalResult
     {
-        public Rating Rating;
+        public bool   Acierto;
         public int    Points;
-        public float  Difference;
-        public float  SignedDiff;
+        public string Label;
     }
 
-    public EvalResult Evaluate(float targetTime, float actualTime)
+    /// <param name="deviationSec">Desvio respecto al 0 (positivo = tarde).</param>
+    /// <param name="windowSec">Ventana de acierto (± segundos).</param>
+    public EvalResult Evaluate(float deviationSec, float windowSec)
     {
-        float signed = actualTime - targetTime;
-        float abs    = Mathf.Abs(signed);
+        var r = new EvalResult();
+        float d = Mathf.Abs(deviationSec);
 
-        Rating rating;
-        int    points;
-
-        if (abs <= perfectMargin)
+        if (d <= windowSec * 0.4f)
         {
-            rating = Rating.Perfect;
-            points = 100;
+            r.Acierto = true;
+            r.Points  = 200;
+            r.Label   = "¡CLAVADO!";
         }
-        else if (abs <= goodMargin)
+        else if (d <= windowSec)
         {
-
-            float t = 1f - (abs - perfectMargin) / (goodMargin - perfectMargin);
-            points  = Mathf.RoundToInt(Mathf.Lerp(60f, 99f, t));
-            rating  = Rating.Good;
+            r.Acierto = true;
+            r.Points  = 120;
+            r.Label   = "¡Muy cerca!";
         }
         else
         {
-
-            float t = Mathf.Clamp01(1f - (abs - goodMargin) / 3f);
-            points  = Mathf.RoundToInt(Mathf.Lerp(0f, 30f, t));
-            rating  = Rating.Miss;
+            r.Acierto = false;
+            r.Points  = 0;
+            r.Label   = deviationSec < 0f ? "Un poco pronto" : "Un poco tarde";
         }
-
-        return new EvalResult
-        {
-            Rating     = rating,
-            Points     = points,
-            Difference = abs,
-            SignedDiff = signed
-        };
+        return r;
     }
-
-    public bool IsCorrect(EvalResult result) =>
-        result.Rating == Rating.Perfect || result.Rating == Rating.Good;
 }

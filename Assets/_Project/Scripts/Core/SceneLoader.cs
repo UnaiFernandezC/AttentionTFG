@@ -1,3 +1,4 @@
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -138,6 +139,15 @@ public static class SceneLoader
         if (string.IsNullOrEmpty(sceneName))
         {
             Debug.LogError("[SceneLoader] Nombre de escena vacío.");
+            NavErrorScreen.Show("sin escena asignada");
+            return;
+        }
+        // Validación central: si la escena no existe / no está en Build Settings,
+        // pantalla amable en lugar de fallo silencioso.
+        if (!Application.CanStreamedLevelBeLoaded(sceneName))
+        {
+            Debug.LogError($"[SceneLoader] La escena '{sceneName}' no existe o no está en Build Settings.");
+            NavErrorScreen.Show(sceneName);
             return;
         }
         Debug.Log($"[SceneLoader] Cargando escena: {sceneName}");

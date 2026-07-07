@@ -1,53 +1,87 @@
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+/// <summary>
+/// STOP & GO — paradigma GO/NO-GO clasico (nucleo del entrenamiento de
+/// inhibicion en TDAH). Rafaga de estimulos breves:
+///   VERDE  = GO     -> tocar lo mas rapido posible.
+///   ROJO   = NO-GO  -> no tocar (frenarse).
+///   NARANJA (Hard)  = NO-GO sorpresa (tambien hay que frenarse).
+/// Mide comisiones (tocar rojo), omisiones (no tocar verde) y RT de los GO.
+/// </summary>
 public class StopAndGoGameManager : MinigameBase
 {
+    public enum StimType { Go, NoGo, Surprise }
 
-    [Header("Config")]
-    public int   totalRounds       = 3;
-    public int   stopsPerRound     = 3;
-    public int   stopsToWinRound   = 2;
-    public int   roundsToWin       = 2;
-    public float pauseAfterStop    = 0.9f;
+    // ------------- parametros de dificultad (se fijan en ApplyDifficulty)
+    int   _totalStimuli   = 15;
+    float _goProportion   = 0.75f;
+    float _stimulusWindow = 1.4f;
+    int   _surpriseCount  = 0;
+    float _interStimulus  = 0.55f;
 
-    static readonly float[] RoundZoneSpan = { 64f, 44f, 26f };
-    static readonly float[] RoundSpeed    = { 75f, 95f, 118f };
-
-    StopAndGoObjectMover  _mover;
-    StopAndGoZoneManager  _zone;
-    StopAndGoInputHandler _input;
     StopAndGoUIController _ui;
+    StopAndGoInputHandler _input;
 
-    int _currentRound   = 0;
-    int _currentStop    = 0;
-    int _correctInRound = 0;
-    int _roundsWon      = 0;
-    int _score          = 0;
+    StimType[] _plan;
+    int   _index;
+    int   _goHits, _goMisses, _inhibitions, _commissions;
+    long  _rtSum;
+    int   _rtCount;
+    bool  _stimActive;
+    bool  _resolved;
+    float _stimShownAt;
+    bool  _ended;
 
-    float _currentZoneSpan;
+    static readonly Color TXT_GREEN  = new Color(0.25f, 0.90f, 0.52f);
+    static readonly Color TXT_RED    = new Color(0.95f, 0.35f, 0.35f);
+    static readonly Color TXT_ORANGE = new Color(0.96f, 0.62f, 0.18f);
+    static readonly Color TXT_GRAY   = new Color(0.60f, 0.66f, 0.75f);
 
-    protected override string GetIntroDescription() =>
-        "Un punto da vueltas en un circulo.\n" +
-        "Tienes que pararlo cuando este en la zona VERDE.\n\n" +
-        "Pulsa ESPACIO o el boton PARA cuando el punto llegue al verde.\n" +
-        "Si te pasas o te quedas corto, la zona se hace mas pequena!";
+    protected override string GetIntroDescription()
+    {
+        var diff = GameManager.Instance != null
+            ? GameManager.Instance.CurrentDifficulty
+            : DifficultyLevel.Easy;
+
+        if (diff == DifficultyLevel.Hard)
+            return "VERDE = ¡toca rapido!   ROJO o NARANJA = ¡quieto!\n" +
+                   "Van muy deprisa... ¡no te dejes llevar!";
+
+        return "VERDE = ¡toca rapido!   ROJO = ¡quieto, no toques!\n" +
+               "¡Atento, van uno detras de otro!";
+    }
 
     void ApplyDifficulty()
     {
         var diff = GameManager.Instance != null
             ? GameManager.Instance.CurrentDifficulty
             : DifficultyLevel.Easy;
+
         switch (diff)
         {
             case DifficultyLevel.Medium:
-                totalRounds = 4;
-                roundsToWin = 3;
+                _totalStimuli   = 20;
+                _goProportion   = 0.70f;
+                _stimulusWindow = 1.1f;
+                _surpriseCount  = 0;
+                _interStimulus  = 0.50f;
                 break;
             case DifficultyLevel.Hard:
-                totalRounds = 5;
-                roundsToWin = 4;
+                _totalStimuli   = 25;
+                _goProportion   = 0.80f;   // mas tentacion de tocar
+                _stimulusWindow = 0.8f;
+                _surpriseCount  = 2;
+                _interStimulus  = 0.45f;
+                break;
+            default:
+                _totalStimuli   = 15;
+                _goProportion   = 0.75f;
+                _stimulusWindow = 1.4f;
+                _surpriseCount  = 0;
+                _interStimulus  = 0.55f;
                 break;
         }
     }
@@ -55,128 +89,196 @@ public class StopAndGoGameManager : MinigameBase
     protected override void OnMinigameStart()
     {
         ApplyDifficulty();
-        _mover = GetComponent<StopAndGoObjectMover>() ?? gameObject.AddComponent<StopAndGoObjectMover>();
-        _zone  = GetComponent<StopAndGoZoneManager>()  ?? gameObject.AddComponent<StopAndGoZoneManager>();
-        _input = GetComponent<StopAndGoInputHandler>() ?? gameObject.AddComponent<StopAndGoInputHandler>();
-        _ui    = GetComponent<StopAndGoUIController>() ?? gameObject.AddComponent<StopAndGoUIController>();
+        KidUI.EnsureEventSystem();
 
-        _ui.BuildUI(totalRounds, stopsPerRound,
-                    OnStopPressed, RestartMinigame, ReturnToGameSelector);
+        _ui    = GetComponent<StopAndGoUIController>();
+        _input = GetComponent<StopAndGoInputHandler>();
 
-        _mover.trackRadius = 185f;
-        _mover.Init(_ui.GetMarkerRT());
-        _input.OnStopPressed += OnStopPressed;
+        BuildPlan();
 
-        StartCoroutine(BeginRound());
+        _ui.BuildUI(_surpriseCount > 0, _input);
+        _input.OnPress    += HandlePress;
+        _input.AcceptInput = false;
+
+        _index = 0;
+        _goHits = _goMisses = _inhibitions = _commissions = 0;
+        _rtSum = 0; _rtCount = 0;
+        _ended = false;
+
+        StartCoroutine(RunSequence());
     }
 
     protected override void OnMinigameComplete() { }
     protected override void OnMinigameFailed()   { }
 
-    IEnumerator BeginRound()
+    void BuildPlan()
     {
-        _currentRound++;
-        _currentStop    = 0;
-        _correctInRound = 0;
+        int goCount  = Mathf.RoundToInt(_totalStimuli * _goProportion);
+        int noGo     = _totalStimuli - goCount;
+        int surprise = Mathf.Min(_surpriseCount, noGo);
 
-        int ri = Mathf.Clamp(_currentRound - 1, 0, RoundZoneSpan.Length - 1);
-        _currentZoneSpan        = RoundZoneSpan[ri];
-        _mover.degreesPerSecond = RoundSpeed[ri];
+        var list = new List<StimType>(_totalStimuli);
+        for (int i = 0; i < goCount; i++)          list.Add(StimType.Go);
+        for (int i = 0; i < noGo - surprise; i++)  list.Add(StimType.NoGo);
+        for (int i = 0; i < surprise; i++)         list.Add(StimType.Surprise);
 
-        _ui.SetRoundLabel(_currentRound, totalRounds);
-        _ui.ResetStopDots();
-        _ui.SetScore(_score);
+        // Fisher-Yates
+        for (int i = list.Count - 1; i > 0; i--)
+        {
+            int j = Random.Range(0, i + 1);
+            var tmp = list[i]; list[i] = list[j]; list[j] = tmp;
+        }
+
+        // El primero siempre GO (arranque amable y didactico)
+        if (list[0] != StimType.Go)
+        {
+            int gi = list.IndexOf(StimType.Go);
+            if (gi > 0) { var tmp = list[0]; list[0] = list[gi]; list[gi] = tmp; }
+        }
+
+        _plan = list.ToArray();
+    }
+
+    IEnumerator RunSequence()
+    {
+        _ui.SetStatus("¡Preparado!", TXT_GRAY);
+        yield return new WaitForSeconds(0.8f);
+
+        for (_index = 0; _index < _plan.Length; _index++)
+        {
+            if (!IsPlaying) yield break;
+
+            var st = _plan[_index];
+            _resolved   = false;
+            _stimActive = true;
+            _stimShownAt = Time.time;
+
+            _ui.SetProgress(_index, _totalStimuli);
+            _ui.ShowStimulus(st);
+            _input.AcceptInput = true;
+
+            float t = 0f;
+            while (t < _stimulusWindow && !_resolved)
+            {
+                if (!IsPlaying) yield break;
+                t += Time.deltaTime;
+                _ui.UpdateTimerRing(1f - Mathf.Clamp01(t / _stimulusWindow));
+                yield return null;
+            }
+
+            _input.AcceptInput = false;
+            _stimActive = false;
+            if (!_resolved) ResolveTimeout(st);
+
+            yield return new WaitForSeconds(0.30f);   // que se vea el feedback
+            _ui.HideStimulus();
+            yield return new WaitForSeconds(_interStimulus);
+        }
+
+        _ui.SetProgress(_totalStimuli, _totalStimuli);
+        if (IsPlaying) StartCoroutine(EndGame());
+    }
+
+    void HandlePress()
+    {
+        if (!IsPlaying || !_stimActive || _resolved) return;
+
+        _resolved   = true;
+        _stimActive = false;
         _input.AcceptInput = false;
 
-        PlaceZoneRandomly();
+        float rtMs = (Time.time - _stimShownAt) * 1000f;
+        var   st   = _plan[_index];
 
-        yield return new WaitForSeconds(0.55f);
-        _mover.StopMoving();
-        _mover.StartMoving();
-        _input.AcceptInput = true;
-    }
-
-    void PlaceZoneRandomly()
-    {
-        float start = Random.Range(0f, 360f);
-        _zone.zones = new List<StopAndGoZoneManager.SafeZone>
+        if (st == StimType.Go)
         {
-            new StopAndGoZoneManager.SafeZone { startAngle = start, spanAngle = _currentZoneSpan }
-        };
-        _ui.UpdateZoneArc(start, _currentZoneSpan);
-    }
+            _goHits++;
+            _rtSum += (long)rtMs;
+            _rtCount++;
+            ReportEvent(true, rtMs);
 
-    void OnStopPressed()
-    {
-        if (!IsPlaying) return;
-
-        _mover.StopMoving();
-        _input.AcceptInput = false;
-
-        bool inZone = _zone.IsInZone(_mover.CurrentAngle);
-
-        if (inZone)
-        {
-            _correctInRound++;
-            _score += 50;
-            _ui.SetStopDot(_currentStop, true);
-            _ui.Flash(new Color(0.22f, 0.86f, 0.54f, 0.38f));
+            GameFeel.PlaySuccess();
+            GameFeel.FloatingText(Mathf.RoundToInt(rtMs) + " ms", TXT_GREEN,
+                                  new Vector2(0f, 240f), 42f);
+            _ui.ShowStimulusResult(true);
         }
         else
         {
-            _score = Mathf.Max(0, _score - 20);
-            _ui.SetStopDot(_currentStop, false);
-            _ui.Flash(new Color(0.90f, 0.22f, 0.28f, 0.35f));
+            _commissions++;
+            ReportEvent(false, rtMs);   // comision: respuesta impulsiva con RT real
+
+            GameFeel.Error(_ui.StimulusRect);
+            GameFeel.FloatingText(
+                st == StimType.Surprise ? "¡Naranja tambien es STOP!" : "¡Rojo = quieto!",
+                st == StimType.Surprise ? TXT_ORANGE : TXT_RED,
+                new Vector2(0f, 240f), 38f);
+            _ui.ShowStimulusResult(false);
         }
-
-        _currentStop++;
-        _ui.SetScore(_score);
-
-        if (_currentStop >= stopsPerRound)
-            StartCoroutine(EndRound(pauseAfterStop));
-        else
-            StartCoroutine(NextStopDelay(pauseAfterStop));
     }
 
-    IEnumerator NextStopDelay(float delay)
+    void ResolveTimeout(StimType st)
     {
-        yield return new WaitForSeconds(delay);
-
-        PlaceZoneRandomly();
-
-        yield return new WaitForSeconds(0.30f);
-        _mover.StartMoving();
-        _input.AcceptInput = true;
-    }
-
-    IEnumerator EndRound(float delay)
-    {
-        yield return new WaitForSeconds(delay);
-
-        bool roundWon = _correctInRound >= stopsToWinRound;
-        if (roundWon) _roundsWon++;
-
-        _ui.SetRoundDot(_currentRound - 1, roundWon);
-
-        if (_currentRound >= totalRounds)
+        if (st == StimType.Go)
         {
+            _goMisses++;
+            ReportEvent(false, -1f);    // omision
 
-            bool gameWon = _roundsWon >= roundsToWin;
-            int finalScore = 300 + _score;
-            if (!gameWon) finalScore = Mathf.Max(0, finalScore - 80);
-            _ui.ShowFinalResult(gameWon, _roundsWon, totalRounds, _score, finalScore);
-            CompleteMinigame(finalScore);
+            GameFeel.PlayError();
+            GameFeel.FloatingText("¡Se escapo!", TXT_GRAY, new Vector2(0f, 240f), 36f);
+            _ui.ShowStimulusResult(false);
         }
         else
         {
-            yield return new WaitForSeconds(0.4f);
-            StartCoroutine(BeginRound());
+            _inhibitions++;
+            ReportEvent(true, -1f);     // inhibicion correcta
+
+            GameFeel.PlayPop();
+            GameFeel.FloatingText("¡Frenaste a tiempo!", TXT_GREEN,
+                                  new Vector2(0f, 240f), 36f);
+            _ui.ShowStimulusResult(true);
         }
     }
 
-    void Update()
+    IEnumerator EndGame()
     {
-        if (!IsPlaying || _mover == null || _zone == null || _ui == null) return;
-        _ui.SetMarkerAngle(_mover.CurrentAngle, _zone.IsInZone(_mover.CurrentAngle));
+        if (_ended) yield break;
+        _ended = true;
+
+        yield return new WaitForSeconds(0.7f);
+
+        int   goTotal = _goHits + _goMisses;
+        int   correct = _goHits + _inhibitions;
+        float ratio   = _totalStimuli > 0 ? (float)correct / _totalStimuli : 0f;
+        bool  won     = ratio >= 0.65f;
+        long  avgMs   = _rtCount > 0 ? _rtSum / _rtCount : 0;
+
+        int score = 0;
+        if (won)
+        {
+            int speedBonus = _rtCount > 0
+                ? Mathf.Max(0, Mathf.RoundToInt((600f - avgMs) * 0.5f))
+                : 0;
+            score = Mathf.Max(0, 200 + _goHits * 40 + _inhibitions * 70
+                                 - _commissions * 25 + speedBonus);
+        }
+
+        if (won) CompleteMinigame(score);
+        else     FailMinigame();
+
+        int stars = GameFeel.StarsFromRatio(won, ratio);
+
+        string rtStat = _rtCount > 0
+            ? "Velocidad media: " + avgMs + " ms"
+            : "Velocidad media: -";
+
+        ShowResults(won, stars, score,
+            new[]
+            {
+                "Te frenaste a tiempo " + _inhibitions + " de " + (_inhibitions + _commissions) + " veces",
+                "Verdes atrapados: " + _goHits + "/" + goTotal,
+                rtStat
+            },
+            null,
+            won ? "¡Tienes buenos frenos!" : "Recuerda: rojo = quieto");
     }
 }

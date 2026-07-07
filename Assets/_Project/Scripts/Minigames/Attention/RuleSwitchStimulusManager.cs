@@ -1,3 +1,4 @@
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 using System;
 using UnityEngine;
 using UnityEngine.UI;
@@ -14,8 +15,11 @@ public class RuleSwitchStimulusManager : MonoBehaviour
     RSStimData _current;
     public RSStimData Current => _current;
 
+    /// <summary>Numero de colores en juego (3 por defecto; 4 en dificil).</summary>
+    [HideInInspector] public int ColorCount = 3;
+
     public RSStimData GenerateRandom()
-        => new RSStimData { Color = (RSStimColor)UnityEngine.Random.Range(0, 3) };
+        => new RSStimData { Color = (RSStimColor)UnityEngine.Random.Range(0, Mathf.Clamp(ColorCount, 2, 4)) };
 
     public void ShowStimulus(RSStimData data)
     {

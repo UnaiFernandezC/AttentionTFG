@@ -1,3 +1,4 @@
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -8,14 +9,58 @@ using TMPro;
 public class ActionSequenceController : MinigameBase
 {
 
-    [Header("Ronda 1")]
-    public string[] easyActions   = { "Levantarte", "Lavarte la cara", "Desayunar", "Coger la mochila" };
+    class Routine
+    {
+        public string   title;
+        public string[] steps;
+        public Routine(string t, params string[] s) { title = t; steps = s; }
+    }
 
-    [Header("Ronda 2")]
-    public string[] mediumActions = { "Elegir ropa", "Ducharse", "Desayunar", "Cepillarse los dientes", "Salir de casa" };
+    // ---- Banco de rutinas por dificultad (orden = causa-efecto) ----
 
-    [Header("Ronda 3")]
-    public string[] hardActions   = { "Llegar al colegio", "Sacar los libros", "Sentarte", "Escuchar al profesor", "Hacer los ejercicios", "Recoger y salir" };
+    static readonly Routine[] EASY_POOL =
+    {
+        new Routine("La mañana",
+            "Despertarte", "Vestirte", "Desayunar", "Coger la mochila"),
+        new Routine("A dormir",
+            "Ponerte el pijama", "Lavarte los dientes", "Meterte en la cama", "Apagar la luz"),
+        new Routine("El bocadillo",
+            "Lavarte las manos", "Coger el pan", "Poner el queso", "Comer el bocadillo"),
+        new Routine("La mascota",
+            "Coger la correa", "Salir a pasear", "Volver a casa", "Darle de comer"),
+    };
+
+    static readonly Routine[] MEDIUM_POOL =
+    {
+        new Routine("El colegio",
+            "Llegar al colegio", "Sacar los libros", "Escuchar al profesor",
+            "Hacer los ejercicios", "Guardar las cosas"),
+        new Routine("La excursion",
+            "Preparar la mochila", "Ponerte las botas", "Subir al autobus",
+            "Caminar por el bosque", "Hacer un picnic"),
+        new Routine("El bizcocho",
+            "Lavarte las manos", "Sacar los ingredientes", "Mezclar la masa",
+            "Hornear el bizcocho", "Probar un trozo"),
+        new Routine("A dormir",
+            "Cenar", "Ponerte el pijama", "Lavarte los dientes",
+            "Leer un cuento", "Apagar la luz"),
+    };
+
+    static readonly Routine[] HARD_POOL =
+    {
+        new Routine("La mañana",
+            "Despertarte", "Ponerte los calcetines", "Ponerte los zapatos",
+            "Desayunar", "Lavarte los dientes", "Coger la mochila"),
+        new Routine("El bizcocho",
+            "Lavarte las manos", "Encender el horno", "Mezclar la masa",
+            "Meter la masa al horno", "Sacar la masa del horno", "Probar el bizcocho"),
+        new Routine("La excursion",
+            "Preparar la mochila", "Subir al autobus", "Bajar del autobus",
+            "Caminar hasta el rio", "Hacer un picnic", "Volver a casa"),
+        new Routine("La mascota",
+            "Coger la correa", "Ponerle la correa", "Salir a pasear",
+            "Quitarle la correa", "Llenar su comedero", "Dejarle descansar"),
+    };
 
     [Header("Segundos de feedback de error antes de reiniciar")]
     public float errorDelay = 0.9f;
@@ -24,11 +69,17 @@ public class ActionSequenceController : MinigameBase
     int _round;
     int _maxErrors = 3;
     int _errors;
+    int _correctPresses;
+
+    Routine[] _pool;
+    int[]     _routineOrder;
+    Routine   _routine;
 
     string[] _sequence;
     string[] _shuffled;
     int      _progress;
     bool     _locked;
+    float    _lastPressTime;
 
     RectTransform _canvasRT;
 
@@ -47,11 +98,6 @@ public class ActionSequenceController : MinigameBase
     TextMeshProUGUI _transTitle;
     TextMeshProUGUI _transSub;
 
-    GameObject      _endPanel;
-    Image           _endBar;
-    TextMeshProUGUI _endTitle;
-    TextMeshProUGUI _endSub;
-
     static readonly Color BG     = C(0.08f, 0.09f, 0.18f);
     static readonly Color PANEL  = C(0.12f, 0.13f, 0.24f);
     static readonly Color HDR    = C(0.10f, 0.11f, 0.22f);
@@ -67,9 +113,8 @@ public class ActionSequenceController : MinigameBase
     static Color C(float r, float g, float b) { return new Color(r, g, b); }
 
     protected override string GetIntroDescription() =>
-        "Pulsa las acciones en el orden correcto para completar cada tarea.\n" +
-        "Si te equivocas, la secuencia vuelve al principio.\n" +
-        "Hay 3 rondas que superar. Piensa antes de pulsar.";
+        "Los pasos de cada mision estan desordenados.\n" +
+        "Piensa que va primero y pulsalos en el orden logico.";
 
     protected override void OnMinigameStart()
     {
@@ -86,11 +131,21 @@ public class ActionSequenceController : MinigameBase
             : DifficultyLevel.Easy;
         switch (diff)
         {
-            case DifficultyLevel.Easy:   _maxErrors = 5; break;
-            case DifficultyLevel.Medium: _maxErrors = 3; break;
-            case DifficultyLevel.Hard:   _maxErrors = 1; break;
+            case DifficultyLevel.Medium: _maxErrors = 3; _pool = MEDIUM_POOL; break;
+            case DifficultyLevel.Hard:   _maxErrors = 1; _pool = HARD_POOL;   break;
+            default:                     _maxErrors = 5; _pool = EASY_POOL;   break;
         }
-        _errors = 0;
+        _errors         = 0;
+        _correctPresses = 0;
+
+        // Elige 3 rutinas distintas al azar → rejugabilidad
+        _routineOrder = new int[_pool.Length];
+        for (int i = 0; i < _routineOrder.Length; i++) _routineOrder[i] = i;
+        for (int i = _routineOrder.Length - 1; i > 0; i--)
+        {
+            int j = Random.Range(0, i + 1);
+            int tmp = _routineOrder[i]; _routineOrder[i] = _routineOrder[j]; _routineOrder[j] = tmp;
+        }
     }
 
     protected override void OnMinigameComplete() { }
@@ -102,25 +157,24 @@ public class ActionSequenceController : MinigameBase
         _locked = false;
 
         if (_transPanel != null) _transPanel.SetActive(false);
-        if (_endPanel   != null) _endPanel.SetActive(false);
 
-        string[] src = SequenceFor(r);
-        _sequence = src;
-        _shuffled = (string[])src.Clone();
-        Shuffle(_shuffled);
+        _routine  = _pool[_routineOrder[r % _routineOrder.Length]];
+        _sequence = _routine.steps;
+        _shuffled = (string[])_sequence.Clone();
+        do { Shuffle(_shuffled); } while (SameOrder(_shuffled, _sequence));
 
         RebuildButtons();
 
         UpdateRoundUI();
         ResetRound();
+        _lastPressTime = Time.realtimeSinceStartup;
     }
 
-    string[] SequenceFor(int r)
+    static bool SameOrder(string[] a, string[] b)
     {
-        if (r == 0 && easyActions   != null && easyActions.Length   > 0) return easyActions;
-        if (r == 1 && mediumActions != null && mediumActions.Length > 0) return mediumActions;
-        if (r == 2 && hardActions   != null && hardActions.Length   > 0) return hardActions;
-        return new string[]{ "Paso 1", "Paso 2", "Paso 3" };
+        for (int i = 0; i < a.Length; i++)
+            if (a[i] != b[i]) return false;
+        return true;
     }
 
     void ResetRound()
@@ -133,13 +187,25 @@ public class ActionSequenceController : MinigameBase
 
     IEnumerator HandleRoundComplete()
     {
+        GameFeel.PlaySuccess();
+        GameFeel.Confetti(20);
         yield return new WaitForSeconds(0.5f);
 
         if (_round >= ROUNDS - 1)
         {
+            int score = Mathf.Max(200, 1000 - _errors * 100);
+            float ratio = _correctPresses + _errors > 0
+                ? (float)_correctPresses / (_correctPresses + _errors)
+                : 1f;
 
-            CompleteMinigame(1000);
-            ShowEnd();
+            CompleteMinigame(score);
+            ShowResults(true, GameFeel.StarsFromRatio(true, ratio), score,
+                new[]
+                {
+                    "Misiones: " + ROUNDS + " / " + ROUNDS,
+                    "Pasos correctos: " + _correctPresses,
+                    "Errores: " + _errors
+                });
         }
         else
         {
@@ -151,8 +217,8 @@ public class ActionSequenceController : MinigameBase
     {
         _transPanel.SetActive(true);
         _transPanel.transform.SetAsLastSibling();
-        _transTitle.text = "Ronda " + (_round + 1) + " completada";
-        _transSub.text   = "Pulsa Continuar para la siguiente ronda";
+        _transTitle.text = "\"" + _routine.title + "\" completada!";
+        _transSub.text   = "Pulsa Continuar para la siguiente mision";
         yield break;
     }
 
@@ -160,18 +226,29 @@ public class ActionSequenceController : MinigameBase
     {
         if (_locked) return;
 
+        float rtMs = (Time.realtimeSinceStartup - _lastPressTime) * 1000f;
+        _lastPressTime = Time.realtimeSinceStartup;
+
         string pressed  = _shuffled[shuffleIdx];
         string expected = _sequence[_progress];
 
         if (pressed == expected)
+        {
+            _correctPresses++;
+            ReportEvent(true, rtMs);
             StartCoroutine(CorrectFeedback(shuffleIdx));
+        }
         else
+        {
+            ReportEvent(false, rtMs);
             StartCoroutine(WrongFeedback(shuffleIdx));
+        }
     }
 
     IEnumerator CorrectFeedback(int shuffleIdx)
     {
         _locked = true;
+        GameFeel.PlayPop();
         _btnBgs[shuffleIdx].color = GREEN;
         yield return StartCoroutine(PulseBtn(shuffleIdx, 1.12f));
 
@@ -193,7 +270,9 @@ public class ActionSequenceController : MinigameBase
     IEnumerator WrongFeedback(int shuffleIdx)
     {
         _locked = true;
+        GameFeel.PlayError();
         _btnBgs[shuffleIdx].color = RED;
+        GameFeel.Shake(_btns[shuffleIdx].GetComponent<RectTransform>(), 10f, 0.3f);
         yield return StartCoroutine(PulseBtn(shuffleIdx, 1.08f));
         yield return new WaitForSeconds(errorDelay * 0.5f);
         _btnBgs[shuffleIdx].color = RED;
@@ -204,16 +283,26 @@ public class ActionSequenceController : MinigameBase
         ResetButtonColors();
 
         _errors++;
-        if (_errors >= _maxErrors)
+        if (_errors > _maxErrors)
         {
             _locked = true;
             FailMinigame();
-            _endBar.color  = RED;
-            _endTitle.text = "Demasiados errores";
-            _endSub.text   = "Has fallado " + _errors + " veces. Intentalo de nuevo.";
-            _endPanel.SetActive(true);
-            _endPanel.transform.SetAsLastSibling();
+            ShowResults(false, 0, 0,
+                new[]
+                {
+                    "Misiones superadas: " + _round + " / " + ROUNDS,
+                    "Errores: " + _errors
+                },
+                "¡Casi!",
+                "Lee cada paso y piensa que va primero");
             yield break;
+        }
+
+        if (_instructLbl != null)
+        {
+            int left = _maxErrors - _errors + 1;
+            _instructLbl.text = "Ese paso no toca aun. Te quedan " + left +
+                                (left == 1 ? " intento" : " intentos");
         }
 
         _locked = false;
@@ -227,9 +316,9 @@ public class ActionSequenceController : MinigameBase
         if (_instructLbl != null)
         {
             if (_progress == 0)
-                _instructLbl.text = "Selecciona las acciones en el orden correcto";
+                _instructLbl.text = "Mision: " + _routine.title + " — ¿que haces primero?";
             else if (_progress < _sequence.Length)
-                _instructLbl.text = "Bien! Sigue con el siguiente paso";
+                _instructLbl.text = "Mision: " + _routine.title + " — ¡bien! ¿y despues?";
         }
     }
 
@@ -243,7 +332,7 @@ public class ActionSequenceController : MinigameBase
     void UpdateRoundUI()
     {
         if (_roundLbl != null)
-            _roundLbl.text = "Ronda " + (_round + 1) + " / " + ROUNDS;
+            _roundLbl.text = "Mision " + (_round + 1) + " / " + ROUNDS;
     }
 
     void UpdateDots()
@@ -306,8 +395,10 @@ public class ActionSequenceController : MinigameBase
 
             int idx = i;
             btn.onClick.AddListener(() => OnActionPressed(idx));
+            ButtonJuice.Attach(bg.gameObject);
 
-            var lbl = MkTxt(bg, "Lbl", _shuffled[i], Color.white, 36, V2(0.05f, 0.1f), V2(0.95f, 0.9f));
+            float fSize = n >= 6 ? 30f : 36f;
+            var lbl = MkTxt(bg, "Lbl", _shuffled[i], Color.white, fSize, V2(0.05f, 0.1f), V2(0.95f, 0.9f));
             lbl.fontStyle = FontStyles.Bold;
 
             _btns[i]             = btn;
@@ -317,7 +408,6 @@ public class ActionSequenceController : MinigameBase
         }
 
         if (_transPanel != null) _transPanel.transform.SetAsLastSibling();
-        if (_endPanel   != null) _endPanel.transform.SetAsLastSibling();
     }
 
     IEnumerator PulseBtn(int idx, float peak)
@@ -327,20 +417,13 @@ public class ActionSequenceController : MinigameBase
         float t = 0f;
         while (t < 1f)
         {
+            if (rt == null) yield break;
             t += Time.deltaTime * 12f;
             float s = 1f + (peak - 1f) * Mathf.Sin(t * Mathf.PI);
             rt.localScale = new Vector3(s, s, 1f);
             yield return null;
         }
-        rt.localScale = Vector3.one;
-    }
-
-    void ShowEnd()
-    {
-        _endBar.color  = YELLOW;
-        _endTitle.text = "Completado!";
-        _endSub.text   = "Has superado las 3 rondas correctamente";
-        _endPanel.SetActive(true);
+        if (rt != null) rt.localScale = Vector3.one;
     }
 
     void BuildUI()
@@ -367,10 +450,10 @@ public class ActionSequenceController : MinigameBase
         ht.fontStyle = FontStyles.Bold;
         ht.alignment = TextAlignmentOptions.MidlineLeft;
 
-        _roundLbl = MkTxt(hdr, "RL", "Ronda 1 / 3", DIM, 26, V2(0.50f, 0), V2(0.68f, 1));
+        _roundLbl = MkTxt(hdr, "RL", "Mision 1 / 3", DIM, 26, V2(0.50f, 0), V2(0.68f, 1));
         _roundLbl.alignment = TextAlignmentOptions.MidlineRight;
 
-        _progressLbl = MkTxt(hdr, "PL", "Paso 0 de 3", ACCENT, 26, V2(0.68f, 0), V2(0.86f, 1));
+        _progressLbl = MkTxt(hdr, "PL", "Paso 0 de 4", ACCENT, 26, V2(0.68f, 0), V2(0.86f, 1));
         _progressLbl.fontStyle = FontStyles.Bold;
         _progressLbl.alignment = TextAlignmentOptions.MidlineRight;
 
@@ -392,23 +475,22 @@ public class ActionSequenceController : MinigameBase
         RectTransform instrArea = MkImg(_canvasRT, "IA", new Color(0, 0, 0, 0),
             V2(0.05f, 0.80f), V2(0.95f, 0.91f), V2(0, 0), V2(0, 0));
         _instructLbl = MkTxt(instrArea, "IL",
-            "Selecciona las acciones en el orden correcto",
+            "Pulsa los pasos en el orden logico",
             DIM, 30, V2(0, 0), V2(1, 1));
         _instructLbl.alignment = TextAlignmentOptions.Center;
+        _instructLbl.overflowMode = TextOverflowModes.Overflow;
 
         RectTransform bot = MkImg(_canvasRT, "Bot", HDR, V2(0, 0), V2(1, 0), V2(0, 45), V2(0, 90));
         MkImg(bot, "BotL", ACCENT, V2(0, 1), V2(1, 1), V2(0, -1.5f), V2(0, 3));
-        MkBtn(bot, "Reiniciar ronda", GREY,      V2(0.04f, 0.12f), V2(0.35f, 0.88f), () =>
+        MkBtn(bot, "Reiniciar mision", GREY,      V2(0.04f, 0.12f), V2(0.35f, 0.88f), () =>
         {
+            if (!IsPlaying) return;
             StopAllCoroutines();
             if (_transPanel != null) _transPanel.SetActive(false);
-            if (_endPanel   != null) _endPanel.SetActive(false);
             StartRound(_round);
         });
 
         BuildTransPanel(_canvasRT);
-
-        BuildEndPanel(_canvasRT);
     }
 
     void BuildTransPanel(RectTransform R)
@@ -423,7 +505,7 @@ public class ActionSequenceController : MinigameBase
         RectTransform card = MkImg(tr, "Card", PANEL, V2(0.5f, 0.5f), V2(0.5f, 0.5f), V2(0, 0), V2(680, 380));
         MkImg(card, "Bar", GREEN, V2(0, 1), V2(1, 1), V2(0, -12), V2(0, 24));
 
-        _transTitle = MkTxt(card, "Ti", "", Color.white, 52, V2(0.05f, 0.60f), V2(0.95f, 0.90f));
+        _transTitle = MkTxt(card, "Ti", "", Color.white, 46, V2(0.05f, 0.60f), V2(0.95f, 0.90f));
         _transTitle.fontStyle = FontStyles.Bold;
         _transSub   = MkTxt(card, "Su", "", DIM, 30, V2(0.05f, 0.32f), V2(0.95f, 0.58f));
 
@@ -434,37 +516,6 @@ public class ActionSequenceController : MinigameBase
         });
 
         _transPanel.SetActive(false);
-    }
-
-    void BuildEndPanel(RectTransform R)
-    {
-        _endPanel = new GameObject("EndPanel");
-        _endPanel.transform.SetParent(R, false);
-        RectTransform er = _endPanel.AddComponent<RectTransform>();
-        er.anchorMin = Vector2.zero; er.anchorMax = Vector2.one;
-        er.sizeDelta = Vector2.zero; er.anchoredPosition = Vector2.zero;
-        _endPanel.AddComponent<Image>().color = new Color(0, 0, 0, 0.82f);
-
-        RectTransform card = MkImg(er, "Card", PANEL, V2(0.5f, 0.5f), V2(0.5f, 0.5f), V2(0, 0), V2(700, 380));
-        _endBar   = MkImg(card, "Bar", GREEN, V2(0, 1), V2(1, 1), V2(0, -13), V2(0, 26)).GetComponent<Image>();
-        _endTitle = MkTxt(card, "Ti", "", Color.white, 58, V2(0.05f, 0.55f), V2(0.95f, 0.92f));
-        _endTitle.fontStyle = FontStyles.Bold;
-        _endSub   = MkTxt(card, "Su", "", DIM, 28, V2(0.05f, 0.40f), V2(0.95f, 0.55f));
-
-        MkBtn(card, "Jugar de nuevo", ACCENT, V2(0.06f, 0.20f), V2(0.48f, 0.33f), () =>
-        {
-            StopAllCoroutines();
-            _endPanel.SetActive(false);
-            StartRound(0);
-        });
-
-        MkBtn(card, "Volver a la seccion", new Color(0.18f,0.22f,0.36f), V2(0.52f,0.20f), V2(0.95f,0.33f),
-              () => ReturnToGameSelector());
-
-        MkBtn(card, "Menu principal", new Color(0.10f,0.13f,0.22f), V2(0.06f,0.05f), V2(0.95f,0.17f),
-              () => SceneLoader.GoToMainMenu());
-
-        _endPanel.SetActive(false);
     }
 
     static void Shuffle(string[] arr)
@@ -522,6 +573,7 @@ public class ActionSequenceController : MinigameBase
         cb.pressedColor     = new Color(0.7f, 0.7f, 0.7f);
         b.colors = cb;
         b.onClick.AddListener(click);
+        ButtonJuice.Attach(bg.gameObject);
         var t = MkTxt(bg, "T", label, Color.white, 28, V2(0, 0), V2(1, 1));
         t.fontStyle = FontStyles.Bold;
     }

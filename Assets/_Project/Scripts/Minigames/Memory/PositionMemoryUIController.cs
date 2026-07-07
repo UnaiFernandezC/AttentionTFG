@@ -1,52 +1,71 @@
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
+/// <summary>
+/// UI del minijuego "¿Dónde estaba?": una rejilla de casillas donde aparecen
+/// objetos de colores y luego se pregunta por su posición. 100% por código.
+/// </summary>
 public class PositionMemoryUIController : MonoBehaviour
 {
 
     static Color C(float r, float g, float b, float a = 1f) => new Color(r, g, b, a);
     static Vector2 V(float x, float y) => new Vector2(x, y);
 
-    static readonly Color BG       = C(0.06f, 0.07f, 0.13f);
+    static readonly Color BG       = C(0.05f, 0.07f, 0.13f);
     static readonly Color HDR      = C(0.04f, 0.05f, 0.11f);
-    static readonly Color PANEL    = C(0.08f, 0.11f, 0.20f);
     static readonly Color ACCENT   = C(0.58f, 0.28f, 0.92f);
     static readonly Color DIM      = C(0.40f, 0.48f, 0.68f);
-    static readonly Color CELL_OFF = C(0.12f, 0.15f, 0.25f);
-    static readonly Color CELL_ON  = C(0.65f, 0.35f, 1.00f);
-    static readonly Color CELL_SEL = C(0.35f, 0.55f, 0.90f);
+    static readonly Color CELL_BG  = C(0.13f, 0.16f, 0.28f);
+    static readonly Color CELL_HID = C(0.17f, 0.20f, 0.34f);
     static readonly Color CGREEN   = C(0.25f, 0.90f, 0.52f);
     static readonly Color CRED     = C(0.90f, 0.28f, 0.30f);
-    static readonly Color CORANGE  = C(0.96f, 0.62f, 0.18f);
 
+    /// <summary>Definición de un objeto: forma + color + nombre para el niño.</summary>
+    public struct ObjDef
+    {
+        public int    Shape;   // 0 círculo, 1 cuadrado, 2 rombo, 3 anillo, 4 diana, 5 ventana
+        public Color  Tint;
+        public string Nombre;
+    }
+
+    public static readonly ObjDef[] OBJECTS =
+    {
+        new ObjDef { Shape = 0, Tint = new Color(0.95f, 0.28f, 0.28f), Nombre = "la pelota roja"     },
+        new ObjDef { Shape = 1, Tint = new Color(0.25f, 0.55f, 0.98f), Nombre = "la caja azul"       },
+        new ObjDef { Shape = 2, Tint = new Color(0.97f, 0.82f, 0.15f), Nombre = "el rombo amarillo"  },
+        new ObjDef { Shape = 3, Tint = new Color(0.22f, 0.85f, 0.50f), Nombre = "el anillo verde"    },
+        new ObjDef { Shape = 4, Tint = new Color(0.70f, 0.32f, 0.95f), Nombre = "la diana morada"    },
+        new ObjDef { Shape = 5, Tint = new Color(0.98f, 0.56f, 0.15f), Nombre = "la ventana naranja" },
+    };
+
+    TextMeshProUGUI _phaseLbl;
+    TextMeshProUGUI _infoLbl;
+    TextMeshProUGUI _roundLbl;
+    TextMeshProUGUI _scoreLbl;
+    Image           _countdownFill;
+
+    RectTransform   _questionBox;
+    TextMeshProUGUI _questionLbl;
+    RectTransform   _questionIconHolder;
+
+    RectTransform     _gridPanel;
+    RectTransform[]   _cellRTs;
     Image[]           _cellImgs;
     Button[]          _cellBtns;
-    bool[]            _selected;
+    GameObject[]      _cellContents;   // icono del objeto (o null)
+    TextMeshProUGUI[] _cellMarks;      // "?" cuando está tapada
 
-    TextMeshProUGUI   _phaseLbl;
-    TextMeshProUGUI   _infoLbl;
-    TextMeshProUGUI   _roundLbl;
-    TextMeshProUGUI   _scoreLbl;
+    Action<int> _onCellClicked;
+    int _rows, _cols;
 
-    GameObject        _confirmBtnGO;
-    GameObject        _resultPanel;
-    TextMeshProUGUI   _resultTitle;
-    TextMeshProUGUI   _resultSub;
-
-    Action<int>       _onCellToggled;
-    Action            _onConfirm;
-
-    public void BuildUI(int rows, int cols,
-                        Action<int> onCellToggled, Action onConfirm,
-                        Action onRestart, Action onMenu)
+    public void BuildUI(int rows, int cols, Action<int> onCellClicked)
     {
-        int total = rows * cols;
-        _selected       = new bool[total];
-        _onCellToggled  = onCellToggled;
-        _onConfirm      = onConfirm;
+        _rows = rows; _cols = cols;
+        _onCellClicked = onCellClicked;
 
         var cGO = new GameObject("Canvas_PositionMemory");
         cGO.transform.SetParent(transform, false);
@@ -60,159 +79,278 @@ public class PositionMemoryUIController : MonoBehaviour
         cGO.AddComponent<GraphicRaycaster>();
         var R = cGO.GetComponent<RectTransform>();
 
-        MkImg(R, "BG",    BG,                             V(0,0),      V(1,1),     V(0,0), V(0,0));
-        MkImg(R, "GradT", C(0.16f, 0.06f, 0.28f, 0.20f), V(0, 0.55f), V(1, 1),    V(0,0), V(0,0));
+        MkImg(R, "BG",    BG,                            V(0, 0),     V(1, 1), V(0,0), V(0,0));
+        MkImg(R, "GradT", C(0.16f, 0.06f, 0.28f, 0.18f), V(0, 0.55f), V(1, 1), V(0,0), V(0,0));
 
         var hdr = MkImg(R, "Hdr", HDR, V(0,1), V(1,1), V(0,-44), V(0,88));
         MkImg(hdr, "Line", ACCENT, V(0,0),     V(1,0),     V(0, 1.5f), V(0,3));
         MkImg(hdr, "AccL", ACCENT, V(0,0.18f), V(0,0.82f), V(3, 0),    V(6,0));
 
-        var ttl = MkTxt(hdr, "T", "MEMORIA DE POSICIONES", Color.white, 32,
+        var ttl = MkTxt(hdr, "T", "¿DÓNDE ESTABA?", Color.white, 34,
                         V(0.03f, 0.12f), V(0.52f, 0.88f));
         ttl.fontStyle = FontStyles.Bold;
         ttl.alignment = TextAlignmentOptions.MidlineLeft;
         ttl.characterSpacing = 2f;
 
         MkTxt(hdr, "Cat", "MEMORIA", DIM, 16,
-              V(0.52f, 0.12f), V(0.72f, 0.88f)).alignment = TextAlignmentOptions.MidlineRight;
+              V(0.52f, 0.12f), V(0.70f, 0.88f)).alignment = TextAlignmentOptions.MidlineRight;
 
-        _roundLbl = MkTxt(hdr, "Round", "Ronda 1/3", Color.white, 22,
-                          V(0.72f, 0.12f), V(0.88f, 0.88f));
+        _roundLbl = MkTxt(hdr, "Round", "Ronda 1/2", Color.white, 22,
+                          V(0.70f, 0.12f), V(0.86f, 0.88f));
         _roundLbl.fontStyle = FontStyles.Bold;
         _roundLbl.alignment = TextAlignmentOptions.MidlineRight;
 
         _scoreLbl = MkTxt(hdr, "Score", "0 pts", ACCENT, 26,
-                          V(0.88f, 0.12f), V(0.99f, 0.88f));
+                          V(0.86f, 0.12f), V(0.99f, 0.88f));
         _scoreLbl.fontStyle = FontStyles.Bold;
         _scoreLbl.alignment = TextAlignmentOptions.MidlineRight;
 
-        _phaseLbl = MkTxt(R, "Phase", "", ACCENT, 40, V(0.1f, 0.865f), V(0.9f, 0.932f));
+        _phaseLbl = MkTxt(R, "Phase", "", ACCENT, 36, V(0.1f, 0.858f), V(0.9f, 0.925f));
         _phaseLbl.fontStyle = FontStyles.Bold;
 
-        _infoLbl = MkTxt(R, "Info", "", DIM, 22, V(0.1f, 0.808f), V(0.9f, 0.865f));
+        _infoLbl = MkTxt(R, "Info", "", DIM, 21, V(0.1f, 0.806f), V(0.9f, 0.858f));
 
-        BuildGrid(R, rows, cols);
+        var cdBg = MkImg(R, "CdBg", C(0.04f, 0.06f, 0.12f),
+                         V(0, 0.790f), V(1, 0.806f), V(0,0), V(0,0));
+        var cfGO = new GameObject("CdFill");
+        cfGO.transform.SetParent(cdBg, false);
+        var cfRT = cfGO.AddComponent<RectTransform>();
+        cfRT.anchorMin = Vector2.zero; cfRT.anchorMax = Vector2.one;
+        cfRT.sizeDelta = Vector2.zero; cfRT.anchoredPosition = Vector2.zero;
+        _countdownFill = cfGO.AddComponent<Image>();
+        _countdownFill.color      = ACCENT;
+        _countdownFill.type       = Image.Type.Filled;
+        _countdownFill.fillMethod = Image.FillMethod.Horizontal;
+        _countdownFill.fillAmount = 0f;
 
-        _confirmBtnGO = BuildConfirmBtn(R);
-        _confirmBtnGO.SetActive(false);
+        // ------------------------------------------------ banner de pregunta
+        _questionBox = MkImg(R, "QBox", C(0.10f, 0.13f, 0.24f),
+                             V(0.26f, 0.660f), V(0.74f, 0.775f), V(0,0), V(0,0));
+        MkImg(_questionBox, "QLine", ACCENT, V(0,0), V(1,0), V(0,1.5f), V(0,3));
+        _questionLbl = MkTxt(_questionBox, "QT", "", Color.white, 30, V(0.22f, 0), V(0.98f, 1));
+        _questionLbl.fontStyle = FontStyles.Bold;
+        _questionLbl.alignment = TextAlignmentOptions.MidlineLeft;
+
+        _questionIconHolder = MkImg(_questionBox, "QIcon", Color.clear,
+                                    V(0.02f, 0.10f), V(0.20f, 0.90f), V(0,0), V(0,0));
+        _questionIconHolder.GetComponent<Image>().raycastTarget = false;
+        _questionBox.gameObject.SetActive(false);
+
+        // ------------------------------------------------ rejilla
+        var gridGO = new GameObject("GridPanel");
+        gridGO.transform.SetParent(R, false);
+        _gridPanel = gridGO.AddComponent<RectTransform>();
+        _gridPanel.anchorMin        = V(0.5f, 0.5f);
+        _gridPanel.anchorMax        = V(0.5f, 0.5f);
+        _gridPanel.pivot            = V(0.5f, 0.5f);
+        _gridPanel.anchoredPosition = new Vector2(0f, -80f);
+
+        BuildGrid();
 
         var bot = MkImg(R, "Bot", HDR, V(0,0), V(1,0), V(0,40), V(0,80));
         MkImg(bot, "BotLine", ACCENT, V(0,1), V(1,1), V(0,-1.5f), V(0,3));
-        MkTxt(bot, "Instr", "Observa las casillas · Luego selecciona las que recuerdas",
+        MkTxt(bot, "Instr", "Memoriza dónde está cada objeto · Luego responde a las preguntas",
               C(ACCENT.r + 0.12f, ACCENT.g + 0.12f, ACCENT.b + 0.12f, 1f),
-              19, V(0.01f, 0), V(0.78f, 1)).alignment = TextAlignmentOptions.MidlineLeft;
-        MkImg(bot, "Sep", C(1,1,1,0.10f), V(0.78f, 0.1f), V(0.782f, 0.9f), V(0,0), V(0,0));
-
-        BuildResultPanel(R, onRestart, onMenu);
+              19, V(0.01f, 0), V(0.99f, 1)).alignment = TextAlignmentOptions.MidlineLeft;
     }
 
-    void BuildGrid(RectTransform R, int rows, int cols)
+    void BuildGrid()
     {
-        float cellSize = 108f;
-        float gap      = 12f;
-        float totalW   = cols * cellSize + (cols - 1) * gap;
-        float totalH   = rows * cellSize + (rows - 1) * gap;
+        int total     = _rows * _cols;
+        float cellSz  = _rows >= 3 ? 130f : 150f;
+        float gap     = 14f;
+        float totalW  = _cols * cellSz + (_cols - 1) * gap;
+        float totalH  = _rows * cellSz + (_rows - 1) * gap;
+        _gridPanel.sizeDelta = new Vector2(totalW, totalH);
 
-        var gridGO = new GameObject("Grid");
-        gridGO.transform.SetParent(R, false);
-        var gridRT = gridGO.AddComponent<RectTransform>();
-        gridRT.anchorMin        = new Vector2(0.5f, 0.5f);
-        gridRT.anchorMax        = new Vector2(0.5f, 0.5f);
-        gridRT.pivot            = new Vector2(0.5f, 0.5f);
-        gridRT.sizeDelta        = new Vector2(totalW, totalH);
-        gridRT.anchoredPosition = new Vector2(0f, -8f);
-        gridGO.AddComponent<Image>().color          = Color.clear;
-        gridGO.GetComponent<Image>().raycastTarget  = false;
+        _cellRTs      = new RectTransform[total];
+        _cellImgs     = new Image[total];
+        _cellBtns     = new Button[total];
+        _cellContents = new GameObject[total];
+        _cellMarks    = new TextMeshProUGUI[total];
 
-        int total = rows * cols;
-        _cellImgs = new Image[total];
-        _cellBtns = new Button[total];
-
-        for (int i = 0; i < total; i++)
+        for (int r = 0; r < _rows; r++)
+        for (int c = 0; c < _cols; c++)
         {
-            int row = i / cols;
-            int col = i % cols;
+            int idx = r * _cols + c;
+            float x = c * (cellSz + gap) - (totalW - cellSz) * 0.5f;
+            float y = -r * (cellSz + gap) + (totalH - cellSz) * 0.5f;
 
-            float x = col * (cellSize + gap) - totalW * 0.5f + cellSize * 0.5f;
-            float y = (rows - 1 - row) * (cellSize + gap) - totalH * 0.5f + cellSize * 0.5f;
+            var go = new GameObject("Cell_" + idx);
+            go.transform.SetParent(_gridPanel, false);
+            var rt = go.AddComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = V(0.5f, 0.5f);
+            rt.pivot     = V(0.5f, 0.5f);
+            rt.sizeDelta = new Vector2(cellSz, cellSz);
+            rt.anchoredPosition = new Vector2(x, y);
 
-            var cellGO = new GameObject("Cell_" + i);
-            cellGO.transform.SetParent(gridRT, false);
-            var cellRT = cellGO.AddComponent<RectTransform>();
-            cellRT.anchorMin        = new Vector2(0.5f, 0.5f);
-            cellRT.anchorMax        = new Vector2(0.5f, 0.5f);
-            cellRT.pivot            = new Vector2(0.5f, 0.5f);
-            cellRT.sizeDelta        = new Vector2(cellSize, cellSize);
-            cellRT.anchoredPosition = new Vector2(x, y);
+            var img = go.AddComponent<Image>();
+            img.color = CELL_BG;
 
-            var img = cellGO.AddComponent<Image>();
-            img.color      = CELL_OFF;
-            _cellImgs[i]   = img;
-
-            var shGO = new GameObject("Sh");
-            shGO.transform.SetParent(cellRT, false);
-            var shRT = shGO.AddComponent<RectTransform>();
-            shRT.anchorMin = V(0, 0.5f); shRT.anchorMax = V(1, 1);
-            shRT.sizeDelta = V(0, 0); shRT.anchoredPosition = V(0, 0);
-            shGO.AddComponent<Image>().color = C(1, 1, 1, 0.07f);
-
-            int capturedIndex = i;
-            var btn = cellGO.AddComponent<Button>();
+            var btn = go.AddComponent<Button>();
             btn.targetGraphic = img;
             var cb = btn.colors;
             cb.normalColor      = Color.white;
             cb.highlightedColor = C(1, 1, 1, 0.85f);
             cb.pressedColor     = C(0.72f, 0.72f, 0.72f);
-            btn.colors       = cb;
+            btn.colors = cb;
+            int captured = idx;
+            btn.onClick.AddListener(() => _onCellClicked?.Invoke(captured));
             btn.interactable = false;
-            btn.onClick.AddListener(() => _onCellToggled?.Invoke(capturedIndex));
-            _cellBtns[i] = btn;
+            ButtonJuice.Attach(go);
+
+            var mark = MkTxt(rt, "Mark", "", C(0.55f, 0.60f, 0.85f), cellSz * 0.42f,
+                             V(0, 0), V(1, 1));
+            mark.fontStyle = FontStyles.Bold;
+
+            _cellRTs[idx]   = rt;
+            _cellImgs[idx]  = img;
+            _cellBtns[idx]  = btn;
+            _cellMarks[idx] = mark;
+
+            UITween.PopIn(rt, 0.32f, 0.80f, idx * 0.03f);
         }
     }
 
-    GameObject BuildConfirmBtn(RectTransform R)
+    // ------------------------------------------------ fases
+
+    public void PlaceObjects(Dictionary<int, ObjDef> placements)
     {
-        var rt = MkImg(R, "ConfirmBtn", ACCENT,
-                       V(0.35f, 0.055f), V(0.65f, 0.135f), V(0,0), V(0,0));
-        MkImg(rt, "Sh", C(1, 1, 1, 0.13f), V(0, 0.5f), V(1, 1), V(0,0), V(0,0));
-        var btn = rt.gameObject.AddComponent<Button>();
-        btn.targetGraphic = rt.GetComponent<Image>();
-        var cb = btn.colors;
-        cb.normalColor      = Color.white;
-        cb.highlightedColor = C(1, 1, 1, 0.85f);
-        cb.pressedColor     = C(0.72f, 0.72f, 0.72f);
-        btn.colors = cb;
-        btn.onClick.AddListener(() => _onConfirm?.Invoke());
-        var t = MkTxt(rt, "T", "CONFIRMAR", Color.white, 30, V(0,0), V(1,1));
-        t.fontStyle = FontStyles.Bold;
-        return rt.gameObject;
+        ClearAllCells();
+        foreach (var kv in placements)
+        {
+            _cellImgs[kv.Key].color = CELL_BG;
+            _cellContents[kv.Key]   = BuildObjectIcon(_cellRTs[kv.Key], kv.Value, 0.72f);
+            UITween.PopIn((RectTransform)_cellContents[kv.Key].transform, 0.35f, 0.6f);
+        }
     }
 
-    void BuildResultPanel(RectTransform R, Action onRestart, Action onMenu)
+    public void CoverAllCells()
     {
-        _resultPanel = new GameObject("ResultPanel");
-        _resultPanel.transform.SetParent(R, false);
-        var er = _resultPanel.AddComponent<RectTransform>();
-        er.anchorMin = V(0,0); er.anchorMax = V(1,1);
-        er.sizeDelta = V(0,0); er.anchoredPosition = V(0,0);
-        _resultPanel.AddComponent<Image>().color = C(0, 0, 0, 0.86f);
-
-        var card = MkImg(er, "Card", PANEL, V(0.5f,0.5f), V(0.5f,0.5f), V(0,0), V(820f,420f));
-        MkImg(card, "Sh",    C(1, 1, 1, 0.03f), V(0, 0.5f),    V(1, 1),     V(0, 0),  V(0, 0));
-        MkImg(card, "LineT", ACCENT,             V(0, 1),        V(1, 1),     V(0, -4), V(0, 8));
-        MkImg(card, "AccL",  ACCENT,             V(0, 0.08f),    V(0, 0.92f), V(4, 0),  V(8, 0));
-
-        _resultTitle = MkTxt(card, "RT", "", Color.white, 52, V(0.05f, 0.74f), V(0.95f, 0.97f));
-        _resultTitle.fontStyle = FontStyles.Bold;
-        _resultSub = MkTxt(card, "RS", "", C(0.48f, 0.62f, 0.80f), 23, V(0.05f, 0.24f), V(0.95f, 0.72f));
-        _resultSub.overflowMode = TextOverflowModes.Overflow;
-
-        MkBtn(card, "Jugar de nuevo",     ACCENT,                V(0.05f, 0.20f), V(0.48f, 0.34f), onRestart);
-        MkBtn(card, "Volver a la seccion", C(0.18f,0.24f,0.38f), V(0.52f, 0.20f), V(0.95f, 0.34f), onMenu);
-        MkBtn(card, "Menu principal",     C(0.10f,0.13f,0.22f),  V(0.05f, 0.04f), V(0.95f, 0.17f), () => SceneLoader.GoToMainMenu());
-
-        _resultPanel.SetActive(false);
+        for (int i = 0; i < _cellImgs.Length; i++)
+        {
+            if (_cellContents[i] != null)
+            {
+                Destroy(_cellContents[i]);
+                _cellContents[i] = null;
+            }
+            _cellImgs[i].color  = CELL_HID;
+            _cellMarks[i].text  = "?";
+        }
     }
+
+    public void ShowQuestion(ObjDef obj)
+    {
+        _questionBox.gameObject.SetActive(true);
+        _questionLbl.text = "¿Dónde estaba " + obj.Nombre + "?";
+
+        foreach (Transform ch in _questionIconHolder) Destroy(ch.gameObject);
+        BuildObjectIcon(_questionIconHolder, obj, 0.85f);
+        UITween.PopIn(_questionBox, 0.30f, 0.85f);
+    }
+
+    public void HideQuestion() => _questionBox.gameObject.SetActive(false);
+
+    /// <summary>Revela una casilla con el objeto que había (o vacía) y marco de color.</summary>
+    public void RevealCell(int idx, ObjDef? obj, bool asCorrect)
+    {
+        _cellMarks[idx].text = "";
+        _cellImgs[idx].color = asCorrect
+            ? new Color(CGREEN.r * 0.35f, CGREEN.g * 0.35f, CGREEN.b * 0.35f)
+            : new Color(CRED.r   * 0.35f, CRED.g   * 0.35f, CRED.b   * 0.35f);
+
+        if (_cellContents[idx] != null) { Destroy(_cellContents[idx]); _cellContents[idx] = null; }
+        if (obj.HasValue)
+            _cellContents[idx] = BuildObjectIcon(_cellRTs[idx], obj.Value, 0.72f);
+
+        UITween.PulseOnce(_cellRTs[idx], asCorrect ? 1.15f : 1.05f, 0.30f);
+    }
+
+    public void ResetCellVisual(int idx)
+    {
+        if (_cellContents[idx] != null) { Destroy(_cellContents[idx]); _cellContents[idx] = null; }
+        _cellImgs[idx].color = CELL_HID;
+        _cellMarks[idx].text = "?";
+    }
+
+    public RectTransform GetCellRT(int idx) => _cellRTs[idx];
+
+    public void EnableInput(bool enable)
+    {
+        foreach (var b in _cellBtns) b.interactable = enable;
+    }
+
+    void ClearAllCells()
+    {
+        for (int i = 0; i < _cellImgs.Length; i++)
+        {
+            if (_cellContents[i] != null) { Destroy(_cellContents[i]); _cellContents[i] = null; }
+            _cellImgs[i].color = CELL_BG;
+            _cellMarks[i].text = "";
+        }
+    }
+
+    // ------------------------------------------------ iconos de objetos
+
+    GameObject BuildObjectIcon(RectTransform parent, ObjDef obj, float scale)
+    {
+        var holder = new GameObject("Obj");
+        holder.transform.SetParent(parent, false);
+        var hRT = holder.AddComponent<RectTransform>();
+        hRT.anchorMin = V(0.5f - scale * 0.5f, 0.5f - scale * 0.5f);
+        hRT.anchorMax = V(0.5f + scale * 0.5f, 0.5f + scale * 0.5f);
+        hRT.sizeDelta = Vector2.zero;
+
+        Sprite circle = SimonUIController.MakeCircleSprite();
+
+        switch (obj.Shape)
+        {
+            case 0: // pelota
+                MkShape(hRT, circle, obj.Tint, V(0,0), V(1,1));
+                MkShape(hRT, circle, C(1,1,1,0.35f), V(0.15f,0.55f), V(0.45f,0.85f));
+                break;
+            case 1: // caja
+                MkShape(hRT, null, obj.Tint, V(0.05f,0.05f), V(0.95f,0.95f));
+                MkShape(hRT, null, C(1,1,1,0.25f), V(0.05f,0.60f), V(0.95f,0.95f));
+                break;
+            case 2: // rombo
+                var d = MkShape(hRT, null, obj.Tint, V(0.15f,0.15f), V(0.85f,0.85f));
+                d.localEulerAngles = new Vector3(0, 0, 45f);
+                break;
+            case 3: // anillo
+                MkShape(hRT, circle, obj.Tint, V(0,0), V(1,1));
+                MkShape(hRT, circle, CELL_BG, V(0.28f,0.28f), V(0.72f,0.72f));
+                break;
+            case 4: // diana
+                MkShape(hRT, circle, obj.Tint, V(0,0), V(1,1));
+                MkShape(hRT, circle, Color.white, V(0.22f,0.22f), V(0.78f,0.78f));
+                MkShape(hRT, circle, obj.Tint, V(0.40f,0.40f), V(0.60f,0.60f));
+                break;
+            default: // ventana
+                MkShape(hRT, null, obj.Tint, V(0.05f,0.05f), V(0.95f,0.95f));
+                MkShape(hRT, null, C(0,0,0,0.35f), V(0.44f,0.05f), V(0.56f,0.95f));
+                MkShape(hRT, null, C(0,0,0,0.35f), V(0.05f,0.44f), V(0.95f,0.56f));
+                break;
+        }
+        return holder;
+    }
+
+    RectTransform MkShape(RectTransform p, Sprite sprite, Color col, Vector2 am, Vector2 aM)
+    {
+        var go = new GameObject("S");
+        go.transform.SetParent(p, false);
+        var rt = go.AddComponent<RectTransform>();
+        rt.anchorMin = am; rt.anchorMax = aM;
+        rt.pivot = V(0.5f, 0.5f);
+        rt.anchoredPosition = Vector2.zero; rt.sizeDelta = Vector2.zero;
+        var img = go.AddComponent<Image>();
+        img.color = col;
+        img.raycastTarget = false;
+        if (sprite != null) img.sprite = sprite;
+        return rt;
+    }
+
+    // ------------------------------------------------ HUD
 
     public void SetPhaseLabel(string text, Color col)
     {
@@ -234,71 +372,15 @@ public class PositionMemoryUIController : MonoBehaviour
         if (_scoreLbl != null) _scoreLbl.text = score + " pts";
     }
 
-    public void ShowMemorizePhase(List<int> targets)
+    public void SetCountdown(float t)
     {
-        for (int i = 0; i < _cellImgs.Length; i++)
-        {
-            _cellImgs[i].color   = CELL_OFF;
-            _cellBtns[i].interactable = false;
-        }
-        foreach (int t in targets)
-            _cellImgs[t].color = CELL_ON;
-        if (_confirmBtnGO != null) _confirmBtnGO.SetActive(false);
+        if (_countdownFill == null) return;
+        t = Mathf.Clamp01(t);
+        _countdownFill.fillAmount = t;
+        _countdownFill.color = Color.Lerp(CRED, ACCENT, t);
     }
 
-    public void ShowRecallPhase()
-    {
-        for (int i = 0; i < _cellImgs.Length; i++)
-        {
-            _selected[i]              = false;
-            _cellImgs[i].color        = CELL_OFF;
-            _cellBtns[i].interactable = true;
-        }
-        if (_confirmBtnGO != null) _confirmBtnGO.SetActive(true);
-    }
-
-    public void ToggleCell(int idx)
-    {
-        if (idx < 0 || idx >= _selected.Length) return;
-        _selected[idx]     = !_selected[idx];
-        _cellImgs[idx].color = _selected[idx] ? CELL_SEL : CELL_OFF;
-    }
-
-    public List<int> GetSelectedIndices()
-    {
-        var list = new List<int>();
-        for (int i = 0; i < _selected.Length; i++)
-            if (_selected[i]) list.Add(i);
-        return list;
-    }
-
-    public void ShowRoundResult(HashSet<int> targets, List<int> playerSelected)
-    {
-        if (_confirmBtnGO != null) _confirmBtnGO.SetActive(false);
-        for (int i = 0; i < _cellBtns.Length; i++)
-            _cellBtns[i].interactable = false;
-
-        var playerSet = new HashSet<int>(playerSelected);
-
-        for (int i = 0; i < _cellImgs.Length; i++)
-        {
-            bool inTarget = targets.Contains(i);
-            bool inPlayer = playerSet.Contains(i);
-
-            if      ( inTarget &&  inPlayer) _cellImgs[i].color = CGREEN;
-            else if (!inTarget &&  inPlayer) _cellImgs[i].color = CRED;
-            else if ( inTarget && !inPlayer) _cellImgs[i].color = CORANGE;
-            else                             _cellImgs[i].color = CELL_OFF;
-        }
-    }
-
-    public void ShowFinalResult(bool win, string sub)
-    {
-        _resultTitle.text  = win ? "¡Memoria excelente!" : "Sigue practicando";
-        _resultTitle.color = win ? CGREEN : CRED;
-        _resultSub.text    = sub;
-        _resultPanel.SetActive(true);
-    }
+    // ------------------------------------------------ helpers
 
     RectTransform MkImg(RectTransform p, string n, Color col,
                         Vector2 am, Vector2 aM, Vector2 pos, Vector2 sd)
@@ -329,22 +411,5 @@ public class PositionMemoryUIController : MonoBehaviour
         t.alignment = TextAlignmentOptions.Center;
         t.overflowMode = TextOverflowModes.Overflow;
         return t;
-    }
-
-    void MkBtn(RectTransform p, string lbl, Color bg,
-               Vector2 am, Vector2 aM, Action click)
-    {
-        var rt = MkImg(p, "Btn_" + lbl, bg, am, aM, V(0,0), V(0,0));
-        MkImg(rt, "Sh", C(1, 1, 1, 0.09f), V(0, 0.5f), V(1, 1), V(0,0), V(0,0));
-        var b = rt.gameObject.AddComponent<Button>();
-        b.targetGraphic = rt.GetComponent<Image>();
-        var cb = b.colors;
-        cb.normalColor      = Color.white;
-        cb.highlightedColor = C(1, 1, 1, 0.82f);
-        cb.pressedColor     = C(0.72f, 0.72f, 0.72f);
-        b.colors = cb;
-        b.onClick.AddListener(() => click?.Invoke());
-        var t = MkTxt(rt, "T", lbl, Color.white, 24, V(0,0), V(1,1));
-        t.fontStyle = FontStyles.Bold;
     }
 }

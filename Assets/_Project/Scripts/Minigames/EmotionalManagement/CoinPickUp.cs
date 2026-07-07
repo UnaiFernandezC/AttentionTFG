@@ -1,3 +1,4 @@
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 using UnityEngine;
 
 public class CoinPickup : MonoBehaviour
@@ -10,7 +11,8 @@ public class CoinPickup : MonoBehaviour
         if (other.CompareTag("Player"))
         {
 
-            CoinManager.instance.AddCoin();
+            if (CoinManager.instance != null)
+                CoinManager.instance.AddCoin();
 
             if (pickupSound != null && audioSourcePrefab != null)
             {

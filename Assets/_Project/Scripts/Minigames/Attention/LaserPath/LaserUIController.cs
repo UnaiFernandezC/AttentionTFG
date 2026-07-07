@@ -1,3 +1,4 @@
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 using System;
 using System.Collections;
 using UnityEngine;
@@ -351,10 +352,13 @@ public class LaserUIController : MonoBehaviour
         }
     }
 
-    /// <summary>Flash visual rapido al hacer clic en un espejo.</summary>
+    /// <summary>Flash visual rapido al hacer clic en un espejo (pop + pulso).</summary>
     public void FlashMirrorClick(int row, int col)
     {
         if (_cellFill == null) return;
+        GameFeel.PlayPop();
+        if (row < _rows && col < _cols && _cellBorder[row, col] != null)
+            UITween.PulseOnce(_cellBorder[row, col].rectTransform, 1.18f, 0.22f);
         StartCoroutine(ClickFlashCo(row, col));
     }
 

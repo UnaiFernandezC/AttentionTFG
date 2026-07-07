@@ -258,7 +258,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3e15f8eb31da4f8fbf16d0ee597ebbde, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  minigameName: Minijuego
+  minigameName: Memoria de ruta
   category: 0
   displaySecondsLevel1: 3
   displaySecondsLevel2: 2.8

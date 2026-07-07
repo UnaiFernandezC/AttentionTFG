@@ -1,8 +1,7 @@
-using System.Collections;
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
-using UnityEngine.SceneManagement;
 using TMPro;
 
 [System.Serializable]
@@ -13,11 +12,15 @@ public class MemoryQuestion
     public int correctIndex;
 }
 
-public class MemorySelector : MonoBehaviour
+/// <summary>
+/// Aventura emocional: preguntas de reconocimiento emocional y empatia.
+/// Cada acierto hace saltar al personaje 3D hacia la meta (si la escena lo tiene).
+/// Hereda de MinigameBase: intro, telemetria y resultados unificados.
+/// </summary>
+public class MemorySelector : MinigameBase
 {
-    [Header("Preguntas y opciones")]
+    [Header("Preguntas y opciones (si esta vacio se usa el banco por defecto)")]
     public List<MemoryQuestion> questions;
-    private List<MemoryQuestion> remainingQuestions;
 
     public TextMeshProUGUI questionTitleText;
     public List<Button> optionButtons;
@@ -26,184 +29,240 @@ public class MemorySelector : MonoBehaviour
     [Header("Controlador de salto")]
     public CharacterJumper characterJumper;
 
-    private MemoryQuestion currentQuestion;
+    int _questionCount = 6;
+    int _maxErrors     = 3;
 
-    private int _questionsAnswered = 0;
-    private int _errors = 0;
-    private const int MAX_QUESTIONS = 10;
-    private bool _finished = false;
+    List<MemoryQuestion> _remaining;
+    MemoryQuestion       _current;
+    int   _answered;
+    int   _correct;
+    int   _errors;
+    int   _score;
+    bool  _busy;
+    float _shownAt;
 
-    static Color C(float r, float g, float b, float a = 1f) => new Color(r, g, b, a);
-    static Vector2 V(float x, float y) => new Vector2(x, y);
+    const int POINTS_PER_CORRECT = 20;
 
-    IEnumerator Start()
+    void Awake()
     {
+        // La escena serializa la clase antigua (sin estos campos): se fijan aqui.
+        minigameName = "Aventura emocional";
+        category     = MinigameCategory.EmotionalManagement;
+    }
 
-        bool _started = false;
-        var introCanvas = IntroPanel.Build(
-            "Aventura emocional",
-            "Gestion emocional",
-            "Lee cada situacion con atencion y elige la respuesta correcta.\n" +
-            "Si aciertas, el personaje avanzara hacia la meta.\n" +
-            "Piensa bien antes de responder, las emociones importan!",
-            () => _started = true);
+    protected override string GetIntroDescription() =>
+        "Lee cada situacion y elige la mejor respuesta emocional.\n" +
+        "Cada acierto hace avanzar al personaje hacia la meta.";
 
-        while (!_started)
+    void ApplyDifficulty()
+    {
+        var diff = GameManager.Instance != null
+            ? GameManager.Instance.CurrentDifficulty
+            : DifficultyLevel.Easy;
+        switch (diff)
         {
-            if (Input.GetKeyDown(KeyCode.Space)) _started = true;
-            yield return null;
+            case DifficultyLevel.Medium: _questionCount = 8;  _maxErrors = 2; break;
+            case DifficultyLevel.Hard:   _questionCount = 10; _maxErrors = 1; break;
+            default:                     _questionCount = 6;  _maxErrors = 3; break;
         }
-        Object.Destroy(introCanvas);
+    }
 
-        GameSelectorMusicManager.StopMusic();
-        if (UIAudioManager.Instance != null) UIAudioManager.Instance.StopMusic();
+    protected override void OnMinigameStart()
+    {
+        ApplyDifficulty();
 
-        remainingQuestions = new List<MemoryQuestion>(questions);
+        bool usingDefault = questions == null || questions.Count == 0;
+        var bank = usingDefault ? DefaultQuestions() : questions;
+
+        var diff = GameManager.Instance != null
+            ? GameManager.Instance.CurrentDifficulty
+            : DifficultyLevel.Easy;
+
+        if (usingDefault && diff == DifficultyLevel.Hard && bank.Count >= 15)
+        {
+            // En dificil se garantizan las 5 preguntas matizadas (indices 10-14)
+            // y se completan con 5 basicas al azar.
+            _remaining = bank.GetRange(10, 5);
+            var basics = bank.GetRange(0, 10);
+            for (int i = 0; i < 5 && basics.Count > 0; i++)
+            {
+                int r = Random.Range(0, basics.Count);
+                _remaining.Add(basics[r]);
+                basics.RemoveAt(r);
+            }
+        }
+        else
+        {
+            _remaining = new List<MemoryQuestion>(bank);
+        }
+
+        _questionCount = Mathf.Min(_questionCount, _remaining.Count);
+        _answered = _correct = _errors = _score = 0;
+        _busy = false;
+
+        if (optionButtons != null)
+            foreach (var b in optionButtons)
+                if (b != null) ButtonJuice.Attach(b.gameObject);
+
         LoadRandomQuestion();
     }
 
+    protected override void OnMinigameComplete() { }
+    protected override void OnMinigameFailed()   { }
+
     void LoadRandomQuestion()
     {
-        if (_finished) return;
+        if (!IsPlaying) return;
+        _busy = false;
 
-        if (remainingQuestions.Count == 0)
-        {
-            ShowFinalPanel(true);
-            return;
-        }
+        if (_remaining.Count == 0) { EndWon(); return; }
 
-        int randomIndex = Random.Range(0, remainingQuestions.Count);
-        currentQuestion = remainingQuestions[randomIndex];
-        remainingQuestions.RemoveAt(randomIndex);
+        int randomIndex = Random.Range(0, _remaining.Count);
+        _current = _remaining[randomIndex];
+        _remaining.RemoveAt(randomIndex);
 
         if (questionTitleText != null)
-            questionTitleText.text = currentQuestion.questionTitle;
+            questionTitleText.text = _current.questionTitle;
 
-        for (int i = 0; i < optionTexts.Length; i++)
+        int n = Mathf.Min(
+            optionTexts != null ? optionTexts.Length : 0,
+            optionButtons != null ? optionButtons.Count : 0);
+        n = Mathf.Min(n, _current.options.Length);
+
+        for (int i = 0; i < n; i++)
         {
-            optionTexts[i].text = currentQuestion.options[i];
+            if (optionTexts[i] != null) optionTexts[i].text = _current.options[i];
+            if (optionButtons[i] == null) continue;
 
             int index = i;
             optionButtons[i].onClick.RemoveAllListeners();
             optionButtons[i].onClick.AddListener(() => CheckAnswer(index));
         }
+
+        _shownAt = Time.realtimeSinceStartup;
     }
 
     void CheckAnswer(int selectedIndex)
     {
-        if (_finished) return;
+        if (!IsPlaying || _busy || _current == null) return;
+        _busy = true;
+        _answered++;
 
-        if (selectedIndex == currentQuestion.correctIndex)
+        float rtMs = (Time.realtimeSinceStartup - _shownAt) * 1000f;
+        bool  ok   = selectedIndex == _current.correctIndex;
+        ReportEvent(ok, rtMs);
+
+        RectTransform btnRT = null;
+        if (optionButtons != null && selectedIndex < optionButtons.Count
+            && optionButtons[selectedIndex] != null)
+            btnRT = optionButtons[selectedIndex].GetComponent<RectTransform>();
+
+        if (ok)
         {
-            if (characterJumper != null) characterJumper.JumpToNextPlatform();
+            _correct++;
+            _score += POINTS_PER_CORRECT;
+            GameFeel.Success(btnRT);
+            GameFeel.FloatingText("+" + POINTS_PER_CORRECT,
+                                  new Color(0.22f, 0.86f, 0.54f), new Vector2(0f, 160f));
+
+            // Salto 3D null-safe: solo si la escena tiene jumper con plataformas.
+            if (characterJumper != null
+                && characterJumper.jumpTargets != null
+                && characterJumper.jumpTargets.Length > 0)
+                characterJumper.JumpToNextPlatform();
         }
         else
         {
             _errors++;
+            GameFeel.Error(btnRT);
+            GameFeel.FloatingText("Piensa como se sentiria...",
+                                  new Color(0.92f, 0.45f, 0.35f), new Vector2(0f, 160f), 36f);
         }
 
-        _questionsAnswered++;
-
-        if (_errors >= 3)
-        {
-            ShowFinalPanel(false);
-            return;
-        }
-
-        if (_questionsAnswered >= MAX_QUESTIONS)
-        {
-            ShowFinalPanel(true);
-            return;
-        }
+        if (_errors >= _maxErrors)       { Invoke(nameof(EndLost), 1.0f); return; }
+        if (_answered >= _questionCount) { Invoke(nameof(EndWon),  1.0f); return; }
 
         Invoke(nameof(LoadRandomQuestion), 1.2f);
     }
 
-    MinigameCategory ResolveCategory()
+    void EndWon()
     {
-        string scene = SceneManager.GetActiveScene().name;
-        if (scene.Contains("AlgoNoCuadra")) return MinigameCategory.Attention;
-        return MinigameCategory.EmotionalManagement;
+        if (!IsPlaying) return;
+        CompleteMinigame(_score);
+        GameFeel.Confetti();
+
+        float ratio = _answered > 0 ? (float)_correct / _answered : 0f;
+        ShowResults(
+            true,
+            GameFeel.StarsFromRatio(true, ratio),
+            _score,
+            BuildStats(),
+            "¡Llegaste a la meta!",
+            "Entender como se sienten los demas ayuda a elegir mejor.");
     }
 
-    void ShowFinalPanel(bool success)
+    void EndLost()
     {
-        if (_finished) return;
-        _finished = true;
-
-        MinigameCategory cat = ResolveCategory();
-
-        var cGO = new GameObject("Canvas_FinalResult");
-        cGO.transform.SetParent(transform, false);
-        var cv = cGO.AddComponent<Canvas>();
-        cv.renderMode   = RenderMode.ScreenSpaceOverlay;
-        cv.sortingOrder = 50;
-        var sc = cGO.AddComponent<CanvasScaler>();
-        sc.uiScaleMode         = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        sc.referenceResolution = new Vector2(1920f, 1080f);
-        sc.matchWidthOrHeight  = 0.5f;
-        cGO.AddComponent<GraphicRaycaster>();
-        var R = cGO.GetComponent<RectTransform>();
-
-        var bg = MkImg(R, "BG", C(0, 0, 0, 0.85f), V(0, 0), V(1, 1), V(0, 0), V(0, 0));
-
-        var card = MkImg(bg, "Card", C(0.08f, 0.11f, 0.22f), V(0.5f, 0.5f), V(0.5f, 0.5f), V(0, 0), V(820f, 460f));
-        MkImg(card, "LineT", C(0.40f, 0.72f, 1.00f), V(0, 1), V(1, 1), V(0, -4), V(0, 8));
-
-        var title = MkTxt(card, "Title",
-            success ? "¡Bien hecho!" : "Has fallado demasiadas veces",
-            success ? C(0.25f, 0.90f, 0.52f) : C(0.90f, 0.28f, 0.30f),
-            48, V(0.05f, 0.70f), V(0.95f, 0.95f));
-        title.fontStyle = FontStyles.Bold;
-
-        var sub = MkTxt(card, "Sub",
-            "Preguntas respondidas: " + _questionsAnswered + "\nErrores: " + _errors,
-            C(0.55f, 0.66f, 0.82f), 26, V(0.05f, 0.40f), V(0.95f, 0.68f));
-        sub.overflowMode = TextOverflowModes.Overflow;
-
-        MkBtn(card, "Jugar de nuevo",     C(0.40f, 0.72f, 1.00f), V(0.05f, 0.20f), V(0.48f, 0.34f),
-            () => SceneLoader.ReloadCurrentScene());
-        MkBtn(card, "Volver a la seccion", C(0.18f, 0.24f, 0.38f), V(0.52f, 0.20f), V(0.95f, 0.34f),
-            () => SceneLoader.LoadCategorySelector(cat));
-        MkBtn(card, "Menu principal",     C(0.10f, 0.13f, 0.22f), V(0.05f, 0.04f), V(0.95f, 0.17f),
-            () => SceneLoader.GoToMainMenu());
+        if (!IsPlaying) return;
+        FailMinigame();
+        ShowResults(
+            false,
+            0,
+            _score,
+            BuildStats(),
+            "El camino se corto",
+            "Antes de responder, imagina como se siente cada persona.");
     }
 
-    RectTransform MkImg(Transform p, string n, Color col, Vector2 am, Vector2 aM, Vector2 pos, Vector2 sd)
+    string[] BuildStats() => new[]
     {
-        var go = new GameObject(n); go.transform.SetParent(p, false);
-        var rt = go.AddComponent<RectTransform>();
-        rt.anchorMin = am; rt.anchorMax = aM; rt.pivot = V(0.5f, 0.5f);
-        rt.anchoredPosition = pos; rt.sizeDelta = sd;
-        go.AddComponent<Image>().color = col;
-        return rt;
-    }
+        "Aciertos: " + _correct + " de " + _questionCount,
+        "Errores: " + _errors + " (maximo " + _maxErrors + ")"
+    };
 
-    TextMeshProUGUI MkTxt(Transform p, string n, string txt, Color col, float sz, Vector2 am, Vector2 aM)
+    /// <summary>
+    /// Banco por defecto (15): reconocimiento de emociones, empatia y
+    /// "que hacer cuando..." para 5-10 anos. Las 5 ultimas son matizadas
+    /// (opciones mas parecidas entre si) y se priorizan en dificil.
+    /// </summary>
+    static List<MemoryQuestion> DefaultQuestions() => new List<MemoryQuestion>
     {
-        var go = new GameObject(n); go.transform.SetParent(p, false);
-        var rt = go.AddComponent<RectTransform>();
-        rt.anchorMin = am; rt.anchorMax = aM; rt.pivot = V(0.5f, 0.5f);
-        rt.anchoredPosition = Vector2.zero; rt.sizeDelta = Vector2.zero;
-        var t = go.AddComponent<TextMeshProUGUI>();
-        t.text = txt; t.color = col; t.fontSize = sz;
-        t.alignment = TextAlignmentOptions.Center;
-        t.overflowMode = TextOverflowModes.Overflow;
-        return t;
-    }
+        // ----- Reconocimiento de emociones -----
+        new MemoryQuestion { questionTitle = "Tu amiga llora porque perdio su peluche. ¿Como se siente?",
+            options = new[] { "Contenta", "Triste", "Aburrida", "Sorprendida" }, correctIndex = 1 },
+        new MemoryQuestion { questionTitle = "Marcos grita y aprieta los punos porque le quitaron su turno. ¿Que siente?",
+            options = new[] { "Enfado", "Alegria", "Sueno", "Calma" }, correctIndex = 0 },
+        new MemoryQuestion { questionTitle = "Lucia sonrie y salta porque manana es su cumpleanos. ¿Que siente?",
+            options = new[] { "Miedo", "Verguenza", "Alegria", "Tristeza" }, correctIndex = 2 },
+        new MemoryQuestion { questionTitle = "A Hugo le tiemblan las piernas antes de hablar en clase. ¿Que siente?",
+            options = new[] { "Nervios o miedo", "Rabia", "Felicidad", "Aburrimiento" }, correctIndex = 0 },
+        new MemoryQuestion { questionTitle = "Sara se pone roja cuando la aplauden. ¿Que puede sentir?",
+            options = new[] { "Verguenza", "Enfado", "Hambre", "Frio" }, correctIndex = 0 },
 
-    void MkBtn(Transform p, string lbl, Color bg, Vector2 am, Vector2 aM, System.Action click)
-    {
-        var rt = MkImg(p, "Btn_" + lbl, bg, am, aM, V(0, 0), V(0, 0));
-        var b = rt.gameObject.AddComponent<Button>();
-        b.targetGraphic = rt.GetComponent<Image>();
-        var cb = b.colors;
-        cb.normalColor      = Color.white;
-        cb.highlightedColor = C(1, 1, 1, 0.82f);
-        cb.pressedColor     = C(0.72f, 0.72f, 0.72f);
-        b.colors = cb;
-        b.onClick.AddListener(() => click?.Invoke());
-        var t = MkTxt(rt, "T", lbl, Color.white, 24, V(0, 0), V(1, 1));
-        t.fontStyle = FontStyles.Bold;
-    }
+        // ----- Empatia -----
+        new MemoryQuestion { questionTitle = "Un companero nuevo esta solo en el recreo. ¿Que puedes hacer?",
+            options = new[] { "Ignorarlo", "Reirme de el", "Invitarlo a jugar", "Esconderme" }, correctIndex = 2 },
+        new MemoryQuestion { questionTitle = "Tu hermano rompio su juguete favorito y llora. ¿Que le dices?",
+            options = new[] { "\"No es para tanto\"", "\"Te entiendo, era tu favorito\"", "\"Callate ya\"", "Nada, me voy" }, correctIndex = 1 },
+        new MemoryQuestion { questionTitle = "Alguien se cae en el patio y todos rien. ¿Que haces tu?",
+            options = new[] { "Reirme mas fuerte", "Hacerle una foto", "Mirar hacia otro lado", "Preguntarle si esta bien" }, correctIndex = 3 },
+
+        // ----- Que hacer cuando... -----
+        new MemoryQuestion { questionTitle = "Estas muy enfadado con un amigo. ¿Que haces primero?",
+            options = new[] { "Pegarle", "Respirar hondo y calmarme", "Gritarle muy fuerte", "Romper sus cosas" }, correctIndex = 1 },
+        new MemoryQuestion { questionTitle = "Pierdes en un juego y tienes ganas de llorar. ¿Que puedes hacer?",
+            options = new[] { "Tirar el juego al suelo", "Culpar a los demas", "Respirar y pedir la revancha", "No jugar nunca mas" }, correctIndex = 2 },
+
+        // ----- Matizadas (opciones mas parecidas: se usan en dificil) -----
+        new MemoryQuestion { questionTitle = "Tu amigo saco mala nota y tu sacaste un 10. ¿Que es mejor decirle?",
+            options = new[] { "\"Yo saque un 10, mira\"", "\"Si quieres practicamos juntos\"", "\"La proxima vez estudia\"", "\"No pasa nada, olvidalo\"" }, correctIndex = 1 },
+        new MemoryQuestion { questionTitle = "Ves a tu mejor amiga jugando con otra nina y sientes celos. ¿Que haces?",
+            options = new[] { "Decirle que ya no es mi amiga", "Jugar solo y no contarselo", "Acercarme y jugar los tres", "Decirle a la otra nina que se vaya" }, correctIndex = 2 },
+        new MemoryQuestion { questionTitle = "Rompiste sin querer el dibujo de un companero. ¿Que es lo mejor?",
+            options = new[] { "Esconder el dibujo", "Decir que fue otro", "Pedir perdon y ofrecer ayuda", "Esperar a que no se de cuenta" }, correctIndex = 2 },
+        new MemoryQuestion { questionTitle = "Tu amigo esta callado y con la mirada baja, pero dice \"estoy bien\". ¿Que haces?",
+            options = new[] { "Creerle y marcharme", "Decirle \"te noto triste, ¿quieres hablar?\"", "Contarselo a todos", "Hacerle cosquillas sin preguntar" }, correctIndex = 1 },
+        new MemoryQuestion { questionTitle = "Estas nervioso por un examen aunque estudiaste mucho. ¿Que piensas?",
+            options = new[] { "\"Seguro que suspendo\"", "\"Me prepare bien, lo intentare con calma\"", "\"No voy a ir al examen\"", "\"Los examenes no importan\"" }, correctIndex = 1 },
+    };
 }

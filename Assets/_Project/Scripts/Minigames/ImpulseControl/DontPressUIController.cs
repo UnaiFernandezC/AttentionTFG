@@ -1,4 +1,4 @@
-using System;
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
@@ -12,7 +12,6 @@ public class DontPressUIController : MonoBehaviour
 
     static readonly Color BG      = C(0.05f, 0.08f, 0.14f);
     static readonly Color HDR     = C(0.03f, 0.05f, 0.10f);
-    static readonly Color PANEL   = C(0.07f, 0.11f, 0.20f);
     static readonly Color ACCENT  = C(0.18f, 0.80f, 0.58f);
     static readonly Color DIM     = C(0.40f, 0.55f, 0.65f);
     static readonly Color CRED    = C(0.90f, 0.22f, 0.28f);
@@ -21,18 +20,15 @@ public class DontPressUIController : MonoBehaviour
 
     public DontPressButtonController ButtonCtrl  { get; private set; }
     public Button                    MainButton  { get; private set; }
+    /// <summary>Rect del boton central (para pulsos/sacudidas de GameFeel).</summary>
+    public RectTransform             ButtonRect  { get; private set; }
 
     Image[]          _roundDots;
     TextMeshProUGUI  _statusText;
-    TextMeshProUGUI  _instrText;
     Image            _countdownBar;
     Image            _flashOverlay;
 
-    GameObject       _resultPanel;
-    TextMeshProUGUI  _resultTitle;
-    TextMeshProUGUI  _resultSub;
-
-    public void BuildUI(int rounds, Action onRestart, Action onMenu)
+    public void BuildUI(int rounds)
     {
 
         var cGO = new GameObject("Canvas_DontPress");
@@ -92,8 +88,6 @@ public class DontPressUIController : MonoBehaviour
               C(ACCENT.r, ACCENT.g - 0.08f, ACCENT.b - 0.05f),
               16, V(0.01f,0), V(0.78f,1)).alignment = TextAlignmentOptions.MidlineLeft;
         MkImg(bot, "Sep", C(1,1,1,0.10f), V(0.78f,0.1f), V(0.782f,0.9f), V(0,0), V(0,0));
-
-        BuildResultPanel(R, onRestart, onMenu);
     }
 
     void BuildGrid(RectTransform R)
@@ -225,39 +219,7 @@ public class DontPressUIController : MonoBehaviour
         ButtonCtrl.GlowImage   = glowImg;
         ButtonCtrl.ButtonText  = btnTxt;
         ButtonCtrl.SetIdle();
-    }
-
-    void BuildResultPanel(RectTransform R, Action onRestart, Action onMenu)
-    {
-        _resultPanel = new GameObject("ResultPanel");
-        _resultPanel.transform.SetParent(R, false);
-        var er = _resultPanel.AddComponent<RectTransform>();
-        er.anchorMin = V(0,0); er.anchorMax = V(1,1);
-        er.sizeDelta = V(0,0); er.anchoredPosition = V(0,0);
-        _resultPanel.AddComponent<Image>().color = C(0,0,0,0.88f);
-
-        var card = MkImg(er, "Card", PANEL, V(0.5f,0.5f), V(0.5f,0.5f), V(0,0), V(900f,480f));
-        MkImg(card, "Sh",    C(1,1,1,0.03f), V(0,0.5f), V(1,1),     V(0,0),  V(0,0));
-        MkImg(card, "LineT", ACCENT,          V(0,1),    V(1,1),     V(0,-4), V(0,8));
-        MkImg(card, "AccL",  ACCENT,          V(0,0.08f), V(0,0.92f), V(4,0), V(8,0));
-
-        _resultTitle = MkTxt(card, "RT", "", Color.white, 44,
-                             V(0.05f,0.76f), V(0.95f,0.97f));
-        _resultTitle.fontStyle = FontStyles.Bold;
-        _resultTitle.enableAutoSizing = true;
-        _resultTitle.fontSizeMin = 26f; _resultTitle.fontSizeMax = 46f;
-
-        _resultSub = MkTxt(card, "RS", "", C(0.50f,0.68f,0.80f), 22,
-                           V(0.05f,0.37f), V(0.95f,0.74f));
-        _resultSub.overflowMode = TextOverflowModes.Overflow;
-        _resultSub.alignment    = TextAlignmentOptions.Center;
-        _resultSub.lineSpacing  = 10f;
-
-        MkBtn(card, "Jugar de nuevo",     ACCENT,                V(0.05f,0.20f), V(0.48f,0.33f), onRestart);
-        MkBtn(card, "Volver a la seccion", C(0.18f,0.24f,0.38f), V(0.52f,0.20f), V(0.95f,0.33f), onMenu);
-        MkBtn(card, "Menu principal",     C(0.10f,0.13f,0.22f),  V(0.05f,0.05f), V(0.95f,0.17f), () => SceneLoader.GoToMainMenu());
-
-        _resultPanel.SetActive(false);
+        ButtonRect = btnRT;
     }
 
     public void SetRoundDot(int index, bool? correct)
@@ -310,26 +272,6 @@ public class DontPressUIController : MonoBehaviour
         _flashOverlay.gameObject.SetActive(false);
     }
 
-    public void ShowFinalResult(bool won, int correct, int total, int score)
-    {
-        string title = won ? "¡Control total!" : "El impulso ganó";
-        Color  tcol  = won ? CGREEN : CRED;
-
-        string msg = won
-            ? "Resististe la tentacion de pulsar antes de tiempo.\n" +
-              "Rondas correctas: " + correct + " / " + total + "\n" +
-              "Puntuacion: " + score + " pts\n\n" +
-              "El control de impulsos es una habilidad que se entrena."
-            : "Rondas correctas: " + correct + " / " + total + "\n\n" +
-              "Los impulsos son fuertes, pero puedes aprender a resistirlos.\n" +
-              "Intenta anticipar el cambio sin adelantarte.";
-
-        _resultTitle.text  = title;
-        _resultTitle.color = tcol;
-        _resultSub.text    = msg;
-        _resultPanel.SetActive(true);
-    }
-
     public static Sprite MakeCircleSprite(int res = 128)
     {
         var tex    = new Texture2D(res, res, TextureFormat.RGBA32, false);
@@ -376,21 +318,5 @@ public class DontPressUIController : MonoBehaviour
         t.alignment    = TextAlignmentOptions.Center;
         t.overflowMode = TextOverflowModes.Overflow;
         return t;
-    }
-
-    void MkBtn(RectTransform p, string lbl, Color bg, Vector2 am, Vector2 aM, Action click)
-    {
-        var rt = MkImg(p, "Btn_"+lbl, bg, am, aM, V(0,0), V(0,0));
-        MkImg(rt, "Sh", C(1,1,1,0.09f), V(0,0.5f), V(1,1), V(0,0), V(0,0));
-        var b = rt.gameObject.AddComponent<Button>();
-        b.targetGraphic = rt.GetComponent<Image>();
-        var cb = b.colors;
-        cb.normalColor    = Color.white;
-        cb.highlightedColor = C(1,1,1,0.82f);
-        cb.pressedColor   = C(0.72f,0.72f,0.72f);
-        b.colors = cb;
-        b.onClick.AddListener(() => click?.Invoke());
-        var t = MkTxt(rt, "T", lbl, Color.white, 24, V(0,0), V(1,1));
-        t.fontStyle = FontStyles.Bold;
     }
 }

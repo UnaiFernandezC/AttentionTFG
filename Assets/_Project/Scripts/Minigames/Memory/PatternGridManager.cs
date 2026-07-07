@@ -1,3 +1,4 @@
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -8,6 +9,7 @@ public class PatternGridManager : MonoBehaviour
     private readonly List<PatternCell>  _cells      = new List<PatternCell>();
     private readonly HashSet<int>       _patternSet = new HashSet<int>();
     private int _cols, _rows;
+    private int _decoyIndex = -1;
 
     public int TotalCells    => _cells.Count;
     public int PatternCount  => _patternSet.Count;
@@ -82,9 +84,10 @@ public class PatternGridManager : MonoBehaviour
         return cell;
     }
 
-    public void GeneratePattern(int count)
+    public void GeneratePattern(int count, bool withDecoy = false)
     {
         _patternSet.Clear();
+        _decoyIndex = -1;
 
         var pool = new List<int>(_cells.Count);
         for (int i = 0; i < _cells.Count; i++) pool.Add(i);
@@ -98,14 +101,23 @@ public class PatternGridManager : MonoBehaviour
         int n = Mathf.Min(count, _cells.Count);
         for (int i = 0; i < n; i++)
             _patternSet.Add(pool[i]);
+
+        // Celda señuelo: parpadea distinto pero no cuenta en el patrón.
+        if (withDecoy && n < pool.Count)
+            _decoyIndex = pool[n];
     }
 
     public void ShowPattern()
     {
         foreach (var cell in _cells)
-            cell.SetState(_patternSet.Contains(cell.Index)
-                ? PatternCell.CellState.PatternShow
-                : PatternCell.CellState.Idle);
+        {
+            if (_patternSet.Contains(cell.Index))
+                cell.SetState(PatternCell.CellState.PatternShow);
+            else if (cell.Index == _decoyIndex)
+                cell.SetState(PatternCell.CellState.Decoy);
+            else
+                cell.SetState(PatternCell.CellState.Idle);
+        }
     }
 
     public void HidePattern()
@@ -157,6 +169,7 @@ public class PatternGridManager : MonoBehaviour
 
     private void HandleCellClicked(PatternCell cell)
     {
+        GameFeel.PlayPop();
         if (cell.IsSelected)
         {
             cell.SetState(PatternCell.CellState.Idle);

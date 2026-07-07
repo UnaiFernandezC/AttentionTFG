@@ -1,3 +1,4 @@
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -19,6 +20,7 @@ public class DontPressButtonController : MonoBehaviour
     const string TXT_FAKE    = "¡NO!";
     const string TXT_ORANGE  = "¡NO!";
     const string TXT_ACTIVE  = "¡PULSA\nAHORA!";
+    const string TXT_FAKEGRN = "¿YA?\n¡NO!";
     const string TXT_CORRECT = "¡BIEN\nHECHO!";
     const string TXT_EARLY   = "¡DEMASIADO\nPRONTO!";
     const string TXT_MISSED  = "TIEMPO\nAGOTADO";
@@ -27,35 +29,49 @@ public class DontPressButtonController : MonoBehaviour
     [HideInInspector] public Image           GlowImage;
     [HideInInspector] public TextMeshProUGUI ButtonText;
 
-    public enum State { Idle, Waiting, FakeOut, Orange, Active, Correct, Early, Missed }
+    public enum State { Idle, Waiting, FakeOut, Orange, Active, FakeGreen, Correct, Early, Missed }
     State   _state   = State.Idle;
     float   _pulseT  = 0f;
     bool    _pulsing = false;
 
-    public void SetIdle()    => Apply(State.Idle,    COL_IDLE,    TXT_IDLE,    pulse: false);
-    public void SetWaiting() => Apply(State.Waiting, COL_WAIT,    TXT_WAIT,    pulse: true);
-    public void SetFakeOut() => Apply(State.FakeOut, COL_FAKE,    TXT_FAKE,    pulse: false);
-    public void SetOrange()  => Apply(State.Orange,  COL_ORANGE,  TXT_ORANGE,  pulse: false);
-    public void SetActive()  => Apply(State.Active,  COL_ACTIVE,  TXT_ACTIVE,  pulse: false);
-    public void SetCorrect() => Apply(State.Correct, COL_CORRECT, TXT_CORRECT, pulse: false);
-    public void SetEarly()   => Apply(State.Early,   COL_EARLY,   TXT_EARLY,   pulse: false);
-    public void SetMissed()  => Apply(State.Missed,  COL_MISSED,  TXT_MISSED,  pulse: false);
+    public void SetIdle()      => Apply(State.Idle,      COL_IDLE,    TXT_IDLE,    pulse: false);
+    public void SetWaiting()   => Apply(State.Waiting,   COL_WAIT,    TXT_WAIT,    pulse: true);
+    public void SetFakeOut()   => Apply(State.FakeOut,   COL_FAKE,    TXT_FAKE,    pulse: false);
+    public void SetOrange()    => Apply(State.Orange,    COL_ORANGE,  TXT_ORANGE,  pulse: false);
+    public void SetActive()    => Apply(State.Active,    COL_ACTIVE,  TXT_ACTIVE,  pulse: false);
+    /// <summary>Falsa alarma (Hard): mismo verde pero PARPADEANDO. Verde fijo = real.</summary>
+    public void SetFakeGreen() => Apply(State.FakeGreen, COL_ACTIVE,  TXT_FAKEGRN, pulse: false);
+    public void SetCorrect()   => Apply(State.Correct,   COL_CORRECT, TXT_CORRECT, pulse: false);
+    public void SetEarly()     => Apply(State.Early,     COL_EARLY,   TXT_EARLY,   pulse: false);
+    public void SetMissed()    => Apply(State.Missed,    COL_MISSED,  TXT_MISSED,  pulse: false);
 
     public void Tick()
     {
-        if (!_pulsing || ButtonImage == null) return;
+        if (ButtonImage == null) return;
 
-        _pulseT += Time.deltaTime * 2.8f;
-        float pulse = 0.80f + Mathf.Sin(_pulseT) * 0.20f;
+        if (_pulsing)   // rojo "respirando" durante la espera
+        {
+            _pulseT += Time.deltaTime * 2.8f;
+            float pulse = 0.80f + Mathf.Sin(_pulseT) * 0.20f;
 
-        ButtonImage.color = new Color(
-            COL_WAIT.r * pulse,
-            COL_WAIT.g * pulse,
-            COL_WAIT.b * pulse, 1f);
+            ButtonImage.color = new Color(
+                COL_WAIT.r * pulse,
+                COL_WAIT.g * pulse,
+                COL_WAIT.b * pulse, 1f);
 
-        if (GlowImage != null)
-            GlowImage.color = new Color(COL_WAIT.r, COL_WAIT.g, COL_WAIT.b,
-                                        0.25f + Mathf.Sin(_pulseT) * 0.20f);
+            if (GlowImage != null)
+                GlowImage.color = new Color(COL_WAIT.r, COL_WAIT.g, COL_WAIT.b,
+                                            0.25f + Mathf.Sin(_pulseT) * 0.20f);
+        }
+        else if (_state == State.FakeGreen)   // verde PARPADEANTE = trampa
+        {
+            _pulseT += Time.deltaTime;
+            bool on = Mathf.FloorToInt(_pulseT / 0.13f) % 2 == 0;
+            ButtonImage.color = on ? COL_ACTIVE : COL_IDLE;
+            if (GlowImage != null)
+                GlowImage.color = new Color(COL_ACTIVE.r, COL_ACTIVE.g, COL_ACTIVE.b,
+                                            on ? 0.35f : 0.05f);
+        }
     }
 
     void Apply(State s, Color col, string txt, bool pulse)

@@ -1,3 +1,4 @@
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 using System;
 using UnityEngine;
 using UnityEngine.UI;
@@ -30,11 +31,7 @@ public class AttractionUIController : MonoBehaviour
     Image           _safeZoneImg;
     Image           _flashOverlay;
 
-    GameObject      _resultPanel;
-    TextMeshProUGUI _resultTitle;
-    TextMeshProUGUI _resultSub;
-
-    public void BuildUI(float safeZoneRadius, Action onRestart, Action onMenu)
+    public void BuildUI(float safeZoneRadius)
     {
 
         var cGO = new GameObject("Canvas_Attraction");
@@ -59,7 +56,7 @@ public class AttractionUIController : MonoBehaviour
         MkImg(hdr, "Line", ACCENT, V(0,0),     V(1,0),     V(0,1.5f), V(0,3));
         MkImg(hdr, "AccL", ACCENT, V(0,0.18f), V(0,0.82f), V(3,0),    V(6,0));
 
-        var ttl = MkTxt(hdr, "T", "ATRACCION EMOCIONAL", Color.white, 30,
+        var ttl = MkTxt(hdr, "T", "TU BURBUJA DE CALMA", Color.white, 30,
                         V(0.03f,0.12f), V(0.50f,0.88f));
         ttl.fontStyle = FontStyles.Bold; ttl.alignment = TextAlignmentOptions.MidlineLeft;
         ttl.characterSpacing = 1.5f;
@@ -67,7 +64,7 @@ public class AttractionUIController : MonoBehaviour
         MkTxt(hdr, "Cat", "GESTION EMOCIONAL", DIM, 15,
               V(0.50f,0.12f), V(0.68f,0.88f)).alignment = TextAlignmentOptions.MidlineRight;
 
-        MkTxt(hdr, "Instr", "Mantente en la zona verde", DIM, 17,
+        MkTxt(hdr, "Instr", "Quedate dentro de tu burbuja", DIM, 17,
               V(0.68f,0.12f), V(0.88f,0.88f)).alignment = TextAlignmentOptions.MidlineRight;
 
         BuildLivesHUD(hdr);
@@ -99,12 +96,10 @@ public class AttractionUIController : MonoBehaviour
         var bot = MkImg(R, "Bot", HDR, V(0,0), V(1,0), V(0,40), V(0,80));
         MkImg(bot, "BotLine", ACCENT, V(0,1), V(1,1), V(0,-1.5f), V(0,3));
         MkTxt(bot, "Info",
-              "Mueve el raton para resistir la atraccion  •  Los estimulos rojos atraen tu cursor",
+              "Los circulos rojos son distracciones y enfados que tiran de ti  •  Resiste y vuelve a tu burbuja",
               C(ACCENT.r+0.05f, ACCENT.g-0.10f, ACCENT.b-0.08f, 1f),
               16, V(0.01f,0), V(0.78f,1)).alignment = TextAlignmentOptions.MidlineLeft;
         MkImg(bot, "Sep", C(1,1,1,0.10f), V(0.78f,0.1f), V(0.782f,0.9f), V(0,0), V(0,0));
-
-        BuildResultPanel(R, onRestart, onMenu);
     }
 
     void BuildGrid(RectTransform R)
@@ -163,7 +158,7 @@ public class AttractionUIController : MonoBehaviour
         ringImg.sprite = MakeCircleSprite(256);
         ringImg.color  = C(0.20f, 0.85f, 0.50f, 0.35f);
 
-        MkTxt(szRT, "SafeLbl", "ZONA\nSEGURA",
+        MkTxt(szRT, "SafeLbl", "TU BURBUJA\nDE CALMA",
               C(0.25f, 0.95f, 0.60f, 0.55f), 20, V(0,0), V(1,1));
     }
 
@@ -248,39 +243,6 @@ public class AttractionUIController : MonoBehaviour
         MkTxt(panel, "DLbl", "!", CRED, 28, V(0,0), V(1,1)).fontStyle = FontStyles.Bold;
     }
 
-    void BuildResultPanel(RectTransform R, Action onRestart, Action onMenu)
-    {
-        _resultPanel = new GameObject("ResultPanel");
-        _resultPanel.transform.SetParent(R, false);
-        var er = _resultPanel.AddComponent<RectTransform>();
-        er.anchorMin = V(0,0); er.anchorMax = V(1,1);
-        er.sizeDelta = V(0,0); er.anchoredPosition = V(0,0);
-        _resultPanel.AddComponent<Image>().color = C(0,0,0,0.88f);
-
-        var card = MkImg(er, "Card", PANEL, V(0.5f,0.5f), V(0.5f,0.5f), V(0,0), V(900f,480f));
-        MkImg(card, "Sh",    C(1,1,1,0.03f), V(0,0.5f),  V(1,1),     V(0,0),  V(0,0));
-        MkImg(card, "LineT", ACCENT,          V(0,1),     V(1,1),     V(0,-4), V(0,8));
-        MkImg(card, "AccL",  ACCENT,          V(0,0.08f), V(0,0.92f), V(4,0),  V(8,0));
-
-        _resultTitle = MkTxt(card, "RT", "", Color.white, 44,
-                             V(0.05f,0.76f), V(0.95f,0.97f));
-        _resultTitle.fontStyle = FontStyles.Bold;
-        _resultTitle.enableAutoSizing = true;
-        _resultTitle.fontSizeMin = 26f; _resultTitle.fontSizeMax = 46f;
-
-        _resultSub = MkTxt(card, "RS", "", C(0.50f,0.68f,0.80f), 21,
-                           V(0.05f,0.37f), V(0.95f,0.74f));
-        _resultSub.overflowMode = TextOverflowModes.Overflow;
-        _resultSub.alignment    = TextAlignmentOptions.Center;
-        _resultSub.lineSpacing  = 10f;
-
-        MkBtn(card, "Jugar de nuevo",     ACCENT,                V(0.05f,0.20f), V(0.48f,0.33f), onRestart);
-        MkBtn(card, "Volver a la seccion", C(0.18f,0.24f,0.38f), V(0.52f,0.20f), V(0.95f,0.33f), onMenu);
-        MkBtn(card, "Menu principal",     C(0.10f,0.13f,0.22f),  V(0.05f,0.05f), V(0.95f,0.17f), () => SceneLoader.GoToMainMenu());
-
-        _resultPanel.SetActive(false);
-    }
-
     public void UpdateSafeBar(float safeTime, float target)
     {
         float frac = Mathf.Clamp01(safeTime / target);
@@ -329,31 +291,6 @@ public class AttractionUIController : MonoBehaviour
             yield return null;
         }
         _flashOverlay.gameObject.SetActive(false);
-    }
-
-    public void ShowResult(bool won, int score, float safeTime, float target)
-    {
-        if (won)
-        {
-            _resultTitle.text  = "Control emocional logrado";
-            _resultTitle.color = CGREEN;
-            _resultSub.text    =
-                "Aguantaste " + safeTime.ToString("0.0") + " segundos en la zona segura.\n" +
-                "Puntuacion:   " + score + " pts\n\n" +
-                "Resististe la atraccion y mantuviste el control.\n" +
-                "Eso mismo hacemos cuando gestionamos bien nuestras emociones.";
-        }
-        else
-        {
-            _resultTitle.text  = "Los estimulos te superaron";
-            _resultTitle.color = CRED;
-            _resultSub.text    =
-                "Tiempo en zona segura:   " + safeTime.ToString("0.0") + "s / " +
-                target.ToString("0") + "s\n\n" +
-                "Los estimulos negativos tienen fuerza, pero podemos resistirlos.\n" +
-                "Anticipa su posicion y mantente alejado de los bordes.";
-        }
-        _resultPanel.SetActive(true);
     }
 
     public static Sprite MakeCircleSprite(int res = 128)
@@ -409,20 +346,5 @@ public class AttractionUIController : MonoBehaviour
         t.alignment = TextAlignmentOptions.Center;
         t.overflowMode = TextOverflowModes.Overflow;
         return t;
-    }
-
-    void MkBtn(RectTransform p, string lbl, Color bg, Vector2 am, Vector2 aM, Action click)
-    {
-        var rt = MkImg(p, "Btn_" + lbl, bg, am, aM, V(0,0), V(0,0));
-        MkImg(rt, "Sh", C(1,1,1,0.09f), V(0,0.5f), V(1,1), V(0,0), V(0,0));
-        var b = rt.gameObject.AddComponent<Button>();
-        b.targetGraphic = rt.GetComponent<Image>();
-        var cb = b.colors;
-        cb.normalColor = Color.white; cb.highlightedColor = C(1,1,1,0.82f);
-        cb.pressedColor = C(0.72f,0.72f,0.72f);
-        b.colors = cb;
-        b.onClick.AddListener(() => click?.Invoke());
-        var t = MkTxt(rt, "T", lbl, Color.white, 24, V(0,0), V(1,1));
-        t.fontStyle = FontStyles.Bold;
     }
 }

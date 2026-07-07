@@ -1,3 +1,4 @@
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 using UnityEngine;
 
 public class FloatingLogo : MonoBehaviour

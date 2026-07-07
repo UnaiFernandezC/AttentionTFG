@@ -1,3 +1,4 @@
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 using System.Collections;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -35,6 +36,20 @@ public class EmotionalBalanceController : MinigameBase
     bool _leftHeld;
     bool _rightHeld;
 
+    // Viento emocional (solo dificil): rafagas anunciadas que empujan el indicador.
+    bool  _windEnabled;
+    float _gustTime;
+    float _gustDir;
+    const float GUST_FORCE    = 1.05f;
+    const float GUST_DURATION = 0.9f;
+
+    // Telemetria y valoracion
+    float _elapsed;
+    float _greenReportTimer;
+    int   _redEntries;
+    bool  _wasInRed;
+    int   _lastLitSquares;
+
     RectTransform   _indicatorRT;
     Image           _indicatorImg;
     float           _barHalfWidth;
@@ -43,11 +58,8 @@ public class EmotionalBalanceController : MinigameBase
     Image[]         _stabilitySquares;
     TextMeshProUGUI _timerLbl;
     TextMeshProUGUI _statusLbl;
-
-    GameObject      _endPanel;
-    Image           _endBarImg;
-    TextMeshProUGUI _endTitle;
-    TextMeshProUGUI _endSub;
+    EmotionFaceWidget _face;
+    int             _lastZone = -1;   // 0 verde, 1 amarillo, 2 rojo
 
     static readonly Color BG      = C(0.06f, 0.10f, 0.16f);
     static readonly Color HDR     = C(0.08f, 0.13f, 0.22f);
@@ -65,17 +77,66 @@ public class EmotionalBalanceController : MinigameBase
     static Color C(float r, float g, float b) => new Color(r, g, b);
 
     protected override string GetIntroDescription() =>
-        "El indicador se mueve solo. Mantelo en la zona verde!\n\n" +
-        "Usa los botones de pantalla o las flechas del teclado.\n" +
-        "Muevelo despacio, no de golpe.\n" +
-        "Si se va a la zona roja demasiado tiempo, pierdes!";
+        "Las emociones empujan el indicador: mantenlo en la zona verde.\n" +
+        "Usa las flechas o los botones, con movimientos suaves.";
+
+    void ApplyDifficulty()
+    {
+        var diff = GameManager.Instance != null
+            ? GameManager.Instance.CurrentDifficulty
+            : DifficultyLevel.Easy;
+        switch (diff)
+        {
+            case DifficultyLevel.Medium:
+                winTime        = 11f;
+                driftAmplitude = 0.10f;
+                driftSpeed     = 0.24f;
+                loseTime       = 8f;
+                break;
+            case DifficultyLevel.Hard:
+                winTime        = 14f;
+                driftAmplitude = 0.14f;
+                driftSpeed     = 0.30f;
+                loseTime       = 7f;
+                _windEnabled   = true;   // rafagas de viento emocional anunciadas
+                break;
+            default:
+                winTime        = 8f;
+                driftAmplitude = 0.07f;
+                driftSpeed     = 0.18f;
+                loseTime       = 9f;
+                break;
+        }
+    }
 
     protected override void OnMinigameStart()
     {
         EnsureES();
+        ApplyDifficulty();
         _noiseOff    = Random.value * 100f;
         _inputEnabled = true;
         BuildUI();
+        if (_windEnabled) StartCoroutine(WindRoutine());
+    }
+
+    IEnumerator WindRoutine()
+    {
+        while (IsPlaying && !_over)
+        {
+            yield return new WaitForSeconds(Random.Range(4f, 8f));
+            if (!IsPlaying || _over) yield break;
+
+            // Anuncio: flash + aviso, para que el jugador pueda ANTICIPARSE.
+            GameFeel.ScreenFlash(new Color(0.97f, 0.80f, 0.20f), 0.20f, 0.35f);
+            GameFeel.PlayPop();
+            GameFeel.FloatingText("¡Viento emocional!", CYELLOW, new Vector2(0f, 240f), 44f);
+
+            yield return new WaitForSeconds(0.65f);
+            if (!IsPlaying || _over) yield break;
+
+            _gustDir  = Random.value < 0.5f ? -1f : 1f;
+            _gustTime = GUST_DURATION;
+        }
     }
 
     protected override void OnMinigameComplete() { }
@@ -95,6 +156,12 @@ public class EmotionalBalanceController : MinigameBase
 
         _vel += drift      * Time.deltaTime * 60f;
         _vel += inputDir   * inputForce * Time.deltaTime * 60f;
+
+        if (_gustTime > 0f)
+        {
+            _gustTime -= Time.deltaTime;
+            _vel += _gustDir * GUST_FORCE * Time.deltaTime * 60f;
+        }
         _vel *= Mathf.Pow(damping, Time.deltaTime * 60f);
         _pos += _vel * Time.deltaTime;
 
@@ -106,27 +173,83 @@ public class EmotionalBalanceController : MinigameBase
         bool inRed    = absP >  yellowZoneWidth;
         bool inYellow = !inSafe && !inRed;
 
+        _elapsed += Time.deltaTime;
+
         if (inSafe)   { _goodTime += Time.deltaTime; _badTime  = 0f; }
         else if (inRed) { _badTime  += Time.deltaTime; }
         else            { _badTime   = 0f; }
 
+        // Telemetria: cada 2 s seguidos en verde = acierto.
+        if (inSafe)
+        {
+            _greenReportTimer += Time.deltaTime;
+            if (_greenReportTimer >= 2f)
+            {
+                _greenReportTimer -= 2f;
+                ReportEvent(true);
+            }
+        }
+        else
+        {
+            _greenReportTimer = 0f;
+        }
+
+        // Entrar en rojo = fallo (una vez por entrada).
+        if (inRed && !_wasInRed)
+        {
+            _redEntries++;
+            ReportEvent(false);
+            GameFeel.PlayError();
+            GameFeel.ScreenFlash(new Color(0.90f, 0.22f, 0.28f), 0.16f, 0.25f);
+            if (_indicatorRT != null) GameFeel.Shake(_indicatorRT, 8f, 0.25f);
+        }
+        _wasInRed = inRed;
+
         if (_goodTime >= winTime)
         {
-            _over = true;
-            int score = Mathf.Max(500, 1000 - Mathf.RoundToInt(_badTime * 30));
-            CompleteMinigame(score);
-            ShowEnd(true);
+            EndGame(won: true);
             return;
         }
         if (_badTime >= loseTime)
         {
-            _over = true;
-            FailMinigame();
-            ShowEnd(false);
+            EndGame(won: false);
             return;
         }
 
         UpdateBarUI(inSafe, inRed, inYellow);
+    }
+
+    void EndGame(bool won)
+    {
+        _over = true;
+        int score = won ? Mathf.Max(500, 1000 - _redEntries * 60) : 0;
+
+        if (won)
+        {
+            CompleteMinigame(score);
+            GameFeel.PlaySuccess();
+            GameFeel.Confetti();
+        }
+        else
+        {
+            FailMinigame();
+        }
+
+        // Eficiencia: jugar sin salirse apenas del verde da mas estrellas.
+        float ratio = _elapsed > 0f ? Mathf.Clamp01(winTime / _elapsed) : 0f;
+
+        ShowResults(
+            won,
+            GameFeel.StarsFromRatio(won, ratio),
+            score,
+            new[]
+            {
+                "Tiempo en calma: " + Mathf.RoundToInt(_goodTime) + " s de " + Mathf.RoundToInt(winTime) + " s",
+                "Veces en zona roja: " + _redEntries
+            },
+            won ? "¡Encontraste el equilibrio!" : "El indicador se descontrolo",
+            won ? "Pequenos ajustes y con calma: asi se equilibran las emociones."
+                : "Truco: mueve poquito a poquito, sin dar golpes de direccion.");
     }
 
     void UpdateBarUI(bool inSafe, bool inRed, bool inYellow)
@@ -146,6 +269,21 @@ public class EmotionalBalanceController : MinigameBase
             for (int i = 0; i < STABILITY_SQUARES; i++)
                 if (_stabilitySquares[i] != null)
                     _stabilitySquares[i].enabled = (i < lit);
+
+            if (lit > _lastLitSquares) GameFeel.PlayPop();
+            _lastLitSquares = lit;
+        }
+
+        // Carita central: feliz en verde, preocupada en amarillo, agobiada en rojo.
+        if (_face != null)
+        {
+            int zone = inSafe ? 0 : (inRed ? 2 : 1);
+            _face.SetMood(inSafe ? 1f : (inRed ? 0.05f : 0.5f));
+            if (zone != _lastZone)
+            {
+                if (_lastZone >= 0) _face.Pulse();
+                _lastZone = zone;
+            }
         }
 
         if (_timerLbl != null)
@@ -169,16 +307,6 @@ public class EmotionalBalanceController : MinigameBase
                 _statusLbl.color = CYELLOW;
             }
         }
-    }
-
-    void ShowEnd(bool won)
-    {
-        _endBarImg.color  = won ? CGREEN : CRED;
-        _endTitle.text    = won ? "Genial! En equilibrio!" : "Perdiste el control";
-        _endSub.text      = won
-            ? "Has mantenido la calma durante " + Mathf.RoundToInt(winTime) + " segundos."
-            : "El indicador se salio demasiado tiempo de la zona segura.";
-        _endPanel.SetActive(true);
     }
 
     void BuildUI()
@@ -221,9 +349,11 @@ public class EmotionalBalanceController : MinigameBase
             V2(0.05f, 0.10f), V2(0.95f, 0.22f));
         _statusLbl.fontStyle = FontStyles.Bold;
 
-        BuildControlButtons(R);
+        // Carita central que refleja la zona: feliz / preocupada / agobiada.
+        _face = EmotionFaceWidget.Build(R, new Vector2(0.5f, 0.785f), 120f);
+        _face.SetMood(1f);
 
-        BuildEndPanel(R);
+        BuildControlButtons(R);
     }
 
     void BuildEmotionalBar(RectTransform R)
@@ -342,50 +472,6 @@ public class EmotionalBalanceController : MinigameBase
         rHb.OnUp   = () => _rightHeld = false;
     }
 
-    void BuildEndPanel(RectTransform R)
-    {
-        _endPanel = new GameObject("EndPanel");
-        _endPanel.transform.SetParent(R, false);
-        var er = _endPanel.AddComponent<RectTransform>();
-        er.anchorMin = Vector2.zero; er.anchorMax = Vector2.one;
-        er.sizeDelta = Vector2.zero; er.anchoredPosition = Vector2.zero;
-        _endPanel.AddComponent<Image>().color = new Color(0, 0, 0, 0.85f);
-
-        var card = MkImg(er, "Card", PANEL, V2(0.5f,0.5f), V2(0.5f,0.5f), V2(0,0), V2(720, 400));
-        _endBarImg = MkImg(card, "Bar", CGREEN, V2(0,1), V2(1,1), V2(0,-13), V2(0,26)).GetComponent<Image>();
-        _endTitle  = MkTxt(card, "Ti", "", Color.white, 52, V2(0.05f,0.55f), V2(0.95f,0.92f));
-        _endTitle.fontStyle = FontStyles.Bold;
-        _endSub    = MkTxt(card, "Su", "", DIM, 26, V2(0.05f,0.40f), V2(0.95f,0.55f));
-        _endSub.overflowMode = TextOverflowModes.Overflow;
-
-        MkBtn(card, "Jugar de nuevo", ACCENT, V2(0.06f,0.04f), V2(0.48f,0.22f), () =>
-        {
-            StopAllCoroutines();
-            _endPanel.SetActive(false);
-            _over         = false;
-            _goodTime     = 0;
-            _badTime      = 0;
-            _pos          = 0;
-            _vel          = 0;
-            _noiseOff     = Random.value * 100f;
-            _inputEnabled = true;
-            IsPlaying     = true;
-            if (_stabilitySquares != null)
-                for (int i = 0; i < STABILITY_SQUARES; i++)
-                    if (_stabilitySquares[i] != null)
-                        _stabilitySquares[i].enabled = false;
-            if (_timerLbl != null) _timerLbl.text = "0";
-        });
-
-        MkBtn(card, "Volver a la seccion", new Color(0.18f,0.22f,0.36f), V2(0.52f,0.20f), V2(0.94f,0.33f),
-              () => ReturnToGameSelector());
-
-        MkBtn(card, "Menu principal", new Color(0.10f,0.13f,0.22f), V2(0.06f,0.05f), V2(0.94f,0.17f),
-              () => SceneLoader.GoToMainMenu());
-
-        _endPanel.SetActive(false);
-    }
-
     static Vector2 V2(float x, float y) => new Vector2(x, y);
 
     RectTransform MkImg(RectTransform p, string n, Color col,
@@ -417,23 +503,6 @@ public class EmotionalBalanceController : MinigameBase
         tmp.alignment    = TextAlignmentOptions.Center;
         tmp.overflowMode = TextOverflowModes.Ellipsis;
         return tmp;
-    }
-
-    void MkBtn(RectTransform p, string label, Color bgC,
-               Vector2 amin, Vector2 amax,
-               UnityEngine.Events.UnityAction click)
-    {
-        var bg = MkImg(p, "Btn" + label, bgC, amin, amax, V2(0,0), V2(0,0));
-        var b  = bg.gameObject.AddComponent<Button>();
-        b.targetGraphic = bg.GetComponent<Image>();
-        var cb = b.colors;
-        cb.normalColor      = Color.white;
-        cb.highlightedColor = new Color(1,1,1,0.85f);
-        cb.pressedColor     = new Color(0.7f,0.7f,0.7f);
-        b.colors = cb;
-        b.onClick.AddListener(click);
-        var t = MkTxt(bg, "T", label, Color.white, 28, V2(0,0), V2(1,1));
-        t.fontStyle = FontStyles.Bold;
     }
 
     static void EnsureES()

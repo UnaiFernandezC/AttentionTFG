@@ -1,59 +1,62 @@
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
+/// <summary>
+/// "¿Dónde estaba?" — memoria de asociación objeto-lugar:
+/// se muestran varios objetos en una rejilla, se ocultan y el niño debe
+/// tocar la casilla donde estaba el objeto por el que se pregunta.
+/// </summary>
 public class PositionMemoryGameManager : MinigameBase
 {
 
-    [Header("Tamano de la cuadricula")]
-    public int rows = 4;
-    public int cols = 4;
+    // ------------------------------------------------ dificultad (runtime)
+    int   _rows          = 2;
+    int   _cols          = 3;
+    int   _objectCount   = 3;
+    int   _questionCount = 2;
+    float _memorizeTime  = 4f;
 
-    [Header("Rondas")]
-    public int totalRounds  = 3;
-    public int roundsToWin  = 2;
-
-    [Header("Casillas a memorizar por ronda")]
-    public int[] cellsPerRound = new int[] { 3, 4, 5 };
-
-    [Header("Tiempos (segundos)")]
-    public float memorizeTime  = 2.5f;
-    public float feedbackTime  = 1.6f;
-    public float recallTimeout = 20f;
+    const int   TOTAL_ROUNDS    = 2;
+    const float ANSWER_TIMEOUT  = 15f;
+    const int   POINTS_PER_HIT  = 50;
 
     PositionMemoryUIController _ui;
 
-    int          _currentRound;
-    int          _score;
-    int          _roundsWon;
-    bool         _confirmed;
-    HashSet<int> _currentTargets;
+    int   _score;
+    int   _totalCorrect;
+    int   _totalQuestions;
+    int   _clickedCell;
+    bool  _answered;
 
     protected override string GetIntroDescription() =>
-        "Observa las casillas iluminadas en la cuadricula.\n" +
-        "Cuando se apaguen, selecciona las que recuerdas.\n\n" +
-        "Confirma tu eleccion con CONFIRMAR o [ESPACIO].\n" +
-        "Gana " + roundsToWin + " de " + totalRounds + " rondas para completar el juego.";
+        "Mira dónde está cada objeto.\n" +
+        "Luego, ¡toca la casilla donde estaba!";
 
     void ApplyDifficulty()
     {
         var diff = GameManager.Instance != null
             ? GameManager.Instance.CurrentDifficulty
             : DifficultyLevel.Easy;
+
         switch (diff)
         {
             case DifficultyLevel.Medium:
-                totalRounds    = 4;
-                roundsToWin    = 3;
-                cellsPerRound  = new int[] { 4, 5, 6, 7 };
-                memorizeTime   = 2.0f;
+                _rows = 3; _cols = 3;
+                _objectCount = 4; _questionCount = 3;
+                _memorizeTime = 5f;
                 break;
             case DifficultyLevel.Hard:
-                totalRounds    = 5;
-                roundsToWin    = 4;
-                cellsPerRound  = new int[] { 4, 5, 6, 7, 8 };
-                memorizeTime   = 1.5f;
+                _rows = 3; _cols = 4;
+                _objectCount = 6; _questionCount = 4;
+                _memorizeTime = 6f;
+                break;
+            default:
+                _rows = 2; _cols = 3;
+                _objectCount = 3; _questionCount = 2;
+                _memorizeTime = 4f;
                 break;
         }
     }
@@ -64,21 +67,15 @@ public class PositionMemoryGameManager : MinigameBase
         EnsureEventSystem();
 
         _ui = GetComponent<PositionMemoryUIController>();
+        if (_ui == null) _ui = gameObject.AddComponent<PositionMemoryUIController>();
 
-        _currentRound   = 0;
         _score          = 0;
-        _roundsWon      = 0;
-        _confirmed      = false;
-        _currentTargets = new HashSet<int>();
+        _totalCorrect   = 0;
+        _totalQuestions = 0;
 
-        _ui.BuildUI(rows, cols,
-            idx  => OnCellToggled(idx),
-            ()   => OnConfirm(),
-            ()   => RestartMinigame(),
-            ()   => ReturnToGameSelector());
-
+        _ui.BuildUI(_rows, _cols, OnCellClicked);
         _ui.UpdateScore(0);
-        _ui.UpdateRound(1, totalRounds);
+        _ui.UpdateRound(1, TOTAL_ROUNDS);
 
         StartCoroutine(GameLoop());
     }
@@ -86,121 +83,162 @@ public class PositionMemoryGameManager : MinigameBase
     protected override void OnMinigameComplete() { }
     protected override void OnMinigameFailed()   { }
 
-    void Update()
-    {
-        if (IsPlaying && Input.GetKeyDown(KeyCode.Space))
-            OnConfirm();
-    }
-
     IEnumerator GameLoop()
     {
-        yield return new WaitForSeconds(0.4f);
+        yield return new WaitForSeconds(0.5f);
 
-        for (_currentRound = 0; _currentRound < totalRounds; _currentRound++)
+        for (int round = 0; round < TOTAL_ROUNDS; round++)
         {
-            int cellCount = (_currentRound < cellsPerRound.Length)
-                ? cellsPerRound[_currentRound]
-                : cellsPerRound[cellsPerRound.Length - 1];
+            _ui.UpdateRound(round + 1, TOTAL_ROUNDS);
+            _ui.HideQuestion();
+            _ui.EnableInput(false);
 
-            _ui.UpdateRound(_currentRound + 1, totalRounds);
+            // -------- colocar objetos
+            var placements = GeneratePlacements();
 
-            _currentTargets = GenerateTargets(rows * cols, cellCount);
-            _ui.SetPhaseLabel("Memoriza", new Color(0.65f, 0.35f, 1.00f));
-            _ui.SetInfoLabel("Recuerda " + cellCount + " posiciones · " + memorizeTime + "s");
-            _ui.ShowMemorizePhase(new List<int>(_currentTargets));
+            _ui.SetPhaseLabel("¡Memoriza!", new Color(0.65f, 0.35f, 1.00f));
+            _ui.SetInfoLabel("Fíjate en dónde está cada objeto");
+            _ui.PlaceObjects(placements);
+            GameFeel.PlayPop();
 
-            yield return new WaitForSeconds(memorizeTime);
-
-            _confirmed = false;
-            _ui.SetPhaseLabel("¿Cuales eran?", Color.white);
-            _ui.SetInfoLabel("Selecciona " + cellCount + " casillas y pulsa CONFIRMAR");
-            _ui.ShowRecallPhase();
-
-            float waited = 0f;
-            while (!_confirmed && waited < recallTimeout)
+            float elapsed = 0f;
+            while (elapsed < _memorizeTime)
             {
-                waited += Time.deltaTime;
+                elapsed += Time.deltaTime;
+                _ui.SetCountdown(1f - elapsed / _memorizeTime);
                 yield return null;
             }
+            _ui.SetCountdown(0f);
 
-            var selected = _ui.GetSelectedIndices();
+            // -------- tapar y preguntar
+            _ui.CoverAllCells();
+            GameFeel.PlayPop();
+            yield return new WaitForSeconds(0.5f);
 
-            int correct = 0;
-            int wrong   = 0;
-            foreach (int idx in selected)
+            var askOrder = new List<int>(placements.Keys);
+            Shuffle(askOrder);
+            int questions = Mathf.Min(_questionCount, askOrder.Count);
+
+            for (int q = 0; q < questions; q++)
             {
-                if (_currentTargets.Contains(idx)) correct++;
-                else                               wrong++;
+                int cellTarget = askOrder[q];
+                var obj        = placements[cellTarget];
+
+                _totalQuestions++;
+                _ui.SetPhaseLabel("Pregunta " + (q + 1) + " de " + questions, Color.white);
+                _ui.SetInfoLabel("Toca la casilla correcta");
+                _ui.ShowQuestion(obj);
+                _ui.EnableInput(true);
+
+                _answered    = false;
+                _clickedCell = -1;
+                float askStart = Time.time;
+                float waited   = 0f;
+                while (!_answered && waited < ANSWER_TIMEOUT)
+                {
+                    waited += Time.deltaTime;
+                    yield return null;
+                }
+                _ui.EnableInput(false);
+
+                float rtMs   = (Time.time - askStart) * 1000f;
+                bool correct = _answered && _clickedCell == cellTarget;
+                ReportEvent(correct, rtMs);
+
+                if (correct)
+                {
+                    _totalCorrect++;
+                    _score += POINTS_PER_HIT;
+                    _ui.UpdateScore(_score);
+                    _ui.RevealCell(cellTarget, obj, true);
+                    GameFeel.Success(_ui.GetCellRT(cellTarget));
+                    GameFeel.FloatingText("+" + POINTS_PER_HIT, new Color(0.25f, 0.90f, 0.52f));
+                    _ui.SetPhaseLabel("¡Muy bien!", new Color(0.25f, 0.90f, 0.52f));
+                }
+                else
+                {
+                    if (_answered && _clickedCell >= 0)
+                    {
+                        placements.TryGetValue(_clickedCell, out var wrongObj);
+                        _ui.RevealCell(_clickedCell,
+                            placements.ContainsKey(_clickedCell) ? (PositionMemoryUIController.ObjDef?)wrongObj : null,
+                            false);
+                        GameFeel.Error(_ui.GetCellRT(_clickedCell));
+                    }
+                    else
+                    {
+                        GameFeel.PlayError();
+                    }
+                    _ui.RevealCell(cellTarget, obj, true);
+                    _ui.SetPhaseLabel("Estaba aquí", new Color(0.96f, 0.62f, 0.18f));
+                }
+
+                yield return new WaitForSeconds(1.5f);
+
+                // Volvemos a tapar para la siguiente pregunta
+                _ui.ResetCellVisual(cellTarget);
+                if (_clickedCell >= 0 && _clickedCell != cellTarget)
+                    _ui.ResetCellVisual(_clickedCell);
+                _ui.HideQuestion();
             }
-            int missed = _currentTargets.Count - correct;
 
-            bool roundWon   = (correct == _currentTargets.Count && wrong == 0);
-            if (roundWon) _roundsWon++;
-
-            int roundScore  = correct * 10 + (roundWon ? 20 : 0);
-            _score         += roundScore;
-            _ui.UpdateScore(_score);
-
-            _ui.ShowRoundResult(_currentTargets, selected);
-
-            string msg; Color col;
-            if (roundWon)
-            {
-                msg = "¡Perfecto! +" + roundScore + " pts";
-                col = new Color(0.25f, 0.90f, 0.52f);
-            }
-            else if (correct > 0)
-            {
-                msg = correct + "/" + _currentTargets.Count + " correctas";
-                col = new Color(0.96f, 0.72f, 0.18f);
-            }
-            else
-            {
-                msg = "Sin aciertos";
-                col = new Color(0.90f, 0.28f, 0.30f);
-            }
-
-            _ui.SetPhaseLabel(msg, col);
-            _ui.SetInfoLabel("Verde = correcta · Naranja = te faltaba · Rojo = error");
-
-            yield return new WaitForSeconds(feedbackTime);
+            yield return new WaitForSeconds(0.4f);
         }
 
-        yield return new WaitForSeconds(0.3f);
+        // -------- final
+        bool won = _totalCorrect >= Mathf.CeilToInt(_totalQuestions * 0.5f);
+        if (won) { CompleteMinigame(_score); GameFeel.Confetti(60); }
+        else       FailMinigame();
 
-        bool won   = _roundsWon >= roundsToWin;
-        CompleteMinigame(_score);
+        float ratio = _totalQuestions > 0 ? (float)_totalCorrect / _totalQuestions : 0f;
+        int   stars = GameFeel.StarsFromRatio(won, ratio);
 
-        string sub =
-            "Rondas superadas: " + _roundsWon + " / " + totalRounds + "\n" +
-            "Puntuacion total: " + _score + " pts";
-
-        _ui.ShowFinalResult(won, sub);
+        ShowResults(won, stars, won ? _score : 0,
+            new string[]
+            {
+                "Aciertos: " + _totalCorrect + "/" + _totalQuestions,
+                "Objetos por ronda: " + _objectCount
+            },
+            won ? "¡Detective de objetos!" : "¡Casi lo tienes!",
+            won ? "Recordaste dónde estaba cada cosa."
+                : "Fíjate bien en los lugares. ¡Otra vez!");
     }
 
-    void OnCellToggled(int idx)
+    void OnCellClicked(int idx)
     {
-        if (!IsPlaying || _confirmed) return;
-        _ui.ToggleCell(idx);
+        if (!IsPlaying || _answered) return;
+        _clickedCell = idx;
+        _answered    = true;
     }
 
-    void OnConfirm()
+    Dictionary<int, PositionMemoryUIController.ObjDef> GeneratePlacements()
     {
-        if (!IsPlaying || _confirmed) return;
-        _confirmed = true;
+        int totalCells = _rows * _cols;
+        int count      = Mathf.Min(_objectCount, Mathf.Min(totalCells,
+                                   PositionMemoryUIController.OBJECTS.Length));
+
+        var cellPool = new List<int>();
+        for (int i = 0; i < totalCells; i++) cellPool.Add(i);
+        Shuffle(cellPool);
+
+        var objPool = new List<int>();
+        for (int i = 0; i < PositionMemoryUIController.OBJECTS.Length; i++) objPool.Add(i);
+        Shuffle(objPool);
+
+        var result = new Dictionary<int, PositionMemoryUIController.ObjDef>();
+        for (int i = 0; i < count; i++)
+            result[cellPool[i]] = PositionMemoryUIController.OBJECTS[objPool[i]];
+
+        return result;
     }
 
-    HashSet<int> GenerateTargets(int total, int count)
+    static void Shuffle<T>(List<T> list)
     {
-        count = Mathf.Min(count, total);
-        var set = new HashSet<int>();
-        int tries = 0;
-        while (set.Count < count && tries < 2000)
+        for (int i = list.Count - 1; i > 0; i--)
         {
-            set.Add(UnityEngine.Random.Range(0, total));
-            tries++;
+            int j = UnityEngine.Random.Range(0, i + 1);
+            T tmp = list[i]; list[i] = list[j]; list[j] = tmp;
         }
-        return set;
     }
 
     static void EnsureEventSystem()

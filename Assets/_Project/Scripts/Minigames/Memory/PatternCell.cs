@@ -1,3 +1,4 @@
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
@@ -6,7 +7,7 @@ using UnityEngine.UI;
 public class PatternCell : MonoBehaviour
 {
 
-    public enum CellState { Idle, PatternShow, Selected, Correct, Wrong, Missed }
+    public enum CellState { Idle, PatternShow, Selected, Correct, Wrong, Missed, Decoy }
 
     public int       Index      { get; private set; }
     public CellState State      { get; private set; }
@@ -24,6 +25,7 @@ public class PatternCell : MonoBehaviour
     private static readonly Color C_CORRECT  = new Color(0.18f, 0.76f, 0.46f);
     private static readonly Color C_WRONG    = new Color(0.86f, 0.24f, 0.32f);
     private static readonly Color C_MISSED   = new Color(1.00f, 0.60f, 0.18f);
+    private static readonly Color C_DECOY    = new Color(0.95f, 0.35f, 0.75f);
     private static readonly Color SHINE_ON   = new Color(1f, 1f, 1f, 0.18f);
     private static readonly Color SHINE_OFF  = new Color(1f, 1f, 1f, 0.00f);
 
@@ -83,6 +85,12 @@ public class PatternCell : MonoBehaviour
                 ApplyColor(C_MISSED, new Color(1f, 1f, 1f, 0.12f));
                 StartCoroutine(Pulse(0.10f, 0.28f));
                 break;
+
+            case CellState.Decoy:
+                // Celda "trampa": parpadea distinto y NO forma parte del patrón.
+                ApplyColor(C_DECOY, SHINE_ON);
+                StartCoroutine(Blink());
+                break;
         }
     }
 
@@ -111,6 +119,18 @@ public class PatternCell : MonoBehaviour
             yield return null;
         }
         transform.localScale = Vector3.one;
+    }
+
+    private IEnumerator Blink()
+    {
+        while (State == CellState.Decoy)
+        {
+            _bg.color = C_DECOY;
+            yield return new WaitForSeconds(0.22f);
+            if (State != CellState.Decoy) yield break;
+            _bg.color = Color.Lerp(C_DECOY, C_IDLE, 0.65f);
+            yield return new WaitForSeconds(0.22f);
+        }
     }
 
     private IEnumerator Shake()

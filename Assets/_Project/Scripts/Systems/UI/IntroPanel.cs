@@ -1,3 +1,4 @@
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
@@ -43,28 +44,30 @@ public static class IntroPanel
         cvGO.AddComponent<GraphicRaycaster>();
         var R = cvGO.GetComponent<RectTransform>();
 
-        Img(R, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero,
-            new Color(0.03f, 0.05f, 0.12f, 0.97f));
+        // Fondo espacial (sustituye al fondo plano)
+        KidUI.BuildSpaceBackground(R, withPlanet: false);
 
         var card = Img(R,
             new Vector2(0.5f,0.5f), new Vector2(0.5f,0.5f),
             Vector2.zero, new Vector2(1060f, 680f),
-            new Color(0.10f, 0.13f, 0.24f));
+            new Color(0.055f, 0.075f, 0.15f, 0.97f));
+        Round(card, 0.75f);
 
-        Img(card, new Vector2(0,0), new Vector2(0,1),
-            new Vector2(4,0), new Vector2(8,0), catCol);
+        // Barra lateral de color de la categoría (pill redondeado)
+        var sideBar = Img(card, new Vector2(0,0.10f), new Vector2(0,0.90f),
+            new Vector2(14,0), new Vector2(8,0), catCol);
+        Round(sideBar, 4f);
 
-        Img(card, new Vector2(0,1), new Vector2(1,1),
-            Vector2.zero, new Vector2(0,5), catCol);
-
-        Img(card, new Vector2(0,1), new Vector2(1,1),
-            new Vector2(0,-18), new Vector2(0,36),
-            new Color(0,0,0,0.18f));
+        // Acento superior (pill centrado)
+        var topPill = Img(card, new Vector2(0.36f,1f), new Vector2(0.64f,1f),
+            new Vector2(0,-4f), new Vector2(0,7f), catCol);
+        Round(topPill, 4f);
 
         var badge = Img(card,
             new Vector2(1f,1f), new Vector2(1f,1f),
-            new Vector2(-80f,-22f), new Vector2(140f, 30f),
-            new Color(catCol.r*0.5f, catCol.g*0.5f, catCol.b*0.5f, 0.9f));
+            new Vector2(-92f,-30f), new Vector2(150f, 34f),
+            new Color(catCol.r*0.35f, catCol.g*0.35f, catCol.b*0.35f, 0.95f));
+        Round(badge, 2.2f);
         var badgeTxt = Txt(badge, categoryName.ToUpper(),
             catCol, 15, Vector2.zero, Vector2.one);
         badgeTxt.fontStyle = FontStyles.Bold;
@@ -82,7 +85,11 @@ public static class IntroPanel
 
         var descT = Txt(card, description,
             new Color(0.72f, 0.80f, 0.96f), 23,
-            new Vector2(0.06f, 0.34f), new Vector2(0.94f, 0.67f));
+            new Vector2(0.06f, 0.34f), new Vector2(0.55f, 0.67f));
+
+        // Demo animada "así se juega" ESPECÍFICA del minijuego (a la derecha de la
+        // descripción). Si el minijuego no tiene demo propia, usa la genérica.
+        MinigameDemos.Attach(card, title, categoryName);
         descT.alignment     = TextAlignmentOptions.TopLeft;
         descT.overflowMode  = TextOverflowModes.Truncate;
         descT.lineSpacing   = 6f;
@@ -94,6 +101,7 @@ public static class IntroPanel
             new Vector2(0.06f,0.18f), new Vector2(0.94f,0.32f),
             Vector2.zero, Vector2.zero,
             new Color(catCol.r*0.2f, catCol.g*0.2f, catCol.b*0.2f, 0.6f));
+        Round(hintBg, 1.6f);
         var hintT = Txt(hintBg,
             "Pulsa  [ESPACIO]  o el boton  COMENZAR  para jugar",
             new Color(catCol.r+0.3f, catCol.g+0.3f, catCol.b+0.3f, 1f), 22,
@@ -103,10 +111,8 @@ public static class IntroPanel
         var btnBg = Img(card,
             new Vector2(0.28f, 0.04f), new Vector2(0.72f, 0.16f),
             Vector2.zero, Vector2.zero, catCol);
-
-        Img(btnBg, new Vector2(0,0.5f), new Vector2(1,1),
-            Vector2.zero, Vector2.zero,
-            new Color(1,1,1,0.12f));
+        Round(btnBg, 1.1f);
+        ButtonJuice.Attach(btnBg.gameObject);
 
         var btn = btnBg.gameObject.AddComponent<Button>();
         btn.targetGraphic = btnBg.GetComponent<Image>();
@@ -126,6 +132,16 @@ public static class IntroPanel
         UITween.PulseOnce(btnBg, 1.06f, 0.5f);
 
         return cvGO;
+    }
+
+    /// <summary>Aplica esquinas redondeadas a una imagen ya creada.</summary>
+    static void Round(RectTransform rt, float cornerScale)
+    {
+        var img = rt.GetComponent<Image>();
+        if (img == null) return;
+        img.sprite = KidUI.RoundedSprite;
+        img.type = Image.Type.Sliced;
+        img.pixelsPerUnitMultiplier = cornerScale;
     }
 
     static RectTransform Img(RectTransform p, Vector2 amin, Vector2 amax,

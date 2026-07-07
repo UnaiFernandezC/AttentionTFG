@@ -1,3 +1,4 @@
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
@@ -64,6 +65,17 @@ public class NumberButton : MonoBehaviour
     {
         StopAllCoroutines();
         StartCoroutine(WrongFlash());
+    }
+
+    /// <summary>Numero que ya viene colocado: se muestra resuelto sin animacion.</summary>
+    public void SetPrePlaced()
+    {
+        StopAllCoroutines();
+        IsComplete = true;
+        _button.interactable = false;
+        _bgImage.color = C_DONE;
+        _label.color   = new Color(1f, 1f, 1f, 0.85f);
+        transform.localScale = Vector3.one;
     }
 
     public void ResetState()

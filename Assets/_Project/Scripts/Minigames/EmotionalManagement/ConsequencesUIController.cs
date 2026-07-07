@@ -1,3 +1,4 @@
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -33,15 +34,11 @@ public class ConsequencesUIController : MonoBehaviour
     TextMeshProUGUI _consequenceTxt;
     TextMeshProUGUI _nextBtnTxt;
 
-    GameObject      _resultPanel;
-    TextMeshProUGUI _resultTitle;
-    TextMeshProUGUI _resultSub;
-
     Action<int>     _onOptionChosen;
     Action          _onNext;
+    int             _lastScore;
 
-    public void BuildUI(Action<int> onOptionChosen, Action onNext,
-                        Action onRestart, Action onMenu)
+    public void BuildUI(Action<int> onOptionChosen, Action onNext)
     {
         _onOptionChosen = onOptionChosen;
         _onNext         = onNext;
@@ -120,8 +117,6 @@ public class ConsequencesUIController : MonoBehaviour
               C(ACCENT.r + 0.08f, ACCENT.g - 0.12f, ACCENT.b - 0.10f, 1f),
               18, V(0.01f, 0), V(0.78f, 1)).alignment = TextAlignmentOptions.MidlineLeft;
         MkImg(bot, "Sep", C(1,1,1,0.10f), V(0.78f, 0.1f), V(0.782f, 0.9f), V(0,0), V(0,0));
-
-        BuildResultPanel(R, onRestart, onMenu);
     }
 
     void BuildConsequencePanel(RectTransform R)
@@ -173,41 +168,12 @@ public class ConsequencesUIController : MonoBehaviour
         cb.pressedColor     = C(0.72f,0.72f,0.72f);
         nextBtn.colors = cb;
         nextBtn.onClick.AddListener(() => _onNext?.Invoke());
+        ButtonJuice.Attach(nextRT.gameObject);
         _nextBtnTxt = MkTxt(nextRT, "T", "Siguiente situacion", Color.white, 26, V(0,0), V(1,1));
         _nextBtnTxt.fontStyle = FontStyles.Bold;
 
         conGO.SetActive(false);
         _consequencePanel = conRT;
-    }
-
-    void BuildResultPanel(RectTransform R, Action onRestart, Action onMenu)
-    {
-        _resultPanel = new GameObject("ResultPanel");
-        _resultPanel.transform.SetParent(R, false);
-        var er = _resultPanel.AddComponent<RectTransform>();
-        er.anchorMin = V(0,0); er.anchorMax = V(1,1);
-        er.sizeDelta = V(0,0); er.anchoredPosition = V(0,0);
-        _resultPanel.AddComponent<Image>().color = C(0,0,0,0.88f);
-
-        var card = MkImg(er, "Card", PANEL, V(0.5f,0.5f), V(0.5f,0.5f), V(0,0), V(880f,480f));
-        MkImg(card, "Sh",    C(1,1,1,0.03f), V(0,0.5f),  V(1,1),     V(0,0),  V(0,0));
-        MkImg(card, "LineT", ACCENT,          V(0,1),     V(1,1),     V(0,-4), V(0,8));
-        MkImg(card, "AccL",  ACCENT,          V(0,0.08f), V(0,0.92f), V(4,0),  V(8,0));
-
-        _resultTitle = MkTxt(card, "RT", "", Color.white, 46, V(0.05f,0.76f), V(0.95f,0.97f));
-        _resultTitle.fontStyle = FontStyles.Bold;
-
-        _resultSub = MkTxt(card, "RS", "", C(0.50f, 0.68f, 0.80f), 22,
-                           V(0.05f, 0.37f), V(0.95f, 0.74f));
-        _resultSub.overflowMode = TextOverflowModes.Overflow;
-        _resultSub.alignment    = TextAlignmentOptions.Center;
-        _resultSub.lineSpacing  = 10f;
-
-        MkBtn(card, "Jugar de nuevo",     ACCENT,                V(0.05f,0.20f), V(0.48f,0.33f), onRestart);
-        MkBtn(card, "Volver a la seccion", C(0.18f,0.24f,0.38f), V(0.52f,0.20f), V(0.95f,0.33f), onMenu);
-        MkBtn(card, "Menu principal",     C(0.10f,0.13f,0.22f),  V(0.05f,0.05f), V(0.95f,0.17f), () => SceneLoader.GoToMainMenu());
-
-        _resultPanel.SetActive(false);
     }
 
     public void UpdateRound(int current, int total)
@@ -217,7 +183,10 @@ public class ConsequencesUIController : MonoBehaviour
 
     public void UpdateScore(int score)
     {
-        if (_scoreLbl) _scoreLbl.text = score + " pts";
+        if (_scoreLbl == null) return;
+        if (score == _lastScore) { _scoreLbl.text = score + " pts"; }
+        else GameFeel.CountUp(_scoreLbl, _lastScore, score, 0.5f, "", " pts");
+        _lastScore = score;
     }
 
     public void ShowSituation(EmotionalSituation sit, int current, int total)
@@ -272,8 +241,19 @@ public class ConsequencesUIController : MonoBehaviour
             shRT.sizeDelta = V(0, 0); shRT.anchoredPosition = V(0, 0);
             shGO.AddComponent<Image>().color = C(1, 1, 1, 0.05f);
 
+            // Carita de apoyo no-lector: anticipa como acaba cada reaccion.
+            float faceSize = btnH * 0.58f;
+            var face = EmotionFaceWidget.Build(btnRT, V(0f, 0.5f), faceSize,
+                                               V(faceSize * 0.5f + 26f, 0f));
+            switch (opt.quality)
+            {
+                case AnswerQuality.Positive: face.SetMood(1f);    break;
+                case AnswerQuality.Neutral:  face.SetMood(0.5f);  break;
+                default:                     face.SetMood(0.02f); break;
+            }
+
             var txt = MkTxt(btnRT, "T", opt.text, Color.white, 24,
-                            V(0.03f, 0), V(0.97f, 1));
+                            V(0.085f, 0), V(0.97f, 1));
             txt.alignment      = TextAlignmentOptions.MidlineLeft;
             txt.enableAutoSizing = true;
             txt.fontSizeMin    = 16f;
@@ -287,6 +267,9 @@ public class ConsequencesUIController : MonoBehaviour
             cb.pressedColor     = C(0.72f, 0.72f, 0.72f);
             btn.colors = cb;
             btn.onClick.AddListener(() => _onOptionChosen?.Invoke(capturedIdx));
+
+            ButtonJuice.Attach(btnGO);
+            UITween.PopIn(btnRT, 0.34f, 0.90f, i * 0.06f);
         }
     }
 
@@ -320,26 +303,9 @@ public class ConsequencesUIController : MonoBehaviour
 
         _nextBtnTxt.text = hasNext ? "Siguiente situacion  →" : "Ver resultado  →";
         _phaseLbl.text   = "Resultado de tu decision:";
-    }
 
-    public void ShowFinalResult(bool win, int positive, int total, int score)
-    {
-        string title    = win ? "¡Buen manejo emocional!" : "Hay margen de mejora";
-        Color titleCol  = win ? CGREEN : CYELLOW;
-
-        string advice = win
-            ? "Sabes identificar respuestas constructivas. ¡Sigue cultivando esa inteligencia emocional!"
-            : "Recuerda: responder con calma y dialogar siempre da mejores resultados a largo plazo.";
-
-        string sub =
-            "Decisiones adecuadas:   " + positive + " / " + total + "\n" +
-            "Puntuacion total:   " + score + " pts\n\n" +
-            advice;
-
-        _resultTitle.text  = title;
-        _resultTitle.color = titleCol;
-        _resultSub.text    = sub;
-        _resultPanel.SetActive(true);
+        UITween.PopIn(_consequencePanel, 0.32f, 0.94f);
+        UITween.PulseOnce(_qualityBar.rectTransform, 1.04f, 0.30f);
     }
 
     RectTransform MkImg(RectTransform p, string n, Color col,

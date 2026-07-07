@@ -1,3 +1,4 @@
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 using System.Collections;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -9,7 +10,7 @@ using UnityEngine.EventSystems;
 /// SIEMPRE se juegan los 3 puzzles antes de decidir si se gano o perdio.
 /// - Facil  : 3 puzzles (5x5), 45 s, ganar 2/3.
 /// - Medio  : 3 puzzles (6x6), 30 s, ganar 2/3.
-/// - Dificil: 3 puzzles (7x7), 22 s, ganar 3/3.
+/// - Dificil: 3 puzzles (7x7), 35 s, ganar 3/3.
 /// </summary>
 [RequireComponent(typeof(LaserUIController))]
 public class LaserGameManager : MinigameBase
@@ -30,6 +31,9 @@ public class LaserGameManager : MinigameBase
     bool  _timerRunning;
     bool  _puzzleSolved;
     bool  _gameEnded;
+    float _puzzleStartTime;
+    float _rtSumMs;
+    int   _rtCount;
 
     // --- MinigameBase ----------------------------------------------------------
     protected override string GetIntroDescription() =>
@@ -75,7 +79,8 @@ public class LaserGameManager : MinigameBase
         _ui.SetHint(data.hint);
         _ui.SetTimer(_timeLeft, data.timeLimit);
 
-        _timerRunning = true;
+        _puzzleStartTime = Time.time;
+        _timerRunning    = true;
     }
 
     // --- Interaccion -----------------------------------------------------------
@@ -94,6 +99,15 @@ public class LaserGameManager : MinigameBase
             _puzzleSolved = true;
             _timerRunning = false;
             _puzzlesSolved++;
+
+            // Telemetria: tiempo real de resolucion del puzzle
+            float solveMs = (Time.time - _puzzleStartTime) * 1000f;
+            ReportEvent(true, solveMs);
+            _rtSumMs += solveMs;
+            _rtCount++;
+
+            GameFeel.PlaySuccess();
+            GameFeel.Confetti(25);
             _ui.ShowWinFlash("Muy bien! Laser llegado a META");
             StartCoroutine(AdvancePuzzle());
         }
@@ -128,6 +142,11 @@ public class LaserGameManager : MinigameBase
         if (_timeLeft <= 0f)
         {
             _timerRunning  = false;
+
+            // Puzzle no resuelto a tiempo
+            ReportEvent(false, -1f);
+            GameFeel.PlayError();
+
             _currentPuzzle++;
 
             if (_currentPuzzle >= totalPuzzles)
@@ -149,12 +168,21 @@ public class LaserGameManager : MinigameBase
 
         bool won   = _puzzlesSolved >= puzzlesNeededToWin;
         int  score = CalculateScore(won);
-        CompleteMinigame(score);
 
-        string sub = won
-            ? $"Resolviste {_puzzlesSolved} de {totalPuzzles} puzzles!\n+{score} puntos"
-            : $"Resolviste {_puzzlesSolved} de {totalPuzzles} puzzles.\nSigue practicando!";
-        _ui.ShowFinalResult(won, sub);
+        if (won) CompleteMinigame(score);
+        else     FailMinigame();
+
+        float ratio = totalPuzzles > 0 ? (float)_puzzlesSolved / totalPuzzles : 0f;
+        int   stars = GameFeel.StarsFromRatio(won, ratio);
+
+        string timeStat = _rtCount > 0
+            ? "Media por puzzle: " + (_rtSumMs / _rtCount / 1000f).ToString("0.0") + " s"
+            : "Media por puzzle: -";
+
+        ShowResults(won, stars, score,
+            new[] { "Puzzles resueltos: " + _puzzlesSolved + "/" + totalPuzzles, timeStat },
+            null,
+            won ? "¡Dominas los espejos!" : "Sigue el rayo con el dedo antes de girar");
     }
 
     int CalculateScore(bool won)

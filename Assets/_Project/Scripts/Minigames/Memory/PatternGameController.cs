@@ -1,3 +1,4 @@
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 using System.Collections;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -6,28 +7,19 @@ using UnityEngine.UI;
 public class PatternGameController : MinigameBase
 {
 
-    [Header("Ronda 1 (Facil)")]
-    public int   colsRound1    = 3;
-    public int   rowsRound1    = 3;
-    public int   patternRound1 = 4;
-    public float timeRound1    = 4f;
-
-    [Header("Ronda 2 (Media)")]
-    public int   colsRound2    = 4;
-    public int   rowsRound2    = 4;
-    public int   patternRound2 = 6;
-    public float timeRound2    = 3f;
-
-    [Header("Ronda 3 (Dificil)")]
-    public int   colsRound3    = 5;
-    public int   rowsRound3    = 5;
-    public int   patternRound3 = 9;
-    public float timeRound3    = 2f;
+    // ------------------------------------------------ dificultad (runtime)
+    private int   _gridCols     = 3;
+    private int   _gridRows     = 3;
+    private int   _basePattern  = 3;
+    private float _displayTime  = 4f;
+    private float _cellSize     = 120f;
+    private bool  _useDecoy     = false;
 
     private int       _currentRound = 0;
     private const int TOTAL_ROUNDS  = 3;
     private int       _totalScore   = 0;
     private int       _roundsWon    = 0;
+    private float     _recallStart  = 0f;
 
     private enum Phase { Memorize, Recall, Result }
     private Phase _phase;
@@ -67,12 +59,35 @@ public class PatternGameController : MinigameBase
     private static readonly Color C_DOT_OFF  = new Color(0.25f, 0.27f, 0.45f);
 
     protected override string GetIntroDescription() =>
-        "Se te mostrara un patron de casillas iluminadas durante unos segundos.\n" +
-        "Cuando desaparezca, reproduce el mismo patron haciendo clic en las casillas.\n" +
-        "3 rondas, cada vez mas dificil. Falla una y pierdes!";
+        "Varias casillas se iluminan a la vez.\n" +
+        "Memorízalas y tócalas en el orden que quieras.";
+
+    private void ApplyDifficulty()
+    {
+        var diff = GameManager.Instance != null
+            ? GameManager.Instance.CurrentDifficulty
+            : DifficultyLevel.Easy;
+
+        switch (diff)
+        {
+            case DifficultyLevel.Medium:
+                _gridCols = 4; _gridRows = 4; _basePattern = 5;
+                _displayTime = 3f; _cellSize = 96f; _useDecoy = false;
+                break;
+            case DifficultyLevel.Hard:
+                _gridCols = 5; _gridRows = 5; _basePattern = 7;
+                _displayTime = 2.5f; _cellSize = 78f; _useDecoy = true;
+                break;
+            default:
+                _gridCols = 3; _gridRows = 3; _basePattern = 3;
+                _displayTime = 4f; _cellSize = 120f; _useDecoy = false;
+                break;
+        }
+    }
 
     protected override void OnMinigameStart()
     {
+        ApplyDifficulty();
         EnsureEventSystem();
         BuildUI();
         ResetSession();
@@ -87,24 +102,14 @@ public class PatternGameController : MinigameBase
                                 out int patternCount, out float displayTime,
                                 out float cellSize,  out float spacing)
     {
-        switch (idx)
-        {
-            case 0:
-                cols = colsRound1; rows = rowsRound1;
-                patternCount = patternRound1; displayTime = timeRound1;
-                cellSize = 120f; spacing = 12f;
-                break;
-            case 1:
-                cols = colsRound2; rows = rowsRound2;
-                patternCount = patternRound2; displayTime = timeRound2;
-                cellSize = 96f;  spacing = 10f;
-                break;
-            default:
-                cols = colsRound3; rows = rowsRound3;
-                patternCount = patternRound3; displayTime = timeRound3;
-                cellSize = 78f;  spacing = 10f;
-                break;
-        }
+        cols = _gridCols;
+        rows = _gridRows;
+
+        // Progresión dentro de la partida: +1 casilla por ronda superada.
+        patternCount = Mathf.Min(_basePattern + idx, cols * rows - 2);
+        displayTime  = Mathf.Max(2f, _displayTime - 0.2f * idx);
+        cellSize     = _cellSize;
+        spacing      = cols >= 5 ? 10f : 12f;
     }
 
     private void ResetSession()
@@ -149,10 +154,12 @@ public class PatternGameController : MinigameBase
         };
 
         _grid.Initialize(_gridContainer, cols, rows, cellSize, spacing);
-        _grid.GeneratePattern(patternCount);
+        _grid.GeneratePattern(patternCount, _useDecoy);
         _grid.EnableInput(false);
 
-        SetInstructions("Memoriza el patron");
+        SetInstructions(_useDecoy
+            ? "Memoriza el patrón (¡la casilla que parpadea rosa es trampa!)"
+            : "Memoriza el patrón");
         StartCoroutine(MemorizePhase(patternCount, displayTime));
     }
 
@@ -179,11 +186,12 @@ public class PatternGameController : MinigameBase
     {
         _phase = Phase.Recall;
         _grid.HidePattern();
-        SetInstructions("Reproduce el patron");
+        SetInstructions("Toca las casillas que estaban iluminadas");
         UpdateSelectionLabel(0, patternCount);
         _selectionPanel.SetActive(true);
         _confirmBtn.SetActive(true);
         _grid.EnableInput(true);
+        _recallStart = Time.time;
     }
 
     private void UpdateSelectionLabel(int selected, int needed)
@@ -205,16 +213,22 @@ public class PatternGameController : MinigameBase
     private IEnumerator ShowResultSequence()
     {
         var (correct, wrong, missed) = _grid.ShowResult();
-        yield return new WaitForSeconds(1.6f);
 
         bool won = (wrong == 0 && missed == 0);
+        ReportEvent(won, (Time.time - _recallStart) * 1000f);
+
+        if (won) { GameFeel.PlaySuccess(); GameFeel.FloatingText("¡Perfecto!", C_GREEN); }
+        else       GameFeel.Error(null);
+
+        yield return new WaitForSeconds(1.6f);
+
         int roundScore = Mathf.Max(0, correct * 100 - wrong * 30 - missed * 20);
         _totalScore += roundScore;
 
         if (!won)
         {
             FailMinigame();
-            ShowEndPanel(false);
+            ShowFinal(false);
         }
         else
         {
@@ -222,13 +236,30 @@ public class PatternGameController : MinigameBase
             if (_currentRound >= TOTAL_ROUNDS - 1)
             {
                 CompleteMinigame(_totalScore);
-                ShowEndPanel(true);
+                GameFeel.Confetti(60);
+                ShowFinal(true);
             }
             else
             {
                 StartCoroutine(RoundTransition(_currentRound));
             }
         }
+    }
+
+    private void ShowFinal(bool won)
+    {
+        float ratio = (float)_roundsWon / TOTAL_ROUNDS;
+        int   stars = GameFeel.StarsFromRatio(won, ratio);
+
+        ShowResults(won, stars, won ? _totalScore : 0,
+            new string[]
+            {
+                "Rondas superadas: " + _roundsWon + "/" + TOTAL_ROUNDS,
+                "Puntos: " + _totalScore
+            },
+            won ? "¡Memoria visual de campeón!" : "¡Casi lo tienes!",
+            won ? "Recordaste todos los patrones."
+                : "Fíjate bien en las casillas. ¡Otra vez!");
     }
 
     private IEnumerator RoundTransition(int completedRound)
@@ -383,6 +414,7 @@ public class PatternGameController : MinigameBase
         cTmp.text = "Confirmar respuesta"; cTmp.color = Color.white;
         cTmp.fontSize = 36f; cTmp.fontStyle = TMPro.FontStyles.Bold;
         cTmp.alignment = TMPro.TextAlignmentOptions.Center;
+        ButtonJuice.Attach(_confirmBtn);
         _confirmBtn.SetActive(false);
 
 

@@ -1,32 +1,33 @@
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 using UnityEngine;
 
+/// <summary>
+/// Mueve una bola (RectTransform de UI) rebotando dentro de unos limites,
+/// con pequenos giros aleatorios para que las bolas se crucen y se mezclen.
+/// Usado por el minijuego de seguimiento multiple (MOT).
+/// Si no se le asigna ObjectRT permanece inactivo (instancia de escena).
+/// </summary>
 public class ObjectMover : MonoBehaviour
 {
-    [Header("Velocidad (px/s)")]
-    public float speed          = 160f;
-    [Header("Segundos entre cambios de dirección")]
-    public float dirChangeRate  = 2.5f;
-    [Header("Amplitud de oscilación Perlin")]
-    public float driftAmp       = 28f;
+    [HideInInspector] public RectTransform ObjectRT;
+    [HideInInspector] public float Speed = 240f;
 
-    [HideInInspector] public float boundsXMin = -840f;
-    [HideInInspector] public float boundsXMax =  840f;
-    [HideInInspector] public float boundsYMin = -380f;
+    [HideInInspector] public float boundsXMin = -810f;
+    [HideInInspector] public float boundsXMax =  810f;
+    [HideInInspector] public float boundsYMin = -430f;
     [HideInInspector] public float boundsYMax =  320f;
 
-    [HideInInspector] public RectTransform ObjectRT;
-
+    Vector2 _vel;
     bool    _active;
-    Vector2 _target;
-    float   _dirTimer;
-    float   _noiseOffX, _noiseOffY;
+    float   _turnTimer;
 
-    public void StartMoving()
+    /// <summary>Lanza la bola en una direccion aleatoria.</summary>
+    public void Launch()
     {
-        _active    = true;
-        _noiseOffX = Random.value * 100f;
-        _noiseOffY = Random.value * 100f;
-        PickTarget();
+        float ang = Random.Range(0f, Mathf.PI * 2f);
+        _vel = new Vector2(Mathf.Cos(ang), Mathf.Sin(ang)) * Speed;
+        _turnTimer = Random.Range(0.7f, 1.5f);
+        _active = true;
     }
 
     public void StopMoving() => _active = false;
@@ -35,32 +36,27 @@ public class ObjectMover : MonoBehaviour
     {
         if (!_active || ObjectRT == null) return;
 
-        _dirTimer -= Time.deltaTime;
-        if (_dirTimer <= 0f) PickTarget();
+        float dt = Time.deltaTime;
 
-        Vector2 pos = ObjectRT.anchoredPosition;
+        // Giro suave aleatorio cada poco tiempo (obliga a cruces y mezclas)
+        _turnTimer -= dt;
+        if (_turnTimer <= 0f)
+        {
+            float turn = Random.Range(-40f, 40f) * Mathf.Deg2Rad;
+            float cos = Mathf.Cos(turn), sin = Mathf.Sin(turn);
+            _vel = new Vector2(_vel.x * cos - _vel.y * sin,
+                               _vel.x * sin + _vel.y * cos);
+            _turnTimer = Random.Range(0.7f, 1.5f);
+        }
 
-        Vector2 toTarget = _target - pos;
-        if (toTarget.magnitude < 25f) PickTarget();
-        pos += toTarget.normalized * speed * Time.deltaTime;
+        Vector2 pos = ObjectRT.anchoredPosition + _vel * dt;
 
-        float t = Time.time * 0.55f;
-        pos.x += (Mathf.PerlinNoise(t + _noiseOffX, 0f) - 0.5f) * driftAmp * Time.deltaTime;
-        pos.y += (Mathf.PerlinNoise(0f, t + _noiseOffY) - 0.5f) * driftAmp * Time.deltaTime;
-
-        if (pos.x < boundsXMin) { pos.x = boundsXMin; _target.x = Random.Range(0f, boundsXMax); }
-        if (pos.x > boundsXMax) { pos.x = boundsXMax; _target.x = Random.Range(boundsXMin, 0f); }
-        if (pos.y < boundsYMin) { pos.y = boundsYMin; _target.y = Random.Range(0f, boundsYMax); }
-        if (pos.y > boundsYMax) { pos.y = boundsYMax; _target.y = Random.Range(boundsYMin, 0f); }
+        // Rebotes en los bordes
+        if (pos.x < boundsXMin) { pos.x = boundsXMin; _vel.x =  Mathf.Abs(_vel.x); }
+        if (pos.x > boundsXMax) { pos.x = boundsXMax; _vel.x = -Mathf.Abs(_vel.x); }
+        if (pos.y < boundsYMin) { pos.y = boundsYMin; _vel.y =  Mathf.Abs(_vel.y); }
+        if (pos.y > boundsYMax) { pos.y = boundsYMax; _vel.y = -Mathf.Abs(_vel.y); }
 
         ObjectRT.anchoredPosition = pos;
-    }
-
-    void PickTarget()
-    {
-        _target   = new Vector2(
-            Random.Range(boundsXMin * 0.85f, boundsXMax * 0.85f),
-            Random.Range(boundsYMin * 0.85f, boundsYMax * 0.85f));
-        _dirTimer = dirChangeRate + Random.Range(-0.4f, 0.6f);
     }
 }

@@ -1,3 +1,4 @@
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 using UnityEngine;
 
 public class SimonAudioManager : MonoBehaviour
@@ -8,7 +9,8 @@ public class SimonAudioManager : MonoBehaviour
     private const float SUCCESS_DURATION = 0.80f;
     private const float FAIL_DURATION    = 0.70f;
 
-    private static readonly float[] COLOR_FREQS = { 261.6f, 329.6f, 392.0f, 523.3f };
+    private static readonly float[] COLOR_FREQS =
+        { 261.6f, 329.6f, 392.0f, 523.3f, 587.3f, 659.3f };
 
     private AudioClip[] _colorClips;
     private AudioClip   _successClip;
@@ -36,8 +38,8 @@ public class SimonAudioManager : MonoBehaviour
 
     private void GenerateAllClips()
     {
-        _colorClips = new AudioClip[4];
-        for (int i = 0; i < 4; i++)
+        _colorClips = new AudioClip[COLOR_FREQS.Length];
+        for (int i = 0; i < COLOR_FREQS.Length; i++)
             _colorClips[i] = GenerateTone(COLOR_FREQS[i], TONE_DURATION, 0.55f, WaveShape.Sine);
 
         _successClip = GenerateSuccess();

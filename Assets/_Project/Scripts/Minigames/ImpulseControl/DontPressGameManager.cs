@@ -1,6 +1,6 @@
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 using System.Collections;
 using UnityEngine;
-using UnityEngine.EventSystems;
 
 public class DontPressGameManager : MinigameBase
 {
@@ -50,10 +50,19 @@ public class DontPressGameManager : MinigameBase
     static readonly Color TXT_RED    = new Color(0.90f, 0.22f, 0.28f);
     static readonly Color TXT_YELLOW = new Color(0.95f, 0.80f, 0.15f);
 
-    protected override string GetIntroDescription() =>
-        "Aparece un boton. ESPERA hasta que cambie de color Y el texto diga YA.\n\n" +
-        "Si pulsas demasiado pronto... fallo!\n" +
-        "Solo pulsa cuando el boton sea VERDE y diga YA!";
+    protected override string GetIntroDescription()
+    {
+        var diff = GameManager.Instance != null
+            ? GameManager.Instance.CurrentDifficulty
+            : DifficultyLevel.Easy;
+
+        if (diff == DifficultyLevel.Hard)
+            return "Pulsa SOLO con el VERDE FIJO.\n" +
+                   "Si el verde PARPADEA... ¡es trampa, no pulses!";
+
+        return "Espera quieto... y pulsa SOLO cuando el boton se ponga VERDE.\n" +
+               "¡Si pulsas antes, fallo!";
+    }
 
     void ApplyDifficulty()
     {
@@ -63,20 +72,34 @@ public class DontPressGameManager : MinigameBase
         switch (diff)
         {
             case DifficultyLevel.Medium:
-                rounds       = 4;
-                roundsToWin  = 3;
-                waitMin      = 1.5f;
-                waitMax      = 4.5f;
-                activeWindow = 2.0f;
-                fakeOutCount = 1;
+                rounds          = 4;
+                roundsToWin     = 3;
+                waitMin         = 1.5f;
+                waitMax         = 4.5f;
+                activeWindow    = 2.0f;
+                fakeOutCount    = 1;
+                fakeGreenChance = 0f;      // el verde falso solo aparece en Hard
+                fakeOutChance   = 0.5f;
                 break;
             case DifficultyLevel.Hard:
-                rounds       = 5;
-                roundsToWin  = 4;
-                waitMin      = 1.0f;
-                waitMax      = 4.0f;
-                activeWindow = 1.5f;
-                fakeOutCount = 2;
+                rounds          = 5;
+                roundsToWin     = 4;
+                waitMin         = 1.0f;
+                waitMax         = 4.0f;
+                activeWindow    = 1.5f;
+                fakeOutCount    = 2;
+                fakeGreenChance = 0.55f;   // falsa alarma: verde PARPADEANTE
+                fakeOutChance   = 0.6f;
+                break;
+            default:   // Easy
+                rounds          = 3;
+                roundsToWin     = 2;
+                waitMin         = 2.0f;
+                waitMax         = 5.0f;
+                activeWindow    = 2.5f;
+                fakeOutCount    = 0;
+                fakeGreenChance = 0f;
+                fakeOutChance   = 0.3f;
                 break;
         }
     }
@@ -84,7 +107,7 @@ public class DontPressGameManager : MinigameBase
     protected override void OnMinigameStart()
     {
         ApplyDifficulty();
-        EnsureEventSystem();
+        KidUI.EnsureEventSystem();
 
         _timer = GetComponent<DontPressTimerManager>();
         _ui    = GetComponent<DontPressUIController>();
@@ -98,7 +121,7 @@ public class DontPressGameManager : MinigameBase
         _timer.OnTimeout   += HandleTimeout;
         _timer.OnFakeOut   += HandleFakeOut;
 
-        _ui.BuildUI(rounds, () => RestartMinigame(), () => ReturnToGameSelector());
+        _ui.BuildUI(rounds);
         _ui.MainButton.onClick.AddListener(HandleButtonClick);
 
         _currentRound     = 0;
@@ -182,7 +205,8 @@ public class DontPressGameManager : MinigameBase
 
     IEnumerator FakeGreenRoutine()
     {
-
+        // Falsa alarma (solo Hard): el boton se pone verde pero PARPADEANDO.
+        // El verde real es FIJO. Pulsar aqui cuenta como impulso (tooEarly).
         float delay = UnityEngine.Random.Range(waitMin * 0.3f, waitMin * 0.8f);
         float elapsed = 0f;
         while (elapsed < delay)
@@ -194,11 +218,12 @@ public class DontPressGameManager : MinigameBase
 
         if (!_waitingPhase || !_roundActive) yield break;
 
-        _ui.ButtonCtrl.SetActive();
-        _ui.SetStatusText("Aun no!", TXT_RED);
+        _ui.ButtonCtrl.SetFakeGreen();
+        _ui.SetStatusText("¡Parpadea! Ese verde es de mentira", TXT_YELLOW);
         _ui.Flash(C_YELLOW);
+        GameFeel.PlayPop();
 
-        yield return new WaitForSeconds(0.8f);
+        yield return new WaitForSeconds(1.0f);
 
         if (_waitingPhase && _roundActive)
         {
@@ -215,6 +240,8 @@ public class DontPressGameManager : MinigameBase
         _ui.ButtonCtrl.SetActive();
         _ui.SetStatusText("¡AHORA! ¡Pulsa el boton!", TXT_GREEN);
         _ui.Flash(C_GREEN);
+        GameFeel.PlayPop();
+        UITween.PulseOnce(_ui.ButtonRect, 1.12f, 0.22f);
     }
 
     void HandleFakeOut()
@@ -274,22 +301,37 @@ public class DontPressGameManager : MinigameBase
         if (correct)
         {
             _correctCount++;
+            ReportEvent(true, reactionMs);   // RT real de la ronda
+
             _ui.ButtonCtrl.SetCorrect();
             _ui.SetStatusText("¡Bien hecho!  " + reactionMs + " ms", TXT_GREEN);
             _ui.Flash(C_GREEN);
+            GameFeel.Success(_ui.ButtonRect);
+            GameFeel.FloatingText(reactionMs + " ms", TXT_GREEN,
+                                  new Vector2(0f, 250f), 42f);
         }
         else if (tooEarly)
         {
             _errors++;
+            ReportEvent(false, -1f);   // pulsacion prematura (impulso)
+
             _ui.ButtonCtrl.SetEarly();
-            _ui.SetStatusText("Demasiado pronto — impulso no controlado", TXT_RED);
+            _ui.SetStatusText("Demasiado pronto — ¡espera al verde fijo!", TXT_RED);
             _ui.Flash(C_RED);
+            GameFeel.Error(_ui.ButtonRect);
+            GameFeel.FloatingText("¡Demasiado pronto!", TXT_RED,
+                                  new Vector2(0f, 250f), 38f);
         }
         else
         {
+            ReportEvent(false, -1f);   // omision: no pulso a tiempo
+
             _ui.ButtonCtrl.SetMissed();
-            _ui.SetStatusText("Tiempo agotado — reaccion demasiado lenta", TXT_DIM);
+            _ui.SetStatusText("Tiempo agotado — ¡mas rapido la proxima!", TXT_DIM);
             _ui.Flash(C_GRAY);
+            GameFeel.PlayError();
+            GameFeel.FloatingText("¡Se escapo!", TXT_DIM,
+                                  new Vector2(0f, 250f), 38f);
         }
 
         _ui.SetRoundDot(_currentRound, correct);
@@ -297,20 +339,12 @@ public class DontPressGameManager : MinigameBase
         _currentRound++;
 
         bool allDone = _currentRound >= rounds;
+        bool canWin  = (_correctCount + (rounds - _currentRound)) >= roundsToWin;
 
-        if (_errors >= 3)
-        {
-            StartCoroutine(FinishGame(false));
-        }
-        else if (allDone)
-        {
-            bool won = _correctCount >= roundsToWin;
-            StartCoroutine(FinishGame(won));
-        }
+        if (allDone || !canWin)
+            StartCoroutine(FinishGame(_correctCount >= roundsToWin));
         else
-        {
             StartCoroutine(StartRoundDelayed(pauseBetweenRounds));
-        }
     }
 
     IEnumerator FinishGame(bool won)
@@ -318,8 +352,27 @@ public class DontPressGameManager : MinigameBase
         yield return new WaitForSeconds(1.2f);
 
         int score = CalculateScore(won);
-        CompleteMinigame(score);
-        _ui.ShowFinalResult(won, _correctCount, rounds, score);
+        if (won) CompleteMinigame(score);
+        else     FailMinigame();
+
+        float ratio = rounds > 0 ? (float)_correctCount / rounds : 0f;
+        int   stars = GameFeel.StarsFromRatio(won, ratio);
+        long  avgMs = _validReactions > 0 ? _totalReactionMs / _validReactions : 0;
+
+        string rtStat = _validReactions > 0
+            ? "Velocidad media: " + avgMs + " ms"
+            : "Velocidad media: -";
+
+        ShowResults(won, stars, score,
+            new[]
+            {
+                "Rondas perfectas: " + _correctCount + "/" + rounds,
+                rtStat,
+                "Pulsaciones antes de tiempo: " + _errors
+            },
+            null,
+            won ? "¡Resististe el impulso como un campeon!"
+                : "Truco: espera al VERDE FIJO, sin prisa");
     }
 
     int CalculateScore(bool won)
@@ -331,15 +384,5 @@ public class DontPressGameManager : MinigameBase
 
         int  speed   = Mathf.Max(0, Mathf.RoundToInt((700f - (float)avgMs) * 0.4f));
         return baseS + rounds_ + speed;
-    }
-
-    static void EnsureEventSystem()
-    {
-        if (FindObjectOfType<EventSystem>() == null)
-        {
-            var go = new GameObject("EventSystem");
-            go.AddComponent<EventSystem>();
-            go.AddComponent<StandaloneInputModule>();
-        }
     }
 }

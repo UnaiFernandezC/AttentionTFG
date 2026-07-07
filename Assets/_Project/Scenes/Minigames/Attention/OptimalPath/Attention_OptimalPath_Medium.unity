@@ -169,6 +169,17 @@ Camera:
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
   m_FOVAxisMode: 0
+  m_Iso: 200
+  m_ShutterSpeed: 0.005
+  m_Aperture: 16
+  m_FocusDistance: 10
+  m_FocalLength: 50
+  m_BladeCount: 5
+  m_Curvature: {x: 2, y: 11}
+  m_BarrelClipping: 0.25
+  m_Anamorphism: 0
+  m_SensorSize: {x: 36, y: 24}
+  m_LensShift: {x: 0, y: 0}
   m_NormalizedViewPortRect:
     serializedVersion: 2
     x: 0
@@ -244,21 +255,11 @@ MonoBehaviour:
   m_GameObject: {fileID: 100000020}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
-  minigameName: Ruta optima
-  category: 4
-  colsEasy: 5
-  rowsEasy: 5
-  obstaclesEasy: 0
-  colsMedium: 6
-  rowsMedium: 6
-  obstaclesMedium: 5
-  colsHard: 7
-  rowsHard: 7
-  obstaclesHard: 10
-  randomSeed: 0
+  m_Script: {fileID: 11500000, guid: 6d936483a8c346a6b5d8cab344af8731, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  minigameName: Camino numerico
+  category: 3
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

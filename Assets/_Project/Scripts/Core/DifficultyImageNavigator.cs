@@ -1,22 +1,24 @@
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 using UnityEngine;
 using UnityEngine.UI;
-using UnityEngine.SceneManagement;
 
+/// <summary>
+/// Selector de dificultad por imágenes (pantalla DifficultySelector, accesible
+/// solo desde el menú ESC). ARREGLADO: antes cargaba escenas inexistentes
+/// ("GameSelector", "GameSelector 1", "GameSelector 2"); ahora fija la
+/// dificultad (que se persiste en el perfil vía GameManager) y navega por
+/// SceneLoader al selector correcto de esa dificultad.
+/// </summary>
 public class DifficultyImageNavigator : MonoBehaviour
 {
-    [Header("Nombres de escena destino")]
-    [SerializeField] string easyScene   = "GameSelector";
-    [SerializeField] string mediumScene = "GameSelector 1";
-    [SerializeField] string hardScene   = "GameSelector 2";
-
     void Start()
     {
-        Setup("Image",      easyScene);
-        Setup("Image (1)",  mediumScene);
-        Setup("Image (2)",  hardScene);
+        Setup("Image",      DifficultyLevel.Easy);
+        Setup("Image (1)",  DifficultyLevel.Medium);
+        Setup("Image (2)",  DifficultyLevel.Hard);
     }
 
-    void Setup(string objectName, string sceneName)
+    void Setup(string objectName, DifficultyLevel level)
     {
         var go = GameObject.Find(objectName);
         if (go == null)
@@ -37,19 +39,17 @@ public class DifficultyImageNavigator : MonoBehaviour
         cb.pressedColor     = new Color(0.85f, 0.85f, 0.85f);
         btn.colors = cb;
 
-        string target = sceneName;
+        ButtonJuice.Attach(go);
+
+        DifficultyLevel captured = level;
         btn.onClick.RemoveAllListeners();
         btn.onClick.AddListener(() =>
         {
             if (GameManager.Instance != null)
-            {
-                if (target == easyScene)   GameManager.Instance.SetDifficulty(DifficultyLevel.Easy);
-                if (target == mediumScene) GameManager.Instance.SetDifficulty(DifficultyLevel.Medium);
-                if (target == hardScene)   GameManager.Instance.SetDifficulty(DifficultyLevel.Hard);
-            }
-            SceneTransition.LoadScene(target);
+                GameManager.Instance.SetDifficulty(captured);   // se persiste en el perfil
+            SceneLoader.LoadGameSelector();                     // escena válida garantizada
         });
 
-        Debug.Log($"[DifficultyImageNavigator] '{objectName}' → '{sceneName}'");
+        Debug.Log($"[DifficultyImageNavigator] '{objectName}' → dificultad {level}");
     }
 }

@@ -1,3 +1,4 @@
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 using System;
 using System.Collections;
 using UnityEngine;
@@ -29,6 +30,16 @@ public class PauseMenuController : MonoBehaviour
     RectTransform _mainPanel;
     float _volMaster;
 
+    // Auto-arranque: el menú de pausa existe en TODAS las escenas (así ESC funciona
+    // también en el hub del Planeta Attentia y demás pantallas), sin colocarlo a mano.
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+    static void Bootstrap()
+    {
+        if (Instance != null) return;
+        var go = new GameObject("PauseMenuController");
+        go.AddComponent<PauseMenuController>();
+    }
+
     void Awake()
     {
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
@@ -46,6 +57,12 @@ public class PauseMenuController : MonoBehaviour
 
     void Update()
     {
+        // No pausar con ningún overlay del sistema abierto (PIN, tutorial, perfiles,
+        // privacidad, consentimiento, hub, área del tutor o pantalla de error).
+        if (PinPrompt.IsOpen || TutorialScreen.IsOpen || ProfileScreenController.IsOpen ||
+            PolicyViewer.IsOpen || ConsentScreen.IsOpen || ProgressMapScreen.IsOpen ||
+            TutorPanel.IsOpen || NavErrorScreen.IsOpen) return;
+
         if (Input.GetKeyDown(KeyCode.Escape))
         {
             if (_isOpen) Resume(); else Open();
@@ -79,7 +96,7 @@ public class PauseMenuController : MonoBehaviour
         cGO.transform.SetParent(transform, false);
         _canvas = cGO.AddComponent<Canvas>();
         _canvas.renderMode   = RenderMode.ScreenSpaceOverlay;
-        _canvas.sortingOrder = 100;
+        _canvas.sortingOrder = 870;   // por encima del hub (820) y otras pantallas de menú
         var sc = cGO.AddComponent<CanvasScaler>();
         sc.uiScaleMode         = CanvasScaler.ScaleMode.ScaleWithScreenSize;
         sc.referenceResolution = new Vector2(1920f, 1080f);
@@ -101,22 +118,24 @@ public class PauseMenuController : MonoBehaviour
         _mainPanel = panGO.AddComponent<RectTransform>();
         _mainPanel.anchorMin = _mainPanel.anchorMax = new Vector2(0.5f, 0.5f);
         _mainPanel.pivot     = new Vector2(0.5f, 0.5f);
-        _mainPanel.sizeDelta = new Vector2(680f, 420f);
+        _mainPanel.sizeDelta = new Vector2(680f, 600f);
         _mainPanel.anchoredPosition = Vector2.zero;
-        panGO.AddComponent<Image>().color = BG;
+        var panImg = panGO.AddComponent<Image>();
+        panImg.color = BG;
+        panImg.sprite = KidUI.RoundedSprite;
+        panImg.type = Image.Type.Sliced;
+        panImg.pixelsPerUnitMultiplier = 0.9f;
 
-        MkImg(_mainPanel, "BdrT",   ACCENT, V(0,1),      V(1,1),      V(0,-2),    V(0,4));
-        MkImg(_mainPanel, "BdrB",   DIM,    V(0,0),      V(1,0),      V(0,2),     V(0,2));
-        MkImg(_mainPanel, "BdrL",   ACCENT, V(0,0.1f),   V(0,0.9f),   V(3,0),     V(6,0));
-        MkImg(_mainPanel, "NtchTL", ACCENT, V(0,1),      V(0,1),      V(24,-24),  V(40,4));
-        MkImg(_mainPanel, "NtchTR", ACCENT, V(1,1),      V(1,1),      V(-24,-24), V(40,4));
+        // Acento superior redondeado (sustituye a los bordes/notches rectos)
+        var accTop = MkImg(_mainPanel, "AccTop", ACCENT, V(0.36f, 0.985f), V(0.64f, 0.994f), V(0,0), V(0,0));
+        MakeRounded(accTop, 4f);
 
-        var hdr = MkImg(_mainPanel, "Header", HDR, V(0,0.80f), V(1,1), V(0,0), V(0,0));
-        MkImg(hdr, "LineB", ACCENT, V(0,0), V(1,0), V(0,1.5f), V(0,3));
-        MkImg(hdr, "AccL",  ACCENT, V(0,0.15f), V(0,0.85f), V(3,0), V(6,0));
+        var hdr = MkImg(_mainPanel, "Header", HDR, V(0.025f, 0.80f), V(0.975f, 0.985f), V(0,0), V(0,0));
+        MakeRounded(hdr, 1.4f);
+        MkImg(hdr, "LineB", ACCENT, V(0.03f,0), V(0.97f,0), V(0,1.5f), V(0,3));
 
         var ttl = MkTxt(hdr, "Title", "MENU DE PAUSA", Color.white, 32,
-                        V(0.04f, 0.1f), V(0.82f, 0.9f));
+                        V(0.04f, 0.1f), V(0.70f, 0.9f));
         ttl.fontStyle = FontStyles.Bold;
         ttl.alignment = TextAlignmentOptions.MidlineLeft;
         ttl.characterSpacing = 3f;
@@ -141,7 +160,19 @@ public class PauseMenuController : MonoBehaviour
         SetBtnColors(closeBtn);
         closeBtn.onClick.AddListener(Resume);
 
-        var slRow = MkImg(_mainPanel, "SlRow", Color.clear, V(0.05f, 0.52f), V(0.95f, 0.76f), V(0,0), V(0,0));
+        // Botón de ayuda "?" → reabre el tutorial cuando se quiera.
+        var helpRT = MkImg(hdr, "HelpBtn", C(0.10f, 0.16f, 0.30f, 0.90f),
+                           V(0.72f, 0.10f), V(0.815f, 0.90f), V(0,0), V(0,0));
+        MakeRounded(helpRT, 2f);
+        var helpT = MkTxt(helpRT, "QT", "?", Color.white, 26, V(0,0), V(1,1));
+        helpT.fontStyle = FontStyles.Bold;
+        helpT.alignment = TextAlignmentOptions.Center;
+        var helpBtn = helpRT.gameObject.AddComponent<Button>();
+        helpBtn.targetGraphic = helpRT.GetComponent<Image>();
+        SetBtnColors(helpBtn);
+        helpBtn.onClick.AddListener(() => TutorialScreen.Show());
+
+        var slRow = MkImg(_mainPanel, "SlRow", Color.clear, V(0.05f, 0.635f), V(0.95f, 0.79f), V(0,0), V(0,0));
 
         var lblT = MkTxt(slRow, "Lbl", "Volumen Master", Color.white, 19,
                          V(0.02f, 0.52f), V(0.60f, 0.95f));
@@ -187,15 +218,91 @@ public class PauseMenuController : MonoBehaviour
             PlayerPrefs.Save();
         });
 
-        MkImg(_mainPanel, "Sep", C(1,1,1,0.08f), V(0.05f, 0.48f), V(0.95f, 0.48f), V(0,1), V(0,2));
+        MkImg(_mainPanel, "Sep", C(1,1,1,0.08f), V(0.05f, 0.60f), V(0.95f, 0.60f), V(0,1), V(0,2));
 
         BuildBtn(_mainPanel, "Cerrar menu", ACCENT,
-                 V(0.05f, 0.08f), V(0.47f, 0.42f),
+                 V(0.05f, 0.455f), V(0.47f, 0.575f),
                  Resume, PANEL);
 
         BuildBtn(_mainPanel, "Elegir dificultad", CDIFF,
-                 V(0.53f, 0.08f), V(0.95f, 0.42f),
+                 V(0.53f, 0.455f), V(0.95f, 0.575f),
                  GoToDifficulty, PANEL);
+
+        // --- Fila del sistema de perfiles/informes ---
+        BuildBtn(_mainPanel, "Descargar informe", C(0.95f, 0.55f, 0.12f),
+                 V(0.05f, 0.305f), V(0.47f, 0.425f),
+                 OnDownloadReport, PANEL);
+
+        BuildBtn(_mainPanel, "Cambiar jugador", C(0.58f, 0.28f, 0.92f),
+                 V(0.53f, 0.305f), V(0.95f, 0.425f),
+                 OnSwitchProfile, PANEL);
+
+        // --- Volver al menú principal (hub Planeta Attentia: mapa, misiones, logros) ---
+        BuildBtn(_mainPanel, "Menu principal", C(0.20f, 0.78f, 0.95f),
+                 V(0.05f, 0.09f), V(0.66f, 0.25f),
+                 GoToMissions, PANEL);
+
+        // --- Releer la política de privacidad (se aceptó en el primer arranque) ---
+        BuildBtn(_mainPanel, "Privacidad", C(0.45f, 0.52f, 0.68f),
+                 V(0.70f, 0.09f), V(0.95f, 0.25f),
+                 PolicyViewer.Show, PANEL);
+    }
+
+    /// <summary>
+    /// Cierra la pausa y abre el hub "Planeta Attentia" (misión de hoy, progreso,
+    /// logros). Solo si hay un perfil activo; en modo invitado no hay misiones.
+    /// </summary>
+    void GoToMissions()
+    {
+        var pm = ProfileManager.Instance;
+        if (pm == null || !pm.HasActiveProfile)
+        {
+            GameFeel.FloatingText("Necesitas un perfil para ver tu planeta",
+                                  new Color(0.95f, 0.55f, 0.12f), null, 34f);
+            return;
+        }
+        Time.timeScale = 1f;
+        _isOpen = false;
+        SetVisible(false, instant: true);
+        // Navega a la pantalla principal: el hub se abre solo al cargarla
+        // (si mostrásemos el mapa aquí, el minijuego seguiría corriendo debajo).
+        SceneLoader.GoToMainMenu();
+    }
+
+    /// <summary>
+    /// Genera el informe del perfil activo. Protegido por el PIN del tutor
+    /// (si aún no existe PIN, guía su creación). Requiere un perfil activo.
+    /// </summary>
+    void OnDownloadReport()
+    {
+        var pm = ProfileManager.Instance;
+        if (pm == null || !pm.HasActiveProfile)
+        {
+            // Feedback visible (antes solo salía en la consola)
+            GameFeel.FloatingText("Necesitas un perfil para el informe",
+                                  new Color(0.95f, 0.55f, 0.12f), null, 34f);
+            return;
+        }
+        var profile = pm.ActiveProfile;
+        PinPrompt.Show(onSuccess: () =>
+        {
+            string folder;
+            bool ok = ReportGenerator.GenerateAndOpen(profile, out folder);
+            Debug.Log(ok ? $"[PauseMenu] Informe generado en {folder}"
+                         : "[PauseMenu] Error al generar el informe.");
+        });
+    }
+
+    /// <summary>Cierra la sesión actual y vuelve a la pantalla de selección de perfil.</summary>
+    void OnSwitchProfile()
+    {
+        _isOpen = false;
+        Time.timeScale = 1f;
+        SetVisible(false, instant: true);
+        if (ProfileManager.Instance != null)
+            ProfileManager.Instance.SwitchProfile();
+        else
+            SceneTransition.LoadScene(SceneLoader.MAIN_MENU);
     }
 
     void GoToDifficulty()
@@ -249,13 +356,25 @@ public class PauseMenuController : MonoBehaviour
         onDone?.Invoke();
     }
 
+    /// <summary>Aplica esquinas redondeadas a una imagen ya creada.</summary>
+    static void MakeRounded(RectTransform rt, float cornerScale = 1.2f)
+    {
+        var img = rt.GetComponent<Image>();
+        if (img == null) return;
+        img.sprite = KidUI.RoundedSprite;
+        img.type = Image.Type.Sliced;
+        img.pixelsPerUnitMultiplier = cornerScale;
+    }
+
     void BuildBtn(RectTransform p, string label, Color accentLine,
                   Vector2 am, Vector2 aM, Action onClick, Color bg)
     {
         var rt = MkImg(p, "Btn_" + label, bg, am, aM, V(0,0), V(0,0));
+        MakeRounded(rt, 1.3f);
 
-        MkImg(rt, "LineT", accentLine, V(0,1), V(1,1), V(0,-2), V(0,4));
-        MkImg(rt, "Sh",    C(1,1,1,0.06f), V(0,0.5f), V(1,1), V(0,0), V(0,0));
+        var lineT = MkImg(rt, "LineT", accentLine, V(0.08f,1), V(0.92f,1), V(0,-3), V(0,4));
+        MakeRounded(lineT, 4f);
+        ButtonJuice.Attach(rt.gameObject);
 
         var btn = rt.gameObject.AddComponent<Button>();
         btn.targetGraphic = rt.GetComponent<Image>();

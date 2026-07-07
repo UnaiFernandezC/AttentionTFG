@@ -1,77 +1,85 @@
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 using System.Collections;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
+/// <summary>
+/// Orden correcto — "Ordena la mision" (categoria Planificacion).
+/// Easy:   1-6 ascendente (rondas de 4, 5 y 6 numeros).
+/// Medium: 1-10 ascendente con algunos numeros ya colocados.
+/// Hard:   descendente 20→11 o de 2 en 2 (variante aleatoria por ronda).
+/// </summary>
 public class OrderGameController : MinigameBase
 {
 
-    [Header("Ronda 1")]
+    [Header("Tiempos por ronda (fallback, ApplyDifficulty manda)")]
     public int   numbersRound1   = 4;
-    public float timeLimitRound1 = 15f;
-
-    [Header("Ronda 2")]
-    public int   numbersRound2   = 6;
-    public float timeLimitRound2 = 20f;
-
-    [Header("Ronda 3")]
-    public int   numbersRound3   = 10;
+    public float timeLimitRound1 = 20f;
+    public int   numbersRound2   = 5;
+    public float timeLimitRound2 = 25f;
+    public int   numbersRound3   = 6;
     public float timeLimitRound3 = 30f;
 
+    private class RoundCfg
+    {
+        public int[]  values;
+        public bool   descending;
+        public int    prePlaced;
+        public float  timeLimit;
+        public string instruction;
+        public bool   showNext;
+    }
+
+    private const int TOTAL_ROUNDS = 3;
+
+    private RoundCfg[]   _rounds;
     private OrderManager _orderManager;
 
-    private int   _currentRound   = 0;
-    private const int TOTAL_ROUNDS = 3;
-    private int   _totalErrors     = 0;
-    private float _totalTime       = 0f;
-    private int   _totalScore      = 0;
+    private int   _currentRound  = 0;
+    private int   _totalErrors   = 0;
+    private int   _totalCorrect  = 0;
+    private float _totalTime     = 0f;
+    private int   _totalScore    = 0;
 
-    private bool  _roundRunning    = false;
-    private float _timeRemaining   = 0f;
-    private float _roundElapsed    = 0f;
-    private int   _roundErrors     = 0;
+    private bool  _roundRunning  = false;
+    private float _timeRemaining = 0f;
+    private float _roundElapsed  = 0f;
+    private int   _roundErrors   = 0;
+    private float _lastPressTime = 0f;
 
-    private Canvas                    _canvas;
-    private TMPro.TextMeshProUGUI     _errorsLabel;
-    private TMPro.TextMeshProUGUI     _timerLabel;
-    private TMPro.TextMeshProUGUI     _nextLabel;
-    private GameObject                _nextPanel;
-    private RectTransform             _gridContainer;
+    private Canvas                _canvas;
+    private TMPro.TextMeshProUGUI _errorsLabel;
+    private TMPro.TextMeshProUGUI _timerLabel;
+    private TMPro.TextMeshProUGUI _nextLabel;
+    private TMPro.TextMeshProUGUI _instrLabel;
+    private GameObject            _nextPanel;
+    private RectTransform         _gridContainer;
 
-    private TMPro.TextMeshProUGUI     _roundLabel;
-    private Image[]                   _roundDots;
+    private TMPro.TextMeshProUGUI _roundLabel;
+    private Image[]               _roundDots;
 
-    private GameObject                _transPanel;
-    private int                       _transNextRound;
-    private TMPro.TextMeshProUGUI     _transTitle;
-    private TMPro.TextMeshProUGUI     _transSubtitle;
-
-    private GameObject                _endPanel;
-    private TMPro.TextMeshProUGUI     _endTitle;
-    private TMPro.TextMeshProUGUI     _statRounds;
-    private TMPro.TextMeshProUGUI     _statErrors;
-    private TMPro.TextMeshProUGUI     _statTime;
-    private TMPro.TextMeshProUGUI     _statScore;
-    private Image                     _endAccentBar;
+    private GameObject            _transPanel;
+    private int                   _transNextRound;
+    private TMPro.TextMeshProUGUI _transTitle;
+    private TMPro.TextMeshProUGUI _transSubtitle;
 
     private static readonly Color C_BG_DARK  = new Color(0.08f, 0.09f, 0.18f);
     private static readonly Color C_PANEL    = new Color(0.13f, 0.14f, 0.26f);
     private static readonly Color C_ACCENT   = new Color(0.25f, 0.55f, 1.00f);
     private static readonly Color C_GREEN    = new Color(0.20f, 0.78f, 0.48f);
     private static readonly Color C_RED      = new Color(0.85f, 0.25f, 0.32f);
-    private static readonly Color C_BTN_BLUE = new Color(0.22f, 0.50f, 0.95f);
-    private static readonly Color C_BTN_GREY = new Color(0.30f, 0.32f, 0.40f);
     private static readonly Color C_TEXT_DIM = new Color(0.65f, 0.68f, 0.80f);
     private static readonly Color C_DOT_OFF  = new Color(0.25f, 0.27f, 0.45f);
 
     protected override string GetIntroDescription() =>
-        "Apareceran numeros desordenados en pantalla.\n" +
-        "Haz clic en ellos de menor a mayor antes de que se acabe el tiempo.\n" +
-        "Hay 3 rondas con mas numeros y menos tiempo. Piensa rapido!";
+        "Los numeros de la mision estan revueltos.\n" +
+        "Pulsalos en el orden que se pide antes de que acabe el tiempo.";
 
     protected override void OnMinigameStart()
     {
         EnsureEventSystem();
+        ApplyDifficulty();
         BuildUI();
         ResetTotals();
         StartRound(0);
@@ -80,10 +88,98 @@ public class OrderGameController : MinigameBase
     protected override void OnMinigameComplete() { }
     protected override void OnMinigameFailed()   { }
 
+    private void ApplyDifficulty()
+    {
+        var diff = GameManager.Instance != null
+            ? GameManager.Instance.CurrentDifficulty
+            : DifficultyLevel.Easy;
+
+        _rounds = new RoundCfg[TOTAL_ROUNDS];
+
+        switch (diff)
+        {
+            case DifficultyLevel.Medium:
+            {
+                int[]   counts = { 8, 9, 10 };
+                int[]   placed = { 2, 2, 3 };
+                float[] times  = { 30f, 35f, 40f };
+                for (int r = 0; r < TOTAL_ROUNDS; r++)
+                {
+                    _rounds[r] = new RoundCfg
+                    {
+                        values      = Range(1, counts[r], 1),
+                        descending  = false,
+                        prePlaced   = placed[r],
+                        timeLimit   = times[r],
+                        instruction = "De MENOR a MAYOR. Los verdes ya estan colocados",
+                        showNext    = true
+                    };
+                }
+                break;
+            }
+
+            case DifficultyLevel.Hard:
+            {
+                float[] times = { 40f, 40f, 45f };
+                for (int r = 0; r < TOTAL_ROUNDS; r++)
+                {
+                    bool countdown = Random.value < 0.5f;
+                    _rounds[r] = countdown
+                        ? new RoundCfg
+                        {
+                            values      = Range(11, 10, 1),
+                            descending  = true,
+                            prePlaced   = 0,
+                            timeLimit   = times[r],
+                            instruction = "¡Al reves! De MAYOR a MENOR: 20, 19, 18...",
+                            showNext    = false
+                        }
+                        : new RoundCfg
+                        {
+                            values      = Range(2, 10, 2),
+                            descending  = false,
+                            prePlaced   = 0,
+                            timeLimit   = times[r],
+                            instruction = "¡De 2 en 2! 2, 4, 6, 8...",
+                            showNext    = false
+                        };
+                }
+                break;
+            }
+
+            default: // Easy
+            {
+                int[]   counts = { 4, 5, 6 };
+                float[] times  = { timeLimitRound1, timeLimitRound2, timeLimitRound3 };
+                for (int r = 0; r < TOTAL_ROUNDS; r++)
+                {
+                    _rounds[r] = new RoundCfg
+                    {
+                        values      = Range(1, counts[r], 1),
+                        descending  = false,
+                        prePlaced   = 0,
+                        timeLimit   = times[r] > 1f ? times[r] : 20f + r * 5f,
+                        instruction = "Pulsa los numeros de MENOR a MAYOR",
+                        showNext    = true
+                    };
+                }
+                break;
+            }
+        }
+    }
+
+    private static int[] Range(int start, int count, int step)
+    {
+        var arr = new int[count];
+        for (int i = 0; i < count; i++) arr[i] = start + i * step;
+        return arr;
+    }
+
     private void ResetTotals()
     {
         _currentRound = 0;
         _totalErrors  = 0;
+        _totalCorrect = 0;
         _totalTime    = 0f;
         _totalScore   = 0;
     }
@@ -94,24 +190,19 @@ public class OrderGameController : MinigameBase
         _roundErrors   = 0;
         _roundElapsed  = 0f;
         _roundRunning  = true;
+        _lastPressTime = Time.realtimeSinceStartup;
 
-        int   count;
-        float limit;
-        GetRoundConfig(roundIndex, out count, out limit);
-        _timeRemaining = limit;
+        RoundCfg cfg   = _rounds[roundIndex];
+        _timeRemaining = cfg.timeLimit;
 
         UpdateRoundIndicator(roundIndex);
 
-        bool showNext = roundIndex < 2;
-        _nextPanel.SetActive(showNext);
-        if (showNext && _nextLabel != null)
-            _nextLabel.text = "Siguiente: 1";
+        if (_instrLabel != null) _instrLabel.text = cfg.instruction;
 
         _errorsLabel.text = "Errores: 0";
         UpdateTimerUI();
 
         _transPanel.SetActive(false);
-        _endPanel.SetActive(false);
 
         for (int i = _gridContainer.childCount - 1; i >= 0; i--)
             DestroyImmediate(_gridContainer.GetChild(i).gameObject);
@@ -130,78 +221,112 @@ public class OrderGameController : MinigameBase
         _orderManager.OnWrongPress   += HandleWrong;
         _orderManager.OnComplete     += HandleRoundComplete;
 
-        _orderManager.Initialize(_gridContainer, count);
+        float btnSize = cfg.values.Length >= 8 ? 118f : 130f;
+        _orderManager.Initialize(_gridContainer, cfg.values, cfg.descending,
+                                 cfg.prePlaced, btnSize);
+
+        _nextPanel.SetActive(cfg.showNext);
+        if (cfg.showNext && _nextLabel != null)
+            _nextLabel.text = $"Siguiente: {_orderManager.NextExpectedValue}";
     }
 
-    private void GetRoundConfig(int roundIndex, out int count, out float limit)
+    private void HandleCorrect(int nextExpectedValue)
     {
-        switch (roundIndex)
-        {
-            case 0:  count = numbersRound1; limit = timeLimitRound1; break;
-            case 1:  count = numbersRound2; limit = timeLimitRound2; break;
-            default: count = numbersRound3; limit = timeLimitRound3; break;
-        }
-    }
+        if (!IsPlaying) return;
+        float rtMs = (Time.realtimeSinceStartup - _lastPressTime) * 1000f;
+        _lastPressTime = Time.realtimeSinceStartup;
 
-    private void HandleCorrect(int nextExpected)
-    {
-        bool showNext = _currentRound < 2;
-        if (showNext && _nextLabel != null)
-        {
-            int count; float limit;
-            GetRoundConfig(_currentRound, out count, out limit);
-            if (nextExpected <= count)
-                _nextLabel.text = $"Siguiente: {nextExpected}";
-        }
+        _totalCorrect++;
+        ReportEvent(true, rtMs);
+        GameFeel.PlayPop();
+
+        if (_nextPanel.activeSelf && _nextLabel != null)
+            _nextLabel.text = nextExpectedValue > 0
+                ? $"Siguiente: {nextExpectedValue}"
+                : "¡Ultimo!";
     }
 
     private void HandleWrong(int totalWrong)
     {
+        if (!IsPlaying) return;
+        float rtMs = (Time.realtimeSinceStartup - _lastPressTime) * 1000f;
+        _lastPressTime = Time.realtimeSinceStartup;
+
         _roundErrors++;
         _totalErrors++;
+        ReportEvent(false, rtMs);
+        GameFeel.PlayError();
         _errorsLabel.text = $"Errores: {_totalErrors}";
     }
 
     private void HandleRoundComplete()
     {
+        if (!IsPlaying) return;
         _roundRunning = false;
         _totalTime   += _roundElapsed;
 
-        int count; float limit;
-        GetRoundConfig(_currentRound, out count, out limit);
-        int roundScore = Mathf.Max(0, count * 100 - _roundErrors * 15 +
+        RoundCfg cfg   = _rounds[_currentRound];
+        int pressable  = cfg.values.Length - cfg.prePlaced;
+        int roundScore = Mathf.Max(0, pressable * 100 - _roundErrors * 15 +
                                    Mathf.RoundToInt(_timeRemaining * 2f));
         _totalScore += roundScore;
+
+        GameFeel.PlaySuccess();
+        GameFeel.Confetti(20);
 
         bool isLastRound = (_currentRound >= TOTAL_ROUNDS - 1);
 
         if (isLastRound)
-        {
-
-            CompleteMinigame(_totalScore);
-            ShowEndPanel(won: true);
-        }
+            FinishGame(won: true);
         else
-        {
-
             StartCoroutine(RoundTransition(_currentRound));
-        }
     }
 
     private IEnumerator RoundTransition(int completedRound)
     {
+        yield return new WaitForSeconds(0.5f);
         _transPanel.SetActive(true);
         _transPanel.transform.SetAsLastSibling();
-        _transTitle.text    = $"Ronda {completedRound + 1} completada";
+        _transTitle.text    = $"¡Ronda {completedRound + 1} completada!";
         _transSubtitle.text = "Pulsa Continuar para la siguiente ronda";
         _transNextRound     = completedRound + 1;
-        yield break;
     }
 
     private void OnTransContinue()
     {
         _transPanel.SetActive(false);
         StartRound(_transNextRound);
+    }
+
+    private void FinishGame(bool won)
+    {
+        int total  = _totalCorrect + _totalErrors;
+        float ratio = total > 0 ? (float)_totalCorrect / total : 0f;
+        int roundsDone = won ? TOTAL_ROUNDS : _currentRound;
+
+        var stats = new[]
+        {
+            $"Rondas: {roundsDone} / {TOTAL_ROUNDS}",
+            $"Errores: {_totalErrors}",
+            $"Tiempo: {FormatTime(_totalTime)}"
+        };
+
+        if (won)
+        {
+            CompleteMinigame(_totalScore);
+            ShowResults(true, GameFeel.StarsFromRatio(true, ratio), _totalScore, stats,
+                _totalErrors == 0 ? "¡Orden perfecto!" : null,
+                _totalErrors == 0 ? "Ni un solo fallo" : null);
+        }
+        else
+        {
+            GameFeel.PlayError();
+            GameFeel.ScreenFlash(C_RED, 0.18f, 0.3f);
+            FailMinigame();
+            ShowResults(false, 0, 0, stats,
+                "¡Tiempo agotado!",
+                "Piensa el orden y ve numero a numero");
+        }
     }
 
     private void Update()
@@ -216,8 +341,7 @@ public class OrderGameController : MinigameBase
         {
             _roundRunning = false;
             _totalTime   += _roundElapsed;
-            FailMinigame();
-            ShowEndPanel(won: false);
+            FinishGame(won: false);
         }
     }
 
@@ -253,7 +377,7 @@ public class OrderGameController : MinigameBase
             new Vector2(0f, 0f), new Vector2(1f, 0f),
             new Vector2(0f, 3f), new Vector2(0f, 3f));
 
-        var titleLbl = MakeLabel(headerRT, "Title", "Orden correcto",
+        var titleLbl = MakeLabel(headerRT, "Title", "Ordena la mision",
             Color.white, 50f,
             new Vector2(0.12f, 0f), new Vector2(0.88f, 1f), Vector2.zero, Vector2.zero);
         titleLbl.fontStyle = TMPro.FontStyles.Bold;
@@ -265,7 +389,7 @@ public class OrderGameController : MinigameBase
             new Vector2(24f, 0f), new Vector2(0f, 0f));
         _errorsLabel.alignment = TMPro.TextAlignmentOptions.MidlineLeft;
 
-        _timerLabel = MakeLabel(headerRT, "Timer", "0:15",
+        _timerLabel = MakeLabel(headerRT, "Timer", "0:20",
             C_ACCENT, 44f,
             new Vector2(0.65f, 0f), new Vector2(1f, 1f),
             new Vector2(0f, 0f), new Vector2(-24f, 0f));
@@ -278,11 +402,11 @@ public class OrderGameController : MinigameBase
             new Color(0.12f, 0.14f, 0.28f),
             new Vector2(0f, 1f), new Vector2(1f, 1f),
             new Vector2(0f, -200f), new Vector2(0f, 48f));
-        var instrLbl = MakeLabel(instrBar.GetComponent<RectTransform>(), "Instr",
-            "Pulsa los numeros en orden: del menor al mayor",
+        _instrLabel = MakeLabel(instrBar.GetComponent<RectTransform>(), "Instr",
+            "Pulsa los numeros de MENOR a MAYOR",
             new Color(0.72f, 0.76f, 0.92f), 31f,
             Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
-        instrLbl.alignment = TMPro.TextAlignmentOptions.Center;
+        _instrLabel.alignment = TMPro.TextAlignmentOptions.Center;
 
         _nextPanel = new GameObject("NextPanel");
         _nextPanel.transform.SetParent(root, false);
@@ -310,10 +434,7 @@ public class OrderGameController : MinigameBase
         _gridContainer.anchoredPosition = new Vector2(0f, 30f);
         _gridContainer.sizeDelta        = new Vector2(600f, 400f);
 
-
         BuildTransitionPanel(root);
-
-        BuildEndPanel(root);
     }
 
     private void BuildRoundIndicator(RectTransform root)
@@ -373,7 +494,7 @@ public class OrderGameController : MinigameBase
         _transTitle.fontStyle = TMPro.FontStyles.Bold;
         _transTitle.alignment = TMPro.TextAlignmentOptions.Center;
 
-        _transSubtitle = MakeLabel(cardRT, "TransSub", "Siguiente ronda en 3...",
+        _transSubtitle = MakeLabel(cardRT, "TransSub", "",
             C_TEXT_DIM, 34f,
             new Vector2(0.05f, 0.30f), new Vector2(0.95f, 0.55f), Vector2.zero, Vector2.zero);
         _transSubtitle.alignment = TMPro.TextAlignmentOptions.Center;
@@ -384,76 +505,6 @@ public class OrderGameController : MinigameBase
             () => OnTransContinue());
 
         _transPanel.SetActive(false);
-    }
-
-    private void BuildEndPanel(RectTransform root)
-    {
-        _endPanel = new GameObject("EndPanel");
-        _endPanel.transform.SetParent(root, false);
-        var overlayRT = _endPanel.AddComponent<RectTransform>();
-        overlayRT.anchorMin = Vector2.zero;
-        overlayRT.anchorMax = Vector2.one;
-        overlayRT.sizeDelta = Vector2.zero;
-
-        var overlay = _endPanel.AddComponent<Image>();
-        overlay.color = new Color(0f, 0f, 0f, 0.80f);
-
-        var card = MakePanel(overlayRT, "Card", C_PANEL,
-            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
-            Vector2.zero, new Vector2(760f, 640f));
-        var cardRT = card.GetComponent<RectTransform>();
-
-        _endAccentBar = MakePanel(cardRT, "AccentBar", C_GREEN,
-            new Vector2(0f, 1f), new Vector2(1f, 1f),
-            new Vector2(0f, -14f), new Vector2(0f, 28f)).GetComponent<Image>();
-
-        _endTitle = MakeLabel(cardRT, "EndTitle", "Completado",
-            Color.white, 64f,
-            new Vector2(0.05f, 1f), new Vector2(0.95f, 1f),
-            new Vector2(0f, -90f), new Vector2(0f, -28f));
-        _endTitle.fontStyle = TMPro.FontStyles.Bold;
-        _endTitle.alignment = TMPro.TextAlignmentOptions.Center;
-
-        MakePanel(cardRT, "Divider", new Color(1f, 1f, 1f, 0.08f),
-            new Vector2(0.08f, 1f), new Vector2(0.92f, 1f),
-            new Vector2(0f, -130f), new Vector2(0f, 2f));
-
-        float rowTop = -148f;
-        float rowH   = 74f;
-        _statRounds = BuildStatRow(cardRT, "Rondas completadas", "0 / 3", rowTop);
-        _statErrors = BuildStatRow(cardRT, "Errores totales",    "0",    rowTop - rowH);
-        _statTime   = BuildStatRow(cardRT, "Tiempo total",       "0:00", rowTop - rowH * 2f);
-        _statScore  = BuildStatRow(cardRT, "Puntuacion",         "0",    rowTop - rowH * 3f);
-
-        MakeButton(cardRT, "BtnReplay", "Jugar de nuevo", C_BTN_BLUE,
-            new Vector2(0.06f, 0f), new Vector2(0.49f, 0f),
-            new Vector2(0f, 150f), new Vector2(0f, 72f),
-            () => { _endPanel.SetActive(false); ResetTotals(); StartRound(0); });
-
-        MakeButton(cardRT, "BtnMenu", "Volver a la seccion", new Color(0.18f,0.22f,0.36f),
-            new Vector2(0.51f, 0f), new Vector2(0.94f, 0f),
-            new Vector2(0f, 150f), new Vector2(0f, 72f),
-            () => ReturnToGameSelector());
-
-        MakeButton(cardRT, "BtnMain", "Menu principal", new Color(0.10f,0.13f,0.22f),
-            new Vector2(0.06f, 0f), new Vector2(0.94f, 0f),
-            new Vector2(0f, 64f), new Vector2(0f, 66f),
-            () => SceneLoader.GoToMainMenu());
-
-        _endPanel.SetActive(false);
-    }
-
-    private void ShowEndPanel(bool won)
-    {
-        _endPanel.SetActive(true);
-        _endAccentBar.color = won ? C_GREEN : C_RED;
-        _endTitle.text      = won ? "Completado!" : "Tiempo agotado";
-
-        int roundsDone = won ? TOTAL_ROUNDS : _currentRound;
-        _statRounds.text = $"{roundsDone} / {TOTAL_ROUNDS}";
-        _statErrors.text = $"{_totalErrors}";
-        _statTime.text   = FormatTime(_totalTime);
-        _statScore.text  = $"{_totalScore}";
     }
 
     private void UpdateRoundIndicator(int roundIndex)
@@ -467,41 +518,6 @@ public class OrderGameController : MinigameBase
     {
         _timerLabel.text  = FormatTime(_timeRemaining);
         _timerLabel.color = _timeRemaining < 5f ? C_RED : C_ACCENT;
-    }
-
-    private TMPro.TextMeshProUGUI BuildStatRow(RectTransform parent,
-                                               string labelText, string valueText,
-                                               float anchoredY)
-    {
-        var rowGO = new GameObject($"Row_{labelText}");
-        rowGO.transform.SetParent(parent, false);
-        var rowRT = rowGO.AddComponent<RectTransform>();
-        rowRT.anchorMin        = new Vector2(0.08f, 1f);
-        rowRT.anchorMax        = new Vector2(0.92f, 1f);
-        rowRT.pivot            = new Vector2(0.5f, 1f);
-        rowRT.anchoredPosition = new Vector2(0f, anchoredY);
-        rowRT.sizeDelta        = new Vector2(0f, 64f);
-
-        var lblGO = new GameObject("Lbl");
-        lblGO.transform.SetParent(rowGO.transform, false);
-        var lblRT = lblGO.AddComponent<RectTransform>();
-        lblRT.anchorMin = new Vector2(0f, 0f); lblRT.anchorMax = new Vector2(0.60f, 1f);
-        lblRT.sizeDelta = Vector2.zero;
-        var lblTmp = lblGO.AddComponent<TMPro.TextMeshProUGUI>();
-        lblTmp.text = labelText; lblTmp.color = C_TEXT_DIM;
-        lblTmp.fontSize = 33f; lblTmp.alignment = TMPro.TextAlignmentOptions.MidlineLeft;
-
-        var valGO = new GameObject("Val");
-        valGO.transform.SetParent(rowGO.transform, false);
-        var valRT = valGO.AddComponent<RectTransform>();
-        valRT.anchorMin = new Vector2(0.60f, 0f); valRT.anchorMax = new Vector2(1f, 1f);
-        valRT.sizeDelta = Vector2.zero;
-        var valTmp = valGO.AddComponent<TMPro.TextMeshProUGUI>();
-        valTmp.text = valueText; valTmp.color = Color.white;
-        valTmp.fontSize = 38f; valTmp.fontStyle = TMPro.FontStyles.Bold;
-        valTmp.alignment = TMPro.TextAlignmentOptions.MidlineRight;
-
-        return valTmp;
     }
 
     private static void ApplyRT(RectTransform rt, Vector2 amin, Vector2 amax,
@@ -549,6 +565,7 @@ public class OrderGameController : MinigameBase
         cb.normalColor = Color.white; cb.highlightedColor = new Color(1f,1f,1f,0.85f);
         cb.pressedColor = new Color(0.75f,0.75f,0.75f); btn.colors = cb;
         btn.onClick.AddListener(onClick);
+        ButtonJuice.Attach(go);
 
         var txtGO = new GameObject("Text");
         txtGO.transform.SetParent(go.transform, false);

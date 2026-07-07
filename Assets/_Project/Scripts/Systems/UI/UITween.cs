@@ -1,3 +1,4 @@
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 using System.Collections;
 using UnityEngine;
 
@@ -70,7 +71,8 @@ public static class UITween
         {
             if (cg == null) yield break;
             t += Time.unscaledDeltaTime;
-            cg.alpha = Mathf.Lerp(a, b, t / duration);
+            // SmoothStep: arranque y frenada suaves (sin cortes lineales)
+            cg.alpha = Mathf.Lerp(a, b, Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(t / duration)));
             yield return null;
         }
         if (cg != null) cg.alpha = b;

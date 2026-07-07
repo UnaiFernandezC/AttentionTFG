@@ -1,0 +1,179 @@
+
+🧠 MEMORIA (5 minijuegos)
+1. Parejas de colores
+
+Cartas (UI buttons) que se voltean → encontrar parejas por color.
+👉 Mecánica clásica tipo memory.
+
+2. Secuencia luminosa
+
+Cuadrados que se iluminan en orden → el jugador repite la secuencia.
+👉 Tipo “Simon Says”.
+
+3. Recuerda posiciones
+
+Se muestran objetos unos segundos → desaparecen → debes hacer click donde estaban.
+
+4. Memoria auditiva simple
+
+Sonidos (o pitidos con diferentes tonos) → repetir orden.
+👉 Puedes hacerlo sin assets usando AudioSource básico.
+
+5. Orden correcto
+
+Lista de números/desorden → el jugador debe reconstruir el orden original.
+
+⚡ CONTROL DE IMPULSOS (5 minijuegos)
+6. No pulses el rojo
+
+Botones aparecen → solo puedes pulsar los verdes.
+👉 Si pulsas rojo → pierdes.
+
+7. Espera el momento
+
+Un botón aparece → debes pulsarlo SOLO cuando cambie de color.
+
+8. Stop & Go
+
+Personaje se mueve solo → debes parar en zonas seguras.
+
+9. Click retrasado
+
+Sale un estímulo → tienes que esperar X segundos antes de reaccionar.
+
+10. Inhibición inversa
+
+Aparece una flecha → debes pulsar la dirección CONTRARIA.
+
+💙 GESTIÓN EMOCIONAL (5 minijuegos)
+
+(aquí lo importante es la mecánica + feedback, no necesitas assets)
+
+11. Respiración guiada
+
+Círculo que crece/disminuye → el jugador respira siguiendo el ritmo.
+
+12. Reduce el estrés
+
+Pantalla “caótica” → debes hacer acciones calmadas para estabilizarla.
+
+13. Elige reacción
+
+Situaciones simples → eliges respuestas (calmada vs impulsiva).
+
+14. Mantén el equilibrio
+
+Barra emocional → debes mantenerla estable con inputs suaves.
+
+15. Ruido vs calma
+
+Muchos estímulos → debes ignorarlos y centrarte en uno.
+
+👀 ATENCIÓN (5 minijuegos)
+16. Encuentra el diferente
+
+Muchos objetos iguales → uno es distinto.
+
+17. Seguimiento de objeto
+
+Un objeto se mueve rápido → debes seguirlo con el cursor.
+
+18. Reacción rápida
+
+Aparece estímulo → responde lo más rápido posible.
+
+19. Distracciones
+
+Objetivo principal + distractores → debes ignorar los falsos.
+
+20. Cambio de regla
+
+Empieza con una regla → cambia sin aviso → debes adaptarte.
+
+🧩 PLANIFICACIÓN (5 minijuegos)
+21. Ruta óptima
+
+Grid simple → llegar al objetivo con el menor número de pasos.
+
+22. Secuencia de acciones
+
+Tienes varias acciones → debes elegir el orden correcto.
+
+23. Gestión de recursos
+
+Tienes energía limitada → completar objetivo sin gastarla toda.
+
+24. Puzzle de pasos
+
+Mover piezas en orden correcto para resolver.
+
+25. Anticipación
+
+Objetos en movimiento → debes predecir dónde estarán.
+
+
+
+
+
+
+
+
+te puedo pedir que hagas una carpeta con todos los logos de los minjuegos que estoy haciendo??? en plan, una carpeta que se llame logos, esta carpeta debe de tener 5 carpetas dentro con cada vategoria de minjuegos y dentro un logo para cada uno de los 5 minijuegos,
+
+
+
+En total son 25 minijuegos, serian 25 imagenes, te comento el nombre de los minijuegos para que sepas de que ven y puedas hacer los logos:
+
+
+
+Attention_ObjectTracking_Easy
+
+Attention_OptimalPath
+
+Attention_QuickReaction_Easy
+
+Attention_RuleSwitch_Easy
+
+¡Algo no cuadra!
+
+
+
+Aventura emocional
+
+Emotional_AttractionControl_Easy
+
+Emotional_Balance
+
+Emotional_Consequences_Easy
+
+Emotional_ProgressiveRegulation_Easy
+
+
+
+Impulse_DontPressYet_Easy
+
+Impulse_InverseResponse_Easy
+
+
+
+Memory_ColorMatch
+
+Memory_FindChange_Easy
+
+Memory_PatternRecall
+
+Memory_WordMemory_Easy
+
+SimonSays
+
+
+
+¡Gol colorido!
+
+Planning_ActionSequence
+
+Planning_OrdenCorrecto
+
+Planning_Order
+
+Planning_ResourceManagement

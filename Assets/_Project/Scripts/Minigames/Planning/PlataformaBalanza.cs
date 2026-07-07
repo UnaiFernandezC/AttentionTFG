@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
+using UnityEngine;
 
 public class PlataformaBalanza : MonoBehaviour
 {

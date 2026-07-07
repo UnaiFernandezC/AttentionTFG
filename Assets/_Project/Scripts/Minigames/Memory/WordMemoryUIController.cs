@@ -1,3 +1,4 @@
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -192,6 +193,8 @@ public class WordMemoryUIController : MonoBehaviour
             var txt = MkTxt(cardRT, "W", targetWords[i], Color.white, 36, V(0.04f, 0), V(0.96f, 1));
             txt.fontStyle = FontStyles.Bold;
             txt.alignment = TextAlignmentOptions.MidlineLeft;
+
+            UITween.PopIn(cardRT, 0.36f, 0.80f, i * 0.08f);
         }
 
         SetCountdown(1f);
@@ -262,6 +265,9 @@ public class WordMemoryUIController : MonoBehaviour
             btn.colors = cb;
             btn.onClick.AddListener(() => _onWordToggled?.Invoke(capturedIndex));
             _wordBtns.Add(btn);
+
+            ButtonJuice.Attach(btnGO);
+            UITween.PopIn(btnRT, 0.30f, 0.85f, i * 0.03f);
         }
 
         SetCountdown(0f);
@@ -351,6 +357,7 @@ public class WordMemoryUIController : MonoBehaviour
         btn.onClick.AddListener(() => _onConfirm?.Invoke());
         var t = MkTxt(rt, "T", "CONFIRMAR", Color.white, 30, V(0,0), V(1,1));
         t.fontStyle = FontStyles.Bold;
+        ButtonJuice.Attach(rt.gameObject);
         return rt.gameObject;
     }
 
@@ -426,5 +433,6 @@ public class WordMemoryUIController : MonoBehaviour
         b.onClick.AddListener(() => click?.Invoke());
         var t = MkTxt(rt, "T", lbl, Color.white, 24, V(0,0), V(1,1));
         t.fontStyle = FontStyles.Bold;
+        ButtonJuice.Attach(rt.gameObject);
     }
 }

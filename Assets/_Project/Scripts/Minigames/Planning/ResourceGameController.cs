@@ -1,3 +1,4 @@
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -13,7 +14,7 @@ public class ResourceGameController : MinigameBase
     public class ActionData
     {
         [Tooltip("Icono de texto que se muestra en el boton")]
-        public string icon = "★";
+        public string icon = "+";
 
         [Tooltip("Nombre de la accion")]
         public string actionName = "Accion";
@@ -26,9 +27,17 @@ public class ResourceGameController : MinigameBase
 
         [Tooltip("Color del boton (si es negro se usa el color automatico)")]
         public Color buttonColor = Color.black;
+
+        [Tooltip("Trampa: cara y poco eficiente")]
+        public bool isTrap = false;
+
+        [Tooltip("Arriesgada: progreso aleatorio entre riskyMin y riskyMax")]
+        public bool isRisky = false;
+        public int  riskyMin = 25;
+        public int  riskyMax = 55;
     }
 
-    [Header("=== ESTRELLAS (energia) ===")]
+    [Header("=== ESTRELLAS (energia) — fallback, ApplyDifficulty manda ===")]
     [Tooltip("Estrellas disponibles en esta escena")]
     public int stars = 20;
 
@@ -36,30 +45,29 @@ public class ResourceGameController : MinigameBase
     [Tooltip("Progreso necesario para ganar")]
     public int goal = 100;
 
-    [Header("=== ACCIONES ===")]
-    [Tooltip("Lista de acciones. Por defecto 3 acciones faciles de entender.")]
+    [Header("=== ACCIONES (fallback, ApplyDifficulty manda) ===")]
     public List<ActionData> actions = new List<ActionData>();
 
     private int   _maxStars;
     private int   _stars;
     private float _progress;
+    private float _rawProgress;      // sin tope, para calcular eficiencia
+    private int   _starsSpent;
+    private int   _trapUses;
     private float _displayProg;
     private bool  _ended;
+    private float _bestPerStar = 10f;
+    private float _lastActionTime;
 
     private RectTransform   _starsFill;
     private Image           _starsFillImg;
     private TextMeshProUGUI _starsLbl;
-    private TextMeshProUGUI _starsIcon;
     private RectTransform   _progFill;
     private TextMeshProUGUI _progLbl;
     private TextMeshProUGUI _progPct;
-    private List<Button>         _btns     = new List<Button>();
-    private List<Image>          _btnBgs   = new List<Image>();
+    private List<Button>         _btns      = new List<Button>();
+    private List<Image>          _btnBgs    = new List<Image>();
     private List<CanvasGroup>    _btnGroups = new List<CanvasGroup>();
-    private GameObject           _endPanel;
-    private TextMeshProUGUI      _endTitle;
-    private TextMeshProUGUI      _endSub;
-    private Image                _endBar;
 
     static readonly Color BG       = new Color(0.14f, 0.16f, 0.28f);
     static readonly Color PANEL    = new Color(0.18f, 0.20f, 0.35f);
@@ -82,31 +90,77 @@ public class ResourceGameController : MinigameBase
     };
 
     protected override string GetIntroDescription() =>
-        "Tienes estrellas de energia limitadas. Elige las acciones correctas\n" +
-        "para llenar la barra de progreso al 100%.\n" +
-        "Si se te acaban las estrellas sin llegar al 100%, perderas.";
+        "Tienes estrellas de energia limitadas. Elige bien las acciones\n" +
+        "para llenar la barra hasta el 100% antes de quedarte sin estrellas.";
 
     protected override void OnMinigameStart()
     {
-        if (actions == null || actions.Count == 0)
-        {
-            actions = new List<ActionData>
-            {
-                new ActionData { icon = "✿",  actionName = "Pasito corto",  cost = 1, progress = 8  },
-                new ActionData { icon = "✦",  actionName = "Buen avance",   cost = 2, progress = 18 },
-                new ActionData { icon = "⚡", actionName = "Super impulso", cost = 4, progress = 40 },
-            };
-        }
+        ApplyDifficulty();
 
         EnsureES();
-        _maxStars    = stars;
-        _stars       = _maxStars;
-        _progress    = 0f;
-        _displayProg = 0f;
-        _ended       = false;
+        _maxStars       = stars;
+        _stars          = _maxStars;
+        _progress       = 0f;
+        _rawProgress    = 0f;
+        _starsSpent     = 0;
+        _trapUses       = 0;
+        _displayProg    = 0f;
+        _ended          = false;
+        _lastActionTime = Time.realtimeSinceStartup;
+
+        _bestPerStar = 1f;
+        foreach (var a in actions)
+            if (!a.isRisky && a.cost > 0)
+                _bestPerStar = Mathf.Max(_bestPerStar, (float)a.progress / a.cost);
 
         BuildUI();
         Refresh();
+    }
+
+    void ApplyDifficulty()
+    {
+        var diff = GameManager.Instance != null
+            ? GameManager.Instance.CurrentDifficulty
+            : DifficultyLevel.Easy;
+
+        goal = 100;
+
+        switch (diff)
+        {
+            case DifficultyLevel.Medium:
+                stars = 11;
+                actions = new List<ActionData>
+                {
+                    new ActionData { icon = "+", actionName = "Pasito corto",  cost = 1, progress = 9  },
+                    new ActionData { icon = "++", actionName = "Buen avance",   cost = 2, progress = 20 },
+                    new ActionData { icon = "+++", actionName = "Super impulso", cost = 4, progress = 42 },
+                    new ActionData { icon = "$", actionName = "Mega maquina",  cost = 5, progress = 25, isTrap = true },
+                };
+                break;
+
+            case DifficultyLevel.Hard:
+                stars = 9;
+                actions = new List<ActionData>
+                {
+                    new ActionData { icon = "+", actionName = "Pasito corto",  cost = 1, progress = 10 },
+                    new ActionData { icon = "++", actionName = "Buen avance",   cost = 2, progress = 22 },
+                    new ActionData { icon = "+++", actionName = "Super impulso", cost = 4, progress = 45 },
+                    new ActionData { icon = "$", actionName = "Mega maquina",  cost = 5, progress = 24, isTrap = true },
+                    new ActionData { icon = "?", actionName = "Salto sorpresa", cost = 2, progress = 40,
+                                     isRisky = true, riskyMin = 25, riskyMax = 55 },
+                };
+                break;
+
+            default: // Easy
+                stars = 14;
+                actions = new List<ActionData>
+                {
+                    new ActionData { icon = "+", actionName = "Pasito corto",  cost = 1, progress = 8  },
+                    new ActionData { icon = "++", actionName = "Buen avance",   cost = 2, progress = 18 },
+                    new ActionData { icon = "+++", actionName = "Super impulso", cost = 4, progress = 40 },
+                };
+                break;
+        }
     }
 
     protected override void OnMinigameComplete() { }
@@ -127,8 +181,23 @@ public class ResourceGameController : MinigameBase
         ActionData a = actions[i];
         if (_stars < a.cost) return;
 
-        _stars    -= a.cost;
-        _progress  = Mathf.Min(_progress + a.progress, goal);
+        int gain = a.isRisky
+            ? UnityEngine.Random.Range(a.riskyMin, a.riskyMax + 1)
+            : a.progress;
+
+        _stars       -= a.cost;
+        _starsSpent  += a.cost;
+        _rawProgress += gain;
+        _progress     = Mathf.Min(_progress + gain, goal);
+        if (a.isTrap) _trapUses++;
+
+        float rtMs = (Time.realtimeSinceStartup - _lastActionTime) * 1000f;
+        _lastActionTime = Time.realtimeSinceStartup;
+        ReportEvent(!a.isTrap, rtMs);
+
+        GameFeel.PlayPop();
+        GameFeel.FloatingText("+" + gain + "%", a.isRisky ? YELLOW : GREEN, new Vector2(240f, 90f));
+        if (a.isRisky && gain >= 45) GameFeel.PlayStar();
 
         Refresh();
         StartCoroutine(Pulse(i));
@@ -152,26 +221,64 @@ public class ResourceGameController : MinigameBase
         return false;
     }
 
+    private int EfficiencyPct()
+    {
+        if (_starsSpent <= 0) return 100;
+        float eff = (_rawProgress / _starsSpent) / _bestPerStar;
+        return Mathf.Clamp(Mathf.RoundToInt(eff * 100f), 0, 100);
+    }
+
     private IEnumerator Finish(bool won)
     {
         yield return new WaitForSeconds(0.6f);
+
+        int effPct = EfficiencyPct();
+
         if (won)
         {
-            int sc = 500 + Mathf.RoundToInt(((float)_stars / _maxStars) * 500f);
+            GameFeel.PlaySuccess();
+            GameFeel.Confetti(35);
+
+            int sc = 500 + Mathf.RoundToInt(((float)_stars / _maxStars) * 300f)
+                         + Mathf.RoundToInt(effPct * 2f);
+            float ratio = Mathf.Clamp01(effPct / 100f - _trapUses * 0.10f);
+
             CompleteMinigame(sc);
+            ShowResults(true, GameFeel.StarsFromRatio(true, ratio), sc,
+                new[]
+                {
+                    "Eficiencia: " + effPct + "%",
+                    "Estrellas sobrantes: " + _stars + " / " + _maxStars
+                });
         }
-        else FailMinigame();
-        ShowEnd(won);
+        else
+        {
+            GameFeel.PlayError();
+            GameFeel.ScreenFlash(RED, 0.18f, 0.3f);
+
+            FailMinigame();
+            ShowResults(false, 0, 0,
+                new[]
+                {
+                    "Progreso: " + Mathf.RoundToInt(_progress) + "%",
+                    "Eficiencia: " + effPct + "%"
+                },
+                "¡Sin estrellas!",
+                "Planifica que acciones rinden mas");
+        }
     }
 
     private void Reset()
     {
+        if (_ended) return;
         StopAllCoroutines();
-        _stars       = _maxStars;
-        _progress    = 0f;
-        _displayProg = 0f;
-        _ended       = false;
-        if (_endPanel != null) _endPanel.SetActive(false);
+        _stars          = _maxStars;
+        _progress       = 0f;
+        _rawProgress    = 0f;
+        _starsSpent     = 0;
+        _trapUses       = 0;
+        _displayProg    = 0f;
+        _lastActionTime = Time.realtimeSinceStartup;
         Refresh();
     }
 
@@ -181,7 +288,7 @@ public class ResourceGameController : MinigameBase
         _starsFill.anchorMax = new Vector2(Mathf.Max(r, 0.005f), 1f);
         _starsLbl.text = _stars + " / " + _maxStars;
 
-        if (r > 0.5f)      _starsFillImg.color = YELLOW;
+        if (r > 0.5f)       _starsFillImg.color = YELLOW;
         else if (r > 0.25f) _starsFillImg.color = ORANGE;
         else                _starsFillImg.color = RED;
 
@@ -264,8 +371,6 @@ public class ResourceGameController : MinigameBase
 
         RectTransform bar = Img(R, "Bar", HEADER, V(0,0), V(1,0), V(0,45), V(0,90));
         MkBtn(bar, "Reiniciar", new Color(0.32f,0.34f,0.44f), V(0.06f,0.12f), V(0.94f,0.88f), () => Reset());
-
-        BuildEnd(R);
     }
 
     private void BuildBars(RectTransform p)
@@ -343,8 +448,10 @@ public class ResourceGameController : MinigameBase
             cb.disabledColor = new Color(0.5f,0.5f,0.5f,0.4f);
             btn.colors = cb;
             btn.onClick.AddListener(() => DoAction(idx));
+            ButtonJuice.Attach(brt.gameObject);
 
-            TextMeshProUGUI nm = Txt(brt, "Nm", a.actionName, Color.white, 34, V(0.04f,0.38f), V(0.96f,0.95f));
+            float nameSize = n >= 5 ? 27f : (n >= 4 ? 30f : 34f);
+            TextMeshProUGUI nm = Txt(brt, "Nm", a.actionName, Color.white, nameSize, V(0.04f,0.38f), V(0.96f,0.95f));
             nm.fontStyle = FontStyles.Bold;
             nm.alignment = TextAlignmentOptions.Center;
 
@@ -353,50 +460,16 @@ public class ResourceGameController : MinigameBase
             TextMeshProUGUI costT = Txt(infoBg, "C", "-" + a.cost + " E", YELLOW, 22, V(0,0.5f), V(1,1));
             costT.fontStyle = FontStyles.Bold; costT.alignment = TextAlignmentOptions.Center;
 
-            TextMeshProUGUI gainT = Txt(infoBg, "G", "+" + a.progress + "%", GREEN, 22, V(0,0), V(1,0.5f));
+            string gainTxt = a.isRisky
+                ? "+" + a.riskyMin + "-" + a.riskyMax + "% ?"
+                : "+" + a.progress + "%";
+            TextMeshProUGUI gainT = Txt(infoBg, "G", gainTxt, GREEN, 22, V(0,0), V(1,0.5f));
             gainT.fontStyle = FontStyles.Bold; gainT.alignment = TextAlignmentOptions.Center;
 
             _btns.Add(btn);
             _btnBgs.Add(bg);
             _btnGroups.Add(cg);
         }
-    }
-
-    private void BuildEnd(RectTransform R)
-    {
-        _endPanel = new GameObject("End");
-        _endPanel.transform.SetParent(R, false);
-        RectTransform oR = _endPanel.AddComponent<RectTransform>();
-        oR.anchorMin = V(0,0); oR.anchorMax = V(1,1);
-        oR.sizeDelta = V(0,0); oR.anchoredPosition = V(0,0);
-        _endPanel.AddComponent<Image>().color = new Color(0,0,0,0.82f);
-
-        RectTransform card = Img(oR, "Card", PANEL, V(0.5f,0.5f), V(0.5f,0.5f), V(0,0), V(720,440));
-
-        _endBar = Img(card, "Bar", GREEN, V(0,1), V(1,1), V(0,-14), V(0,28)).GetComponent<Image>();
-
-        _endTitle = Txt(card, "Ti", "", Color.white, 52, V(0.05f,0.55f), V(0.95f,0.92f));
-        _endTitle.fontStyle = FontStyles.Bold;
-        _endTitle.alignment = TextAlignmentOptions.Center;
-
-        _endSub = Txt(card, "Su", "", DIM, 26, V(0.05f,0.40f), V(0.95f,0.55f));
-        _endSub.alignment = TextAlignmentOptions.Center;
-
-        MkBtn(card, "Jugar de nuevo",     ACCENT,  V(0.08f,0.20f), V(0.48f,0.33f), () => Reset());
-        MkBtn(card, "Volver a la seccion", BTN_OFF, V(0.52f,0.20f), V(0.92f,0.33f), () => ReturnToGameSelector());
-        MkBtn(card, "Menu principal",     new Color(0.10f,0.13f,0.22f), V(0.08f,0.05f), V(0.92f,0.17f), () => SceneLoader.GoToMainMenu());
-
-        _endPanel.SetActive(false);
-    }
-
-    private void ShowEnd(bool won)
-    {
-        _endBar.color   = won ? GREEN : RED;
-        _endTitle.text  = won ? "Objetivo completado!" : "Te quedaste sin estrellas!";
-        _endSub.text    = won
-            ? "Estrellas sobrantes: " + _stars + " / " + _maxStars
-            : "Necesitas planificar mejor.\nIntentalo de nuevo!";
-        _endPanel.SetActive(true);
     }
 
     private static Vector2 V(float x, float y) { return new Vector2(x, y); }
@@ -443,6 +516,7 @@ public class ResourceGameController : MinigameBase
         cb.pressedColor = new Color(0.7f,0.7f,0.7f);
         b.colors = cb;
         b.onClick.AddListener(click);
+        ButtonJuice.Attach(bg.gameObject);
         TextMeshProUGUI t = Txt(bg, "T", label, Color.white, 28, V(0,0), V(1,1));
         t.fontStyle = FontStyles.Bold;
     }

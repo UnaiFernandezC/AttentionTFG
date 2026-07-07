@@ -1,47 +1,40 @@
-using System;
-using System.Collections;
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
+/// <summary>
+/// UI por codigo del Flanker infantil: fila de peces dibujados con Images
+/// (cuerpo ovalado + cola en rombo + ojo), pez central naranja y mas grande,
+/// botones gigantes ◄ ► y barra de tiempo opcional.
+/// </summary>
 public class DontFollowMajorityUIController : MonoBehaviour
 {
-
     static Vector2 V(float x, float y) => new Vector2(x, y);
     static Color   C(float r, float g, float b, float a = 1f) => new Color(r, g, b, a);
 
-    static readonly Color BG     = C(0.05f, 0.08f, 0.14f);
-    static readonly Color HDR    = C(0.03f, 0.05f, 0.10f);
-    static readonly Color PANEL  = C(0.07f, 0.11f, 0.20f);
-    static readonly Color ACCENT = C(0.18f, 0.80f, 0.58f);
-    static readonly Color DIM    = C(0.40f, 0.55f, 0.65f);
-    static readonly Color CRED   = C(0.90f, 0.22f, 0.28f);
-    static readonly Color CGREEN = C(0.22f, 0.86f, 0.54f);
+    static readonly Color BG       = C(0.04f, 0.10f, 0.18f);   // "agua"
+    static readonly Color HDR      = C(0.03f, 0.05f, 0.10f);
+    static readonly Color ACCENT   = new Color(0.95f, 0.55f, 0.12f);  // naranja categoria
+    static readonly Color DIM      = C(0.45f, 0.60f, 0.72f);
+    static readonly Color CGREEN   = C(0.22f, 0.86f, 0.54f);
+    static readonly Color CRED     = C(0.90f, 0.22f, 0.28f);
+    static readonly Color FISH_BLU = C(0.32f, 0.62f, 0.95f);
+    static readonly Color FISH_ORG = C(0.98f, 0.60f, 0.12f);
 
-    Image[]         _roundDots;
-    TextMeshProUGUI _scoreText;
-    TextMeshProUGUI _feedbackText;
-    RectTransform   _timerFill;
-    Image           _timerFillImg;
-    Image           _flashOverlay;
+    const int MAX_FISH = 7;
 
-    GameObject      _finalPanel;
-    TextMeshProUGUI _finalTitle;
-    TextMeshProUGUI _finalSub;
+    public RectTransform CenterFishRect { get; private set; }
 
-    Coroutine _feedbackRoutine;
+    RectTransform[] _fishSlots;
+    RectTransform   _fishRow;
+    TextMeshProUGUI _statusText;
+    TextMeshProUGUI _progressText;
+    Image           _timerFill;
+    GameObject      _timerBarGO;
 
-    const float TIMER_LEFT  = 0.10f;
-    const float TIMER_RIGHT = 0.90f;
-
-    public RectTransform StimulusContainer { get; private set; }
-
-    public void BuildUI(int rounds,
-                        Action<DFMDirection> onDirection,
-                        Action onRestart,
-                        Action onMenu)
+    public void BuildUI(int fishCount, bool useTimer, DontFollowMajorityInputHandler input)
     {
-
         var cGO = new GameObject("Canvas_DFM");
         cGO.transform.SetParent(transform, false);
         var cv = cGO.AddComponent<Canvas>();
@@ -54,272 +47,248 @@ public class DontFollowMajorityUIController : MonoBehaviour
         cGO.AddComponent<GraphicRaycaster>();
         var R = cGO.GetComponent<RectTransform>();
 
-        MkImg(R, "BG",   BG,                           V(0,0), V(1,1), V(0,0), V(0,0));
-        MkImg(R, "Grad", C(0f,0.08f,0.18f,0.28f),     V(0,0), V(1,1), V(0,0), V(0,0));
-        BuildGrid(R);
+        MkImg(R, "BG", BG, V(0, 0), V(1, 1), V(0, 0), V(0, 0));
 
-        var hdr = MkImg(R, "Hdr", HDR, V(0,1), V(1,1), V(0,-44f), V(0,88f));
-        MkImg(hdr, "LineB", ACCENT, V(0,0),     V(1,0),     V(0,1.5f), V(0,3f));
-        MkImg(hdr, "AccL",  ACCENT, V(0,0.18f), V(0,0.82f), V(3f,0),   V(6f,0));
-        var ttl = MkTxt(hdr, "Title", "NO SIGAS LA MAYORÍA", Color.white, 24,
-                        V(0.03f,0.12f), V(0.55f,0.88f));
+        // burbujas decorativas
+        for (int i = 0; i < 8; i++)
+        {
+            float bx = 0.06f + (i * 0.125f);
+            float by = 0.10f + ((i * 37) % 60) / 100f;
+            float bs = 14f + (i * 13) % 26;
+            var b = MkImg(R, "Bub" + i, C(1, 1, 1, 0.045f),
+                          V(bx, by), V(bx, by), V(0, 0), V(bs, bs));
+            b.GetComponent<Image>().sprite = MakeCircleSprite(32);
+        }
+
+        // ------------------------------------------------ cabecera
+        var hdr = MkImg(R, "Hdr", HDR, V(0, 1), V(1, 1), V(0, -44), V(0, 88));
+        MkImg(hdr, "LineB", ACCENT, V(0, 0), V(1, 0), V(0, 1.5f), V(0, 3));
+        MkImg(hdr, "AccL",  ACCENT, V(0, 0.18f), V(0, 0.82f), V(3, 0), V(6, 0));
+
+        var ttl = MkTxt(hdr, "T", "NO SIGAS A LA MAYORIA", Color.white, 28,
+                        V(0.03f, 0.12f), V(0.50f, 0.88f));
         ttl.fontStyle = FontStyles.Bold;
         ttl.alignment = TextAlignmentOptions.MidlineLeft;
         ttl.characterSpacing = 1.5f;
-        MkTxt(hdr, "Cat", "CONTROL DE IMPULSOS", DIM, 14,
-              V(0.55f,0.12f), V(0.73f,0.88f)).alignment = TextAlignmentOptions.MidlineRight;
-        _roundDots = BuildRoundDots(hdr, rounds);
 
-        _scoreText = MkTxt(R, "Score", "0 pts", Color.white, 30,
-                           V(0.75f,0.885f), V(0.99f,0.935f));
-        _scoreText.alignment = TextAlignmentOptions.MidlineLeft;
+        MkTxt(hdr, "Cat", "CONTROL DE IMPULSOS", DIM, 15,
+              V(0.50f, 0.12f), V(0.74f, 0.88f)).alignment = TextAlignmentOptions.MidlineRight;
 
-        var hint = MkTxt(R, "Hint",
-                         "¿Qué dirección tiene  MENOS  flechas?",
-                         C(0.65f,0.80f,0.95f), 22,
-                         V(0.10f,0.865f), V(0.90f,0.907f));
-        hint.alignment = TextAlignmentOptions.Center;
-        hint.fontStyle = FontStyles.Italic;
+        _progressText = MkTxt(hdr, "Prog", "", C(0.90f, 0.92f, 0.96f), 22,
+                              V(0.76f, 0.12f), V(0.98f, 0.88f));
+        _progressText.fontStyle = FontStyles.Bold;
+        _progressText.alignment = TextAlignmentOptions.MidlineRight;
 
-        var scGO = new GameObject("StimulusContainer");
-        scGO.transform.SetParent(R, false);
-        StimulusContainer = scGO.AddComponent<RectTransform>();
-        StimulusContainer.anchorMin = V(0.08f, 0.245f);
-        StimulusContainer.anchorMax = V(0.92f, 0.862f);
-        StimulusContainer.offsetMin = StimulusContainer.offsetMax = Vector2.zero;
+        // ------------------------------------------------ fila de peces
+        var rowGO = new GameObject("FishRow");
+        rowGO.transform.SetParent(R, false);
+        _fishRow = rowGO.AddComponent<RectTransform>();
+        _fishRow.anchorMin = _fishRow.anchorMax = V(0.5f, 0.60f);
+        _fishRow.pivot     = V(0.5f, 0.5f);
+        _fishRow.sizeDelta = V(1400f, 200f);
+        _fishRow.anchoredPosition = Vector2.zero;
 
-        MkImg(R, "TimerBg", C(0.06f,0.10f,0.20f,0.80f),
-              V(TIMER_LEFT,0.220f), V(TIMER_RIGHT,0.240f), V(0,0), V(0,0));
-        var fillRT = MkImg(R, "TimerFill", ACCENT,
-                           V(TIMER_LEFT,0.220f), V(TIMER_RIGHT,0.240f), V(0,0), V(0,0));
-        _timerFill    = fillRT;
-        _timerFillImg = fillRT.GetComponent<Image>();
-
-        _feedbackText = MkTxt(R, "Feedback", "", Color.white, 32,
-                              V(0.10f,0.165f), V(0.90f,0.218f));
-        _feedbackText.fontStyle = FontStyles.Bold;
-        _feedbackText.alignment = TextAlignmentOptions.Center;
-
-        BuildDPad(R, onDirection);
-
-        var fGO = new GameObject("Flash");
-        fGO.transform.SetParent(R, false);
-        var fRT = fGO.AddComponent<RectTransform>();
-        fRT.anchorMin = V(0,0); fRT.anchorMax = V(1,1);
-        fRT.sizeDelta = fRT.anchoredPosition = Vector2.zero;
-        _flashOverlay = fGO.AddComponent<Image>();
-        _flashOverlay.color = C(0,0,0,0);
-        _flashOverlay.raycastTarget = false;
-        fGO.SetActive(false);
-
-        var footer = MkImg(R, "Footer", HDR, V(0,0), V(1,0), V(0,40f), V(0,80f));
-        MkImg(footer, "LineT", ACCENT, V(0,1), V(1,1), V(0,-1.5f), V(0,3f));
-        MkTxt(footer, "Tip",
-              "Ignora el impulso de seguir a la mayoría  ·  Sé crítico",
-              C(ACCENT.r,ACCENT.g-0.08f,ACCENT.b-0.05f), 15,
-              V(0.01f,0), V(0.78f,1)).alignment = TextAlignmentOptions.MidlineLeft;
-        MkImg(footer, "Sep", C(1,1,1,0.10f), V(0.78f,0.1f), V(0.782f,0.9f), V(0,0), V(0,0));
-
-        BuildFinalPanel(R, onRestart, onMenu);
-
-        SetTimerBar(1f);
-    }
-
-    void BuildGrid(RectTransform R)
-    {
-        for (int i = 1; i < 6; i++)
+        _fishSlots = new RectTransform[MAX_FISH];
+        for (int i = 0; i < MAX_FISH; i++)
         {
-            float t = i / 6f;
-            MkImg(R, "GH"+i, C(1,1,1,0.018f), V(0,t-0.001f),  V(1,t+0.001f),  V(0,0), V(0,0));
-            MkImg(R, "GV"+i, C(1,1,1,0.018f), V(t-0.0006f,0), V(t+0.0006f,1), V(0,0), V(0,0));
+            _fishSlots[i] = BuildFish(_fishRow, i);
+            _fishSlots[i].gameObject.SetActive(false);
         }
+
+        // ------------------------------------------------ barra de tiempo
+        _timerBarGO = new GameObject("TimerBar");
+        _timerBarGO.transform.SetParent(R, false);
+        var tbRT = _timerBarGO.AddComponent<RectTransform>();
+        tbRT.anchorMin = V(0.30f, 0.44f); tbRT.anchorMax = V(0.70f, 0.46f);
+        tbRT.sizeDelta = tbRT.anchoredPosition = Vector2.zero;
+        _timerBarGO.AddComponent<Image>().color = C(0.02f, 0.04f, 0.09f);
+
+        var fillGO = new GameObject("Fill");
+        fillGO.transform.SetParent(tbRT, false);
+        var fillRT = fillGO.AddComponent<RectTransform>();
+        fillRT.anchorMin = V(0, 0); fillRT.anchorMax = V(1, 1);
+        fillRT.sizeDelta = fillRT.anchoredPosition = Vector2.zero;
+        _timerFill            = fillGO.AddComponent<Image>();
+        _timerFill.color      = CGREEN;
+        _timerFill.type       = Image.Type.Filled;
+        _timerFill.fillMethod = Image.FillMethod.Horizontal;
+        _timerFill.fillOrigin = 0;
+        _timerBarGO.SetActive(useTimer);
+
+        // ------------------------------------------------ estado
+        _statusText = MkTxt(R, "Status", "¿Hacia donde mira el pez naranja?",
+                            DIM, 28, V(0.10f, 0.35f), V(0.90f, 0.42f));
+        _statusText.fontStyle = FontStyles.Bold;
+
+        // ------------------------------------------------ botones ◄ ►
+        BuildAnswerButton(R, false, input);
+        BuildAnswerButton(R, true,  input);
+
+        MkTxt(R, "Hint", "(tambien valen las flechas del teclado)", DIM, 15,
+              V(0.30f, 0.02f), V(0.70f, 0.06f));
     }
 
-    Image[] BuildRoundDots(RectTransform hdr, int rounds)
+    void BuildAnswerButton(RectTransform R, bool right, DontFollowMajorityInputHandler input)
     {
-        var dots    = new Image[rounds];
-        float start = 0.75f, gap = Mathf.Min(0.030f, 0.22f / Mathf.Max(rounds,1));
-        for (int i = 0; i < rounds; i++)
+        Vector2 am = right ? V(0.56f, 0.09f) : V(0.24f, 0.09f);
+        Vector2 aM = right ? V(0.76f, 0.28f) : V(0.44f, 0.28f);
+
+        // "<" y ">" existen en la fuente por defecto (las flechas ◄► no)
+        var btn = KidUI.Btn(R, right ? ">" : "<", C(0.12f, 0.20f, 0.36f),
+                            am, aM, () => { if (input != null) input.Press(right); }, 96f);
+        var lbl = btn.GetComponentInChildren<TextMeshProUGUI>();
+        if (lbl != null) { lbl.color = CGREEN; lbl.fontStyle = FontStyles.Bold; }
+    }
+
+    // ================================================================ peces
+
+    RectTransform BuildFish(RectTransform parent, int index)
+    {
+        var slotGO = new GameObject("Fish_" + index);
+        slotGO.transform.SetParent(parent, false);
+        var slot = slotGO.AddComponent<RectTransform>();
+        slot.pivot     = V(0.5f, 0.5f);
+        slot.sizeDelta = V(150f, 100f);
+        slot.anchorMin = slot.anchorMax = V(0.5f, 0.5f);
+
+        // cola (rombo) — detras, a la izquierda cuando mira a la derecha
+        var tail = new GameObject("Tail");
+        tail.transform.SetParent(slot, false);
+        var tailRT = tail.AddComponent<RectTransform>();
+        tailRT.pivot            = V(0.5f, 0.5f);
+        tailRT.sizeDelta        = V(42f, 42f);
+        tailRT.anchoredPosition = V(-58f, 0f);
+        tailRT.localRotation    = Quaternion.Euler(0, 0, 45f);
+        tail.AddComponent<Image>();
+
+        // cuerpo (ovalo con sprite circular escalado)
+        var body = new GameObject("Body");
+        body.transform.SetParent(slot, false);
+        var bodyRT = body.AddComponent<RectTransform>();
+        bodyRT.pivot            = V(0.5f, 0.5f);
+        bodyRT.sizeDelta        = V(104f, 62f);
+        bodyRT.anchoredPosition = V(0f, 0f);
+        var bodyImg = body.AddComponent<Image>();
+        bodyImg.sprite = MakeCircleSprite(128);
+
+        // ojo (blanco + pupila), en el morro (derecha por defecto)
+        var eye = new GameObject("Eye");
+        eye.transform.SetParent(slot, false);
+        var eyeRT = eye.AddComponent<RectTransform>();
+        eyeRT.pivot            = V(0.5f, 0.5f);
+        eyeRT.sizeDelta        = V(20f, 20f);
+        eyeRT.anchoredPosition = V(30f, 10f);
+        var eyeImg = eye.AddComponent<Image>();
+        eyeImg.sprite = MakeCircleSprite(32);
+        eyeImg.color  = Color.white;
+
+        var pupil = new GameObject("Pupil");
+        pupil.transform.SetParent(eyeRT, false);
+        var pupRT = pupil.AddComponent<RectTransform>();
+        pupRT.pivot            = V(0.5f, 0.5f);
+        pupRT.sizeDelta        = V(9f, 9f);
+        pupRT.anchoredPosition = V(3f, 0f);
+        var pupImg = pupil.AddComponent<Image>();
+        pupImg.sprite = MakeCircleSprite(32);
+        pupImg.color  = C(0.05f, 0.08f, 0.14f);
+
+        return slot;
+    }
+
+    void TintFish(RectTransform slot, Color col)
+    {
+        var tail = slot.Find("Tail");
+        var body = slot.Find("Body");
+        if (tail != null) tail.GetComponent<Image>().color =
+            new Color(col.r * 0.82f, col.g * 0.82f, col.b * 0.82f);
+        if (body != null) body.GetComponent<Image>().color = col;
+    }
+
+    /// <summary>Coloca y orienta la fila de peces para una ronda.</summary>
+    public void ShowFish(bool centerRight, bool majorityRight, int fishCount)
+    {
+        fishCount = Mathf.Clamp(fishCount, 3, MAX_FISH);
+        int center = fishCount / 2;
+        float spacing = fishCount > 5 ? 185f : 230f;
+
+        for (int i = 0; i < MAX_FISH; i++)
         {
-            var go  = new GameObject("Dot_"+i);
-            go.transform.SetParent(hdr, false);
-            var rt  = go.AddComponent<RectTransform>();
-            rt.anchorMin = rt.anchorMax = V(start + i * gap, 0.5f);
-            rt.pivot     = V(0.5f,0.5f);
-            rt.sizeDelta = V(18f,18f);
-            rt.anchoredPosition = Vector2.zero;
-            var img = go.AddComponent<Image>();
-            img.sprite = MakeCircleSprite(32);
-            img.color  = C(0.25f,0.30f,0.40f);
-            dots[i]    = img;
+            bool active = i < fishCount;
+            _fishSlots[i].gameObject.SetActive(active);
+            if (!active) continue;
+
+            bool isCenter = (i == center);
+            bool faceRight = isCenter ? centerRight : majorityRight;
+
+            _fishSlots[i].anchoredPosition = V((i - center) * spacing, 0f);
+            float s = isCenter ? 1.30f : 1.0f;
+            _fishSlots[i].localScale = new Vector3(faceRight ? s : -s, s, 1f);
+
+            TintFish(_fishSlots[i], isCenter ? FISH_ORG : FISH_BLU);
+
+            if (isCenter) CenterFishRect = _fishSlots[i];
         }
-        return dots;
+
+        UITween.PopIn(_fishRow, 0.22f, 0.75f);
+        if (_timerFill != null) _timerFill.fillAmount = 1f;
+        SetStatus("¿Hacia donde mira el pez naranja?", DIM);
     }
 
-    void BuildDPad(RectTransform R, Action<DFMDirection> onDir)
+    public void HideFish()
     {
-
-        var dpGO = new GameObject("DPad");
-        dpGO.transform.SetParent(R, false);
-        var dpRT = dpGO.AddComponent<RectTransform>();
-        dpRT.anchorMin = V(0.20f, 0.055f);
-        dpRT.anchorMax = V(0.80f, 0.215f);
-        dpRT.offsetMin = dpRT.offsetMax = Vector2.zero;
-
-        var dpBg = dpGO.AddComponent<Image>();
-        dpBg.color = C(0,0,0,0);
-
-        MkDirButton(dpRT, "UP",    "↑", DFMDirection.Up,
-                    V(0.38f,0.52f), V(0.62f,0.98f), onDir);
-
-        MkDirButton(dpRT, "DOWN",  "↓", DFMDirection.Down,
-                    V(0.38f,0.02f), V(0.62f,0.48f), onDir);
-
-        MkDirButton(dpRT, "LEFT",  "←", DFMDirection.Left,
-                    V(0.02f,0.22f), V(0.36f,0.78f), onDir);
-
-        MkDirButton(dpRT, "RIGHT", "→", DFMDirection.Right,
-                    V(0.64f,0.22f), V(0.98f,0.78f), onDir);
+        if (_fishSlots == null) return;
+        foreach (var s in _fishSlots)
+            if (s != null) s.gameObject.SetActive(false);
+        if (_timerFill != null) _timerFill.fillAmount = 0f;
     }
 
-    void MkDirButton(RectTransform parent, string name, string symbol,
-                     DFMDirection dir, Vector2 am, Vector2 aM,
-                     Action<DFMDirection> onDir)
-    {
-        var rt = MkImg(parent, "DBtn_"+name, C(0.09f,0.14f,0.26f), am, aM, V(0,0), V(0,0));
-
-        MkImg(rt, "Sh", C(1,1,1,0.08f), V(0,0.5f), V(1,1), V(0,0), V(0,0));
-
-        MkImg(rt, "Bord", C(ACCENT.r,ACCENT.g,ACCENT.b,0.35f),
-              V(0,0), V(1,0), V(0,1.5f), V(0,3f));
-
-        var btn = rt.gameObject.AddComponent<Button>();
-        btn.targetGraphic = rt.GetComponent<Image>();
-        var cb = btn.colors;
-        cb.normalColor      = Color.white;
-        cb.highlightedColor = C(1,1,1,0.80f);
-        cb.pressedColor     = C(0.60f,0.60f,0.60f);
-        btn.colors = cb;
-        var captured = dir;
-        btn.onClick.AddListener(() => onDir?.Invoke(captured));
-
-        var t = MkTxt(rt, "T", symbol, Color.white, 54, V(0,0), V(1,1));
-        t.fontStyle = FontStyles.Bold;
-    }
-
-    void BuildFinalPanel(RectTransform R, Action onRestart, Action onMenu)
-    {
-        _finalPanel = new GameObject("FinalPanel");
-        _finalPanel.transform.SetParent(R, false);
-        var er = _finalPanel.AddComponent<RectTransform>();
-        er.anchorMin = V(0,0); er.anchorMax = V(1,1);
-        er.sizeDelta = er.anchoredPosition = Vector2.zero;
-        _finalPanel.AddComponent<Image>().color = C(0,0,0,0.88f);
-
-        var card = MkImg(er, "Card", PANEL,
-                         V(0.5f,0.5f), V(0.5f,0.5f), V(0,0), V(900f,490f));
-        MkImg(card, "Sh",    C(1,1,1,0.03f), V(0,0.5f),   V(1,1),     V(0,0),   V(0,0));
-        MkImg(card, "LineT", ACCENT,          V(0,1),      V(1,1),     V(0,-4),  V(0,8));
-        MkImg(card, "AccL",  ACCENT,          V(0,0.08f),  V(0,0.92f), V(4,0),   V(8,0));
-
-        _finalTitle = MkTxt(card, "FT", "", Color.white, 44, V(0.05f,0.76f), V(0.95f,0.97f));
-        _finalTitle.fontStyle = FontStyles.Bold;
-        _finalTitle.enableAutoSizing = true;
-        _finalTitle.fontSizeMin = 26f; _finalTitle.fontSizeMax = 46f;
-
-        _finalSub = MkTxt(card, "FS", "", C(0.50f,0.68f,0.80f), 22, V(0.05f,0.37f), V(0.95f,0.74f));
-        _finalSub.overflowMode = TextOverflowModes.Overflow;
-        _finalSub.alignment    = TextAlignmentOptions.Center;
-        _finalSub.lineSpacing  = 10f;
-
-        MkBtn(card, "Jugar de nuevo",     ACCENT,                V(0.05f,0.20f), V(0.48f,0.33f), onRestart);
-        MkBtn(card, "Volver a la seccion", C(0.18f,0.24f,0.38f), V(0.52f,0.20f), V(0.95f,0.33f), onMenu);
-        MkBtn(card, "Menu principal",     C(0.10f,0.13f,0.22f),  V(0.05f,0.05f), V(0.95f,0.17f), () => SceneLoader.GoToMainMenu());
-
-        _finalPanel.SetActive(false);
-    }
-
-    public void SetTimerBar(float t)
+    public void UpdateTimerBar(float frac)
     {
         if (_timerFill == null) return;
-        t = Mathf.Clamp01(t);
-        _timerFill.anchorMax = new Vector2(TIMER_LEFT + (TIMER_RIGHT - TIMER_LEFT) * t,
-                                           _timerFill.anchorMax.y);
-
-        Color col = t > 0.5f
-            ? Color.Lerp(new Color(0.95f,0.80f,0.15f), ACCENT,     (t - 0.5f) * 2f)
-            : Color.Lerp(CRED,                           new Color(0.95f,0.80f,0.15f), t * 2f);
-        _timerFillImg.color = col;
+        frac = Mathf.Clamp01(frac);
+        _timerFill.fillAmount = frac;
+        _timerFill.color = Color.Lerp(CRED, CGREEN, frac);
     }
 
-    public void ShowFeedback(bool correct, string correctDirName)
+    public void SetProgress(int correct, int done, int total)
     {
-        if (_feedbackRoutine != null) StopCoroutine(_feedbackRoutine);
-        _feedbackRoutine = StartCoroutine(FeedbackRoutine(correct, correctDirName));
+        if (_progressText != null)
+            _progressText.text = correct + " aciertos  ·  " + done + "/" + total;
     }
 
-    public void HideFeedback()
+    public void ShowRoundFeedback(bool good, string msg, Color col)
     {
-        if (_feedbackRoutine != null) { StopCoroutine(_feedbackRoutine); _feedbackRoutine = null; }
-        if (_feedbackText)   _feedbackText.text = "";
-        if (_flashOverlay)   _flashOverlay.gameObject.SetActive(false);
+        SetStatus(msg, col);
+        if (good && CenterFishRect != null)
+            UITween.PulseOnce(CenterFishRect, 1.18f, 0.25f);
     }
 
-    IEnumerator FeedbackRoutine(bool correct, string correctDirName)
+    public void SetStatus(string txt, Color col)
     {
-        Color flashCol = correct ? C(0.22f,0.86f,0.54f,0.24f) : C(0.90f,0.22f,0.28f,0.24f);
-        Color textCol  = correct ? CGREEN : CRED;
-        string txt     = correct
-            ? "CORRECTO: " + correctDirName
-            : "INCORRECTO — era " + correctDirName;
+        if (_statusText == null) return;
+        _statusText.text  = txt;
+        _statusText.color = col;
+    }
 
-        if (_feedbackText) { _feedbackText.text = txt; _feedbackText.color = textCol; _feedbackText.transform.SetAsLastSibling(); }
+    // ================================================================ helpers
 
-        if (_flashOverlay != null)
-        {
-            _flashOverlay.gameObject.SetActive(true);
-            _flashOverlay.color = flashCol;
-            float t = 0f;
-            while (t < 0.38f)
+    public static Sprite MakeCircleSprite(int res = 128)
+    {
+        var tex = new Texture2D(res, res, TextureFormat.RGBA32, false);
+        tex.filterMode = FilterMode.Bilinear;
+        var center = new Vector2(res * 0.5f, res * 0.5f);
+        float r = res * 0.5f;
+        var px = new Color[res * res];
+        for (int y = 0; y < res; y++)
+            for (int x = 0; x < res; x++)
             {
-                t += Time.deltaTime;
-                _flashOverlay.color = Color.Lerp(flashCol, C(0,0,0,0), t / 0.38f);
-                yield return null;
+                float d = Vector2.Distance(new Vector2(x + .5f, y + .5f), center);
+                float a = Mathf.Clamp01(1f - (d - r + 1.5f) / 2f);
+                px[y * res + x] = new Color(1, 1, 1, a);
             }
-            _flashOverlay.gameObject.SetActive(false);
-        }
-        _feedbackRoutine = null;
-    }
-
-    public void SetRoundDot(int index, bool? correct)
-    {
-        if (_roundDots == null || index >= _roundDots.Length) return;
-        _roundDots[index].color = correct == null  ? C(0.25f,0.30f,0.40f)
-                                : correct == true  ? CGREEN : CRED;
-    }
-
-    public void SetScore(int score)
-    {
-        if (_scoreText) _scoreText.text = score + " pts";
-    }
-
-    public void ShowFinalResult(bool won, int correct, int total, int score)
-    {
-        _finalPanel.SetActive(true);
-
-        _finalTitle.text  = won ? "¡Resististe a la mayoría!" : "La mayoría te venció";
-        _finalTitle.color = won ? CGREEN : CRED;
-
-        string msg = won
-            ? correct + " de " + total + " rondas correctas.\n" +
-              "Puntuación: " + score + " pts\n\n" +
-              "Tu cerebro supo ver más allá del instinto.\n" +
-              "Excelente control de impulsos."
-            : "Aciertos: " + correct + " de " + total + "\n\n" +
-              "Seguir a la mayoría es una respuesta automática.\n" +
-              "¡Entrena tu mirada crítica y vuelve a intentarlo!";
-
-        _finalSub.text = msg;
+        tex.SetPixels(px);
+        tex.Apply();
+        return Sprite.Create(tex, new Rect(0, 0, res, res), V(0.5f, 0.5f));
     }
 
     RectTransform MkImg(RectTransform p, string n, Color col,
@@ -329,56 +298,25 @@ public class DontFollowMajorityUIController : MonoBehaviour
         go.transform.SetParent(p, false);
         var rt = go.AddComponent<RectTransform>();
         rt.anchorMin = am; rt.anchorMax = aM;
-        rt.pivot = V(0.5f,0.5f);
+        rt.pivot = V(0.5f, 0.5f);
         rt.anchoredPosition = pos; rt.sizeDelta = sd;
         go.AddComponent<Image>().color = col;
         return rt;
     }
 
-    TextMeshProUGUI MkTxt(RectTransform p, string n, string txt,
-                           Color col, float sz, Vector2 am, Vector2 aM)
+    TextMeshProUGUI MkTxt(RectTransform p, string n, string txt, Color col,
+                          float sz, Vector2 am, Vector2 aM)
     {
         var go = new GameObject(n);
         go.transform.SetParent(p, false);
         var rt = go.AddComponent<RectTransform>();
         rt.anchorMin = am; rt.anchorMax = aM;
-        rt.pivot = V(0.5f,0.5f);
+        rt.pivot = V(0.5f, 0.5f);
         rt.anchoredPosition = Vector2.zero; rt.sizeDelta = Vector2.zero;
         var t = go.AddComponent<TextMeshProUGUI>();
         t.text = txt; t.color = col; t.fontSize = sz;
         t.alignment    = TextAlignmentOptions.Center;
         t.overflowMode = TextOverflowModes.Overflow;
         return t;
-    }
-
-    void MkBtn(RectTransform p, string lbl, Color bg, Vector2 am, Vector2 aM, Action click)
-    {
-        var rt = MkImg(p, "Btn_"+lbl, bg, am, aM, V(0,0), V(0,0));
-        MkImg(rt, "Sh", C(1,1,1,0.09f), V(0,0.5f), V(1,1), V(0,0), V(0,0));
-        var b = rt.gameObject.AddComponent<Button>();
-        b.targetGraphic = rt.GetComponent<Image>();
-        var cb = b.colors;
-        cb.normalColor = Color.white; cb.highlightedColor = C(1,1,1,0.82f);
-        cb.pressedColor = C(0.72f,0.72f,0.72f); b.colors = cb;
-        b.onClick.AddListener(() => click?.Invoke());
-        var t = MkTxt(rt, "T", lbl, Color.white, 22, V(0,0), V(1,1));
-        t.fontStyle = FontStyles.Bold;
-    }
-
-    static Sprite MakeCircleSprite(int res = 64)
-    {
-        var tex = new Texture2D(res, res, TextureFormat.RGBA32, false);
-        tex.filterMode = FilterMode.Bilinear;
-        float r = res * 0.5f;
-        var px = new Color[res * res];
-        for (int y = 0; y < res; y++)
-        for (int x = 0; x < res; x++)
-        {
-            float d = Vector2.Distance(new Vector2(x+0.5f,y+0.5f), new Vector2(r,r));
-            float a = Mathf.Clamp01(1f - (d - r + 1.5f) / 2f);
-            px[y*res+x] = new Color(1,1,1,a);
-        }
-        tex.SetPixels(px); tex.Apply();
-        return Sprite.Create(tex, new Rect(0,0,res,res), V(0.5f,0.5f));
     }
 }

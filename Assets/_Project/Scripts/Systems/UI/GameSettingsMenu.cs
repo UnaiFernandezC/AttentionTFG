@@ -1,3 +1,4 @@
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -97,6 +98,10 @@ public class GameSettingsMenu : MonoBehaviour
 
         var card = MkImg(pRT, "Card", PANEL, new Vector2(0.5f,0.5f), new Vector2(0.5f,0.5f),
                          Vector2.zero, new Vector2(640f, 480f));
+        var cardImg = card.GetComponent<Image>();
+        cardImg.sprite = KidUI.RoundedSprite;
+        cardImg.type = Image.Type.Sliced;
+        cardImg.pixelsPerUnitMultiplier = 1.1f;
 
         var hdr = MkImg(card, "Hdr", HDR, new Vector2(0,1), new Vector2(1,1),
                         Vector2.zero, new Vector2(0, 72f));
@@ -305,7 +310,11 @@ public class GameSettingsMenu : MonoBehaviour
                System.Action click)
     {
         var rt = MkImg(p, "Btn_" + lbl, bg, am, aM, Vector2.zero, Vector2.zero);
-        MkImg(rt, "Sh", C(1,1,1,0.09f), new Vector2(0,0.5f), Vector2.one, Vector2.zero, Vector2.zero);
+        var btnImg = rt.GetComponent<Image>();
+        btnImg.sprite = KidUI.RoundedSprite;
+        btnImg.type = Image.Type.Sliced;
+        btnImg.pixelsPerUnitMultiplier = 1.3f;
+        ButtonJuice.Attach(rt.gameObject);
         var b = rt.gameObject.AddComponent<Button>();
         b.targetGraphic = rt.GetComponent<Image>();
         var cb = b.colors;

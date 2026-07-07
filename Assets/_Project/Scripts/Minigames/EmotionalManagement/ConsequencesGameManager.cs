@@ -1,3 +1,4 @@
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 using System.Collections;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -22,13 +23,21 @@ public class ConsequencesGameManager : MinigameBase
     int                _currentIndex;
     int                _score;
     int                _positiveCount;
+    int                _neutralCount;
+    float              _situationShownAt;
     EmotionalSituation _currentSituation;
 
     protected override string GetIntroDescription() =>
         "Se te presentaran situaciones del dia a dia.\n" +
-        "Lee cada una y elige la reaccion que consideres mas adecuada.\n\n" +
+        "La carita de cada opcion te da una pista de como acaba.\n\n" +
         "No hay prisa: piensa antes de responder.\n" +
-        "Gana " + roundsToWin + " de " + situationCount + " decisiones adecuadas para completar el juego.";
+        "Consigue " + roundsToWin + " de " + situationCount + " decisiones adecuadas para completar el juego.";
+
+    protected override void Start()
+    {
+        ApplyDifficulty();
+        base.Start();
+    }
 
     void ApplyDifficulty()
     {
@@ -45,12 +54,15 @@ public class ConsequencesGameManager : MinigameBase
                 situationCount = 8;
                 roundsToWin    = 6;
                 break;
+            default:
+                situationCount = 5;
+                roundsToWin    = 3;
+                break;
         }
     }
 
     protected override void OnMinigameStart()
     {
-        ApplyDifficulty();
         EnsureEventSystem();
 
         _sitManager = GetComponent<ConsequencesSituationManager>();
@@ -59,14 +71,13 @@ public class ConsequencesGameManager : MinigameBase
         _currentIndex  = 0;
         _score         = 0;
         _positiveCount = 0;
+        _neutralCount  = 0;
 
         _sitManager.Initialize(situationCount);
 
         _ui.BuildUI(
             idx => HandleOptionChosen(idx),
-            ()  => NextSituation(),
-            ()  => RestartMinigame(),
-            ()  => ReturnToGameSelector());
+            ()  => NextSituation());
 
         _ui.UpdateScore(0);
 
@@ -91,6 +102,7 @@ public class ConsequencesGameManager : MinigameBase
             return;
         }
         _ui.ShowSituation(_currentSituation, _currentIndex + 1, _sitManager.Total);
+        _situationShownAt = Time.realtimeSinceStartup;
     }
 
     void HandleOptionChosen(int optionIndex)
@@ -101,18 +113,30 @@ public class ConsequencesGameManager : MinigameBase
 
         var chosen = _currentSituation.options[optionIndex];
 
+        float rtMs = (Time.realtimeSinceStartup - _situationShownAt) * 1000f;
+        ReportEvent(chosen.quality == AnswerQuality.Positive, rtMs);
+
         int delta = 0;
         switch (chosen.quality)
         {
             case AnswerQuality.Positive:
                 delta = pointsPositive;
                 _positiveCount++;
+                GameFeel.PlaySuccess();
+                GameFeel.FloatingText("+" + pointsPositive, new Color(0.22f, 0.86f, 0.54f),
+                                      new Vector2(0f, 180f));
                 break;
             case AnswerQuality.Neutral:
                 delta = pointsNeutral;
+                _neutralCount++;
+                GameFeel.PlayPop();
+                GameFeel.FloatingText("+" + pointsNeutral, new Color(0.96f, 0.82f, 0.20f),
+                                      new Vector2(0f, 180f));
                 break;
             case AnswerQuality.Negative:
                 delta = pointsNegative;
+                GameFeel.PlayError();
+                GameFeel.ScreenFlash(new Color(0.90f, 0.22f, 0.28f), 0.15f, 0.25f);
                 break;
         }
         _score += delta;
@@ -135,8 +159,26 @@ public class ConsequencesGameManager : MinigameBase
     void EndGame()
     {
         bool won = _positiveCount >= roundsToWin;
-        CompleteMinigame(_score);
-        _ui.ShowFinalResult(won, _positiveCount, _sitManager.Total, _score);
+
+        if (won) CompleteMinigame(_score);
+        else     FailMinigame();
+
+        float ratio = _sitManager.Total > 0
+            ? (float)_positiveCount / _sitManager.Total
+            : 0f;
+
+        ShowResults(
+            won,
+            GameFeel.StarsFromRatio(won, ratio),
+            _score,
+            new[]
+            {
+                "Decisiones adecuadas: " + _positiveCount + " / " + _sitManager.Total,
+                "Decisiones neutras: " + _neutralCount
+            },
+            won ? "¡Buen manejo emocional!" : "Hay margen de mejora",
+            won ? "Hablar con calma resuelve mas que gritar."
+                : "Respirar y dialogar siempre da mejores resultados.");
     }
 
     static void EnsureEventSystem()

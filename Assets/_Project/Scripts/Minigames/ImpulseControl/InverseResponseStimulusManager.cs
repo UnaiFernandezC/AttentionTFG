@@ -1,3 +1,4 @@
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 using System;
 using System.Collections;
 using UnityEngine;
@@ -42,12 +43,6 @@ public class InverseResponseStimulusManager : MonoBehaviour
     {
         if (_stimulusCo != null) { StopCoroutine(_stimulusCo); _stimulusCo = null; }
         IsWaitingInput = false;
-    }
-
-    public void Tick()
-    {
-        if (IsWaitingInput)
-            StimulusElapsed += Time.deltaTime;
     }
 
     IEnumerator StimulusRoutine()

@@ -1,7 +1,12 @@
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
+/// <summary>
+/// Tablero de numeros desordenados. Admite cualquier conjunto de valores,
+/// orden ascendente o descendente y numeros "ya colocados" (ayuda visual).
+/// </summary>
 public class OrderManager : MonoBehaviour
 {
 
@@ -9,64 +14,82 @@ public class OrderManager : MonoBehaviour
     [Tooltip("Tiempo en segundos que el flash de error permanece visible.")]
     public float wrongFlashDelay = 0.55f;
 
-    private static readonly Color[] NUMBER_PALETTE = new Color[]
-    {
-        new Color(0.98f, 0.40f, 0.40f),
-        new Color(0.30f, 0.82f, 0.76f),
-        new Color(1.00f, 0.88f, 0.35f),
-        new Color(0.62f, 0.58f, 1.00f),
-        new Color(0.30f, 0.90f, 0.65f),
-        new Color(0.43f, 0.71f, 1.00f),
-        new Color(1.00f, 0.65f, 0.25f),
-        new Color(0.98f, 0.44f, 0.68f),
-        new Color(0.55f, 0.90f, 0.35f),
-        new Color(0.80f, 0.50f, 1.00f),
-    };
-
     private List<NumberButton> _allButtons = new List<NumberButton>();
-    private int  _nextExpected  = 1;
-    private int  _totalNumbers  = 0;
-    private bool _isLocked      = false;
-    private int  _wrongCount    = 0;
-    private int  _correctCount  = 0;
+    private List<int> _expectedOrder = new List<int>();
+    private int  _nextIdx      = 0;
+    private bool _isLocked     = false;
+    private int  _wrongCount   = 0;
+    private int  _correctCount = 0;
 
+    /// <summary>Se invoca tras cada acierto con el SIGUIENTE valor esperado (-1 si no queda).</summary>
     public System.Action<int> OnCorrectPress;
 
+    /// <summary>Se invoca tras cada fallo con el total de fallos.</summary>
     public System.Action<int> OnWrongPress;
 
+    /// <summary>Se invoca al completar todos los numeros.</summary>
     public System.Action OnComplete;
 
     public int WrongCount   => _wrongCount;
     public int CorrectCount => _correctCount;
+    public int NextExpectedValue => _nextIdx < _expectedOrder.Count ? _expectedOrder[_nextIdx] : -1;
 
-    public void Initialize(RectTransform container, int numCount, float btnSize = 130f, float spacing = 14f)
+    /// <summary>
+    /// Crea el tablero. <paramref name="values"/> son los numeros a mostrar;
+    /// el orden a pulsar es ascendente o descendente segun <paramref name="descending"/>.
+    /// Los primeros <paramref name="prePlaced"/> del orden esperado aparecen ya resueltos.
+    /// </summary>
+    public void Initialize(RectTransform container, int[] values, bool descending = false,
+                           int prePlaced = 0, float btnSize = 130f, float spacing = 14f)
     {
-        _totalNumbers = Mathf.Clamp(numCount, 2, 10);
+        _expectedOrder = new List<int>(values);
+        _expectedOrder.Sort();
+        if (descending) _expectedOrder.Reverse();
 
-        var numbers = new List<int>();
-        for (int i = 1; i <= _totalNumbers; i++)
-            numbers.Add(i);
+        _nextIdx      = 0;
+        _wrongCount   = 0;
+        _correctCount = 0;
+        _isLocked     = false;
 
-        for (int i = numbers.Count - 1; i > 0; i--)
+        // Posiciones barajadas en la cuadricula
+        var shuffled = new List<int>(values);
+        for (int i = shuffled.Count - 1; i > 0; i--)
         {
             int rand = Random.Range(0, i + 1);
-            (numbers[i], numbers[rand]) = (numbers[rand], numbers[i]);
+            (shuffled[i], shuffled[rand]) = (shuffled[rand], shuffled[i]);
         }
 
         int cols, rows;
-        CalculateBestGrid(_totalNumbers, out cols, out rows);
+        CalculateBestGrid(shuffled.Count, out cols, out rows);
 
         float totalWidth  = cols * btnSize + (cols - 1) * spacing;
         float totalHeight = rows * btnSize + (rows - 1) * spacing;
         container.sizeDelta = new Vector2(totalWidth, totalHeight);
 
-        for (int i = 0; i < _totalNumbers; i++)
+        for (int i = 0; i < shuffled.Count; i++)
         {
             int col = i % cols;
             int row = i / cols;
-            NumberButton btn = CreateButton(container, numbers[i], col, row, btnSize, spacing);
+            NumberButton btn = CreateButton(container, shuffled[i], col, row, btnSize, spacing);
             _allButtons.Add(btn);
         }
+
+        // Numeros ya colocados (los primeros del orden esperado)
+        prePlaced = Mathf.Clamp(prePlaced, 0, _expectedOrder.Count - 1);
+        for (int i = 0; i < prePlaced; i++)
+        {
+            NumberButton b = FindButton(_expectedOrder[i]);
+            if (b == null) continue;
+            b.SetPrePlaced();
+            _nextIdx++;
+        }
+    }
+
+    private NumberButton FindButton(int value)
+    {
+        foreach (var b in _allButtons)
+            if (b != null && b.Number == value) return b;
+        return null;
     }
 
     private NumberButton CreateButton(RectTransform container, int number,
@@ -87,7 +110,7 @@ public class OrderManager : MonoBehaviour
 
         var numBtn = go.AddComponent<NumberButton>();
 
-        var frame = CreatePanel(go.transform, "Frame",
+        CreatePanel(go.transform, "Frame",
             new Color(0.08f, 0.08f, 0.18f),
             Vector2.zero, new Vector2(btnSize, btnSize));
 
@@ -123,17 +146,17 @@ public class OrderManager : MonoBehaviour
 
     private void HandleButtonClicked(NumberButton btn)
     {
-        if (_isLocked) return;
+        if (_isLocked || _nextIdx >= _expectedOrder.Count) return;
 
-        if (btn.Number == _nextExpected)
+        if (btn.Number == _expectedOrder[_nextIdx])
         {
 
             btn.SetCorrect();
             _correctCount++;
-            _nextExpected++;
-            OnCorrectPress?.Invoke(_nextExpected);
+            _nextIdx++;
+            OnCorrectPress?.Invoke(NextExpectedValue);
 
-            if (_correctCount >= _totalNumbers)
+            if (_nextIdx >= _expectedOrder.Count)
             {
                 StartCoroutine(DelayedComplete());
             }
@@ -169,7 +192,8 @@ public class OrderManager : MonoBehaviour
                 Destroy(btn.gameObject);
         }
         _allButtons.Clear();
-        _nextExpected = 1;
+        _expectedOrder.Clear();
+        _nextIdx      = 0;
         _wrongCount   = 0;
         _correctCount = 0;
         _isLocked     = false;

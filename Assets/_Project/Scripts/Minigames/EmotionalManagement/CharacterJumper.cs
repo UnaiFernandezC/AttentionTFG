@@ -1,3 +1,4 @@
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 using UnityEngine;
 
 public class CharacterJumper : MonoBehaviour
@@ -16,14 +17,16 @@ public class CharacterJumper : MonoBehaviour
 
     public void JumpToNextPlatform()
     {
-        if (currentPlatformIndex >= jumpTargets.Length) return;
+        if (jumpTargets == null || currentPlatformIndex >= jumpTargets.Length) return;
+
+        Transform nextPlatform = jumpTargets[currentPlatformIndex];
+        currentPlatformIndex++;
+        if (nextPlatform == null) return;
 
         if (animator != null)
             animator.SetTrigger("Jump");
 
-        Transform nextPlatform = jumpTargets[currentPlatformIndex];
         StartCoroutine(JumpTo(nextPlatform.position));
-        currentPlatformIndex++;
     }
 
     System.Collections.IEnumerator JumpTo(Vector3 targetPosition)

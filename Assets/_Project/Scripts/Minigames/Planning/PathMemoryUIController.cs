@@ -1,8 +1,14 @@
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 using System;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
+/// <summary>
+/// HUD del minijuego Memoria de Ruta: banner superior, cuenta atras de
+/// memorizacion, contador de pasos y boton de reiniciar ronda.
+/// Los resultados finales los muestra MinigameBase.ShowResults.
+/// </summary>
 public class PathMemoryUIController : MonoBehaviour
 {
     static Color C(float r, float g, float b, float a = 1f) => new Color(r, g, b, a);
@@ -23,17 +29,14 @@ public class PathMemoryUIController : MonoBehaviour
     TextMeshProUGUI _countdownText;
     TextMeshProUGUI _progressText;
 
-    GameObject      _countdownGO;
-    GameObject      _progressGO;
-    GameObject      _resultOverlayGO;
+    GameObject _countdownGO;
+    GameObject _progressGO;
 
     Action _onReiniciar;
-    Action _onMenu;
 
-    public void Init(Action onReiniciar, Action onMenu)
+    public void Init(Action onReiniciar)
     {
         _onReiniciar = onReiniciar;
-        _onMenu      = onMenu;
     }
 
     public void BuildHUD()
@@ -57,9 +60,7 @@ public class PathMemoryUIController : MonoBehaviour
 
     void BuildFrameBands()
     {
-
         MkImg(_hudRoot, "Top", BgDark, V(0f, 0.89f), V(1f, 1f), Vector2.zero, Vector2.zero);
-
         MkImg(_hudRoot, "Bot", BgDark, V(0f, 0f), V(1f, 0.075f), Vector2.zero, Vector2.zero);
     }
 
@@ -97,22 +98,21 @@ public class PathMemoryUIController : MonoBehaviour
         rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
 
         var bg = MkImg(rt, "Bg", PanelBg, V(0f, 0f), V(1f, 1f), Vector2.zero, Vector2.zero);
-        _progressText = MkTxt(bg, "Txt", "Paso 0 / 0", ColDim, 24,
+        _progressText = MkTxt(bg, "Txt", "Pasos 0", ColDim, 24,
                               V(0f, 0f), V(1f, 1f));
         _progressGO.SetActive(false);
     }
 
     void BuildBottomBar()
     {
-
         var bgRe = MkImg(_hudRoot, "BtnRe", BtnBlue,
                          V(0.32f, 0.008f), V(0.68f, 0.065f), Vector2.zero, Vector2.zero);
-        MkTxt(bgRe, "L", "REINICIAR", ColDim, 22, V(0f, 0f), V(1f, 1f));
+        MkTxt(bgRe, "L", "REINICIAR RONDA", ColDim, 22, V(0f, 0f), V(1f, 1f));
         var btnRe = bgRe.gameObject.AddComponent<Button>();
         btnRe.targetGraphic = bgRe.GetComponent<Image>();
         SetBtnColors(btnRe, BtnBlue, BtnHover, BtnPress);
         btnRe.onClick.AddListener(() => _onReiniciar?.Invoke());
-
+        ButtonJuice.Attach(bgRe.gameObject);
     }
 
     public void SetBannerText(string text, Color color)
@@ -139,67 +139,18 @@ public class PathMemoryUIController : MonoBehaviour
         if (_countdownGO != null) _countdownGO.SetActive(false);
     }
 
-    public void ShowProgress(int current, int total)
+    public void ShowProgress(int moves, int optimal)
     {
         if (_progressGO == null) return;
         _progressGO.SetActive(true);
-        _progressText.text = $"Paso  {current}  /  {total}";
+        _progressText.text = optimal > 0
+            ? $"Pasos  {moves}   ·   Camino perfecto: {optimal}"
+            : $"Pasos  {moves}";
     }
 
     public void HideProgress()
     {
         if (_progressGO != null) _progressGO.SetActive(false);
-    }
-
-    public void ShowResult(bool win, string title, string subtitle,
-                           string retryLabel, Action onRetry, Action onMenu)
-    {
-
-        ClearResult();
-
-        var overlayRT = MkImg(_hudRoot, "Overlay",
-                              new Color(0f, 0f, 0f, 0.78f),
-                              V(0f, 0f), V(1f, 1f), Vector2.zero, Vector2.zero);
-        _resultOverlayGO = overlayRT.gameObject;
-
-        var card = MkImg(overlayRT, "Card", C(0.10f, 0.13f, 0.24f),
-                         V(0.28f, 0.28f), V(0.72f, 0.72f), Vector2.zero, Vector2.zero);
-
-        Color titleCol = win ? C(0.20f, 0.90f, 0.50f) : C(0.95f, 0.30f, 0.30f);
-        MkTxt(card, "T", title, titleCol, 46, V(0.04f, 0.58f), V(0.96f, 0.88f));
-        MkTxt(card, "S", subtitle, C(0.72f, 0.85f, 0.96f), 22,
-              V(0.06f, 0.42f), V(0.94f, 0.60f));
-
-        Color retryCol = win ? C(0.18f, 0.56f, 0.32f) : C(0.18f, 0.38f, 0.72f);
-        var bgRe = MkImg(card, "Re", retryCol,
-                         V(0.06f, 0.19f), V(0.48f, 0.31f), Vector2.zero, Vector2.zero);
-        MkTxt(bgRe, "L", retryLabel, ColWhite, 20, V(0f, 0f), V(1f, 1f));
-        var btnRe = bgRe.gameObject.AddComponent<Button>();
-        btnRe.targetGraphic = bgRe.GetComponent<Image>();
-        btnRe.onClick.AddListener(() => onRetry?.Invoke());
-
-        var bgMe = MkImg(card, "Me", C(0.22f, 0.22f, 0.34f),
-                         V(0.52f, 0.19f), V(0.94f, 0.31f), Vector2.zero, Vector2.zero);
-        MkTxt(bgMe, "L", "VOLVER A LA SECCION", ColDim, 16, V(0f, 0f), V(1f, 1f));
-        var btnMe = bgMe.gameObject.AddComponent<Button>();
-        btnMe.targetGraphic = bgMe.GetComponent<Image>();
-        btnMe.onClick.AddListener(() => onMenu?.Invoke());
-
-        var bgMa = MkImg(card, "Ma", C(0.14f, 0.16f, 0.26f),
-                         V(0.06f, 0.05f), V(0.94f, 0.16f), Vector2.zero, Vector2.zero);
-        MkTxt(bgMa, "L", "MENU PRINCIPAL", ColDim, 16, V(0f, 0f), V(1f, 1f));
-        var btnMa = bgMa.gameObject.AddComponent<Button>();
-        btnMa.targetGraphic = bgMa.GetComponent<Image>();
-        btnMa.onClick.AddListener(() => SceneLoader.GoToMainMenu());
-    }
-
-    public void ClearResult()
-    {
-        if (_resultOverlayGO != null)
-        {
-            UnityEngine.Object.Destroy(_resultOverlayGO);
-            _resultOverlayGO = null;
-        }
     }
 
     static RectTransform MkImg(RectTransform p, string name, Color col,

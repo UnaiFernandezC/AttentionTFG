@@ -1,3 +1,4 @@
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 using System;
 using System.Collections;
 using UnityEngine;
@@ -23,6 +24,9 @@ public class InverseResponseUIController : MonoBehaviour
 
     public InverseResponseInputHandler InputHandler { get; private set; }
 
+    /// <summary>Rect de la flecha central (para sacudidas de GameFeel).</summary>
+    public RectTransform ArrowRect => _arrowParent;
+
     RectTransform    _arrowParent;
     Image[]          _arrowParts;
     Image            _arrowBg;
@@ -30,18 +34,16 @@ public class InverseResponseUIController : MonoBehaviour
     TextMeshProUGUI  _ruleName;
     TextMeshProUGUI  _ruleDesc;
     Image            _rulePanelBg;
+    RectTransform    _rulePanelRT;
+    GameRule         _lastRule;
+    bool             _hasLastRule;
 
     TextMeshProUGUI  _scoreText;
     TextMeshProUGUI  _feedbackText;
     Image            _timerBar;
     Image            _flashOverlay;
 
-    GameObject       _resultPanel;
-    TextMeshProUGUI  _resultTitle;
-    TextMeshProUGUI  _resultSub;
-
-    public void BuildUI(int totalStimuli, Action onRestart, Action onMenu,
-                        InverseResponseInputHandler inputHandler)
+    public void BuildUI(int totalStimuli, InverseResponseInputHandler inputHandler)
     {
         InputHandler = inputHandler;
 
@@ -90,8 +92,6 @@ public class InverseResponseUIController : MonoBehaviour
               C(ACCENT.r, ACCENT.g - 0.08f, ACCENT.b - 0.05f),
               16, V(0.01f,0), V(0.78f,1)).alignment = TextAlignmentOptions.MidlineLeft;
         MkImg(bot, "Sep", C(1,1,1,0.08f), V(0.78f,0.1f), V(0.782f,0.9f), V(0,0), V(0,0));
-
-        BuildResultPanel(R, onRestart, onMenu);
     }
 
     void BuildHeader(RectTransform R, int totalStimuli)
@@ -175,6 +175,7 @@ public class InverseResponseUIController : MonoBehaviour
         panelRT.pivot     = V(0.5f, 0.5f);
         panelRT.sizeDelta = V(560f, 92f);
         panelRT.anchoredPosition = Vector2.zero;
+        _rulePanelRT = panelRT;
         _rulePanelBg = panelGO.AddComponent<Image>();
         _rulePanelBg.color = C(0.08f, 0.12f, 0.24f);
 
@@ -253,6 +254,7 @@ public class InverseResponseUIController : MonoBehaviour
         cb.pressedColor     = C(0.60f, 0.60f, 0.60f);
         btn.colors = cb;
         btn.onClick.AddListener(() => InputHandler?.PressDirection(dir));
+        ButtonJuice.Attach(btnGO);
 
         var miniGO = new GameObject("Mini");
         miniGO.transform.SetParent(btnGO.transform, false);
@@ -283,43 +285,23 @@ public class InverseResponseUIController : MonoBehaviour
         lbl.overflowMode = TextOverflowModes.Overflow;
     }
 
-    void BuildResultPanel(RectTransform R, Action onRestart, Action onMenu)
-    {
-        _resultPanel = new GameObject("ResultPanel");
-        _resultPanel.transform.SetParent(R, false);
-        var er = _resultPanel.AddComponent<RectTransform>();
-        er.anchorMin = V(0,0); er.anchorMax = V(1,1);
-        er.sizeDelta = er.anchoredPosition = Vector2.zero;
-        _resultPanel.AddComponent<Image>().color = C(0,0,0,0.88f);
-
-        var card = MkImgFixed(er, "Card", PANEL, V(0.5f,0.5f), V(0,0), V(920f,500f));
-        MkImg(card, "Sh",    C(1,1,1,0.03f), V(0,0.5f), V(1,1),      V(0,0),  V(0,0));
-        MkImg(card, "LineT", ACCENT,          V(0,1),    V(1,1),      V(0,-4), V(0,8));
-        MkImg(card, "AccL",  ACCENT,          V(0,0.08f), V(0,0.92f), V(4,0),  V(8,0));
-
-        _resultTitle = MkTxt(card, "RT", "", Color.white, 44,
-                             V(0.05f,0.78f), V(0.95f,0.97f));
-        _resultTitle.fontStyle = FontStyles.Bold;
-        _resultTitle.enableAutoSizing = true;
-        _resultTitle.fontSizeMin = 26f; _resultTitle.fontSizeMax = 46f;
-
-        _resultSub = MkTxt(card, "RS", "", C(0.50f,0.68f,0.80f), 22,
-                           V(0.05f,0.37f), V(0.95f,0.76f));
-        _resultSub.overflowMode = TextOverflowModes.Overflow;
-        _resultSub.alignment    = TextAlignmentOptions.Center;
-        _resultSub.lineSpacing  = 10f;
-
-        MkBtn(card, "Jugar de nuevo",     ACCENT,                V(0.05f,0.20f), V(0.48f,0.33f), onRestart);
-        MkBtn(card, "Volver a la seccion", C(0.18f,0.24f,0.38f), V(0.52f,0.20f), V(0.95f,0.33f), onMenu);
-        MkBtn(card, "Menu principal",     C(0.10f,0.13f,0.22f),  V(0.05f,0.05f), V(0.95f,0.17f), () => SceneLoader.GoToMainMenu());
-
-        _resultPanel.SetActive(false);
-    }
-
     public void ShowArrow(ArrowDirection dir, GameRule rule)
     {
 
+        bool ruleChanged = _hasLastRule && rule != _lastRule;
+        _lastRule    = rule;
+        _hasLastRule = true;
+
         _arrowParent.localRotation = Quaternion.Euler(0, 0, DirectionToDeg(dir));
+        UITween.PopIn(_arrowParent, 0.18f, 0.72f);
+
+        if (ruleChanged)
+        {
+            GameFeel.PlayPop();
+            UITween.PulseOnce(_rulePanelRT, 1.12f, 0.30f);
+            GameFeel.FloatingText("¡CAMBIO DE REGLA!", C(0.96f, 0.62f, 0.18f),
+                                  new Vector2(0f, -60f), 40f);
+        }
 
         bool inv = rule == GameRule.Inverse;
         _arrowBg.color = inv ? C(0.12f, 0.08f, 0.24f) : C(0.08f, 0.20f, 0.14f);
@@ -377,25 +359,6 @@ public class InverseResponseUIController : MonoBehaviour
         }
         Flash(correct ? C(0.08f, 0.50f, 0.18f, 0.18f) : C(0.72f, 0.08f, 0.12f, 0.22f));
         StartCoroutine(ClearFeedback(0.70f));
-    }
-
-    public void ShowFinalResult(bool won, int correct, int errors, int total, int score)
-    {
-        string pct = total > 0
-            ? " (" + Mathf.RoundToInt(correct * 100f / total) + "% precision)"
-            : "";
-
-        _resultTitle.text  = won ? "¡Control conseguido!" : "El impulso gano esta vez";
-        _resultTitle.color = won ? CGREEN : CRED;
-        _resultSub.text    = won
-            ? "Respuestas correctas: " + correct + "/" + total + pct + "\n" +
-              "Errores: " + errors + "   Puntuacion: " + score + " pts\n\n" +
-              "Inhibiste el impulso y aplicaste la regla correctamente."
-            : "Respuestas correctas: " + correct + "/" + total + pct + "\n" +
-              "Errores: " + errors + "\n\n" +
-              "Es normal seguir el impulso al principio.\n" +
-              "Con practica el cerebro aprende a frenar la respuesta habitual.";
-        _resultPanel.SetActive(true);
     }
 
     IEnumerator ClearFeedback(float delay)
@@ -508,19 +471,6 @@ public class InverseResponseUIController : MonoBehaviour
         return rt;
     }
 
-    RectTransform MkImgFixed(RectTransform p, string n, Color col,
-                             Vector2 anchor, Vector2 pos, Vector2 sd)
-    {
-        var go = new GameObject(n);
-        go.transform.SetParent(p, false);
-        var rt = go.AddComponent<RectTransform>();
-        rt.anchorMin = rt.anchorMax = anchor;
-        rt.pivot = V(0.5f, 0.5f);
-        rt.anchoredPosition = pos; rt.sizeDelta = sd;
-        go.AddComponent<Image>().color = col;
-        return rt;
-    }
-
     TextMeshProUGUI MkTxt(RectTransform p, string n, string txt, Color col,
                            float sz, Vector2 am, Vector2 aM)
     {
@@ -535,20 +485,5 @@ public class InverseResponseUIController : MonoBehaviour
         t.alignment    = TextAlignmentOptions.Center;
         t.overflowMode = TextOverflowModes.Overflow;
         return t;
-    }
-
-    void MkBtn(RectTransform p, string lbl, Color bg, Vector2 am, Vector2 aM, Action click)
-    {
-        var rt = MkImg(p, "Btn_"+lbl, bg, am, aM, V(0,0), V(0,0));
-        MkImg(rt, "Sh", C(1,1,1,0.09f), V(0,0.5f), V(1,1), V(0,0), V(0,0));
-        var b = rt.gameObject.AddComponent<Button>();
-        b.targetGraphic = rt.GetComponent<Image>();
-        var cb = b.colors;
-        cb.normalColor = Color.white; cb.highlightedColor = C(1,1,1,0.82f);
-        cb.pressedColor = C(0.72f,0.72f,0.72f);
-        b.colors = cb;
-        b.onClick.AddListener(() => click?.Invoke());
-        var t = MkTxt(rt, "T", lbl, Color.white, 24, V(0,0), V(1,1));
-        t.fontStyle = FontStyles.Bold;
     }
 }

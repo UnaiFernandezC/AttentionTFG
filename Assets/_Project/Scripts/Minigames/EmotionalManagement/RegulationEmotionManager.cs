@@ -1,3 +1,4 @@
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 using System;
 
 public class RegulationEmotionManager
@@ -8,15 +9,18 @@ public class RegulationEmotionManager
     {
         public string name;
         public int    impact;
+        public int    cooldownTurns;
         public string feedbackGood;
         public string feedbackBad;
 
-        public EmotionAction(string n, int imp, string fGood, string fBad = "")
+        public EmotionAction(string n, int imp, string fGood, string fBad = "",
+                             int cooldown = COOLDOWN_TURNS)
         {
-            name         = n;
-            impact       = imp;
-            feedbackGood = fGood;
-            feedbackBad  = string.IsNullOrEmpty(fBad) ? fGood : fBad;
+            name          = n;
+            impact        = imp;
+            cooldownTurns = cooldown;
+            feedbackGood  = fGood;
+            feedbackBad   = string.IsNullOrEmpty(fBad) ? fGood : fBad;
         }
     }
 
@@ -33,9 +37,20 @@ public class RegulationEmotionManager
             "El apoyo social es uno de los mejores reguladores del bienestar."),
 
         new EmotionAction(
+            "Contar hasta 10",  -20,
+            "Contar despacio pone distancia entre lo que sientes y lo que haces.\n" +
+            "Es muy potente, pero necesita mas tiempo para recargarse.",
+            "", 3),
+
+        new EmotionAction(
             "Salir a caminar",  -16,
             "El movimiento fisico libera endorfinas y aleja la mente\n" +
             "del bucle de pensamientos negativos."),
+
+        new EmotionAction(
+            "Escuchar musica",  -14,
+            "La musica tranquila baja el ritmo del corazon\n" +
+            "y ayuda al cuerpo a relajarse poco a poco."),
 
         new EmotionAction(
             "Pensar en algo positivo",  -12,
@@ -97,7 +112,7 @@ public class RegulationEmotionManager
 
         CurrentLevel = Math.Max(0f, CurrentLevel + action.impact);
 
-        _cooldowns[index] = COOLDOWN_TURNS + 1;
+        _cooldowns[index] = action.cooldownTurns + 1;
         for (int i = 0; i < _cooldowns.Length; i++)
             if (_cooldowns[i] > 0) _cooldowns[i]--;
 

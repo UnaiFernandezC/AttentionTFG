@@ -1,3 +1,4 @@
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 using System;
 using UnityEngine;
 using UnityEngine.UI;
@@ -25,9 +26,8 @@ public class SimonUIController : MonoBehaviour
         C(0.18f, 0.82f, 0.44f),
         C(0.96f, 0.78f, 0.14f),
         C(0.72f, 0.28f, 0.92f),
+        C(0.98f, 0.55f, 0.12f),
     };
-
-    static readonly string[] BTN_LABELS = { "●", "●", "●", "●", "●" };
 
     int             _buttonCount = 4;
     Canvas          _canvas;
@@ -52,7 +52,7 @@ public class SimonUIController : MonoBehaviour
 
     public void BuildUI(int buttonCount = 4)
     {
-        _buttonCount = Mathf.Clamp(buttonCount, 2, 5);
+        _buttonCount = Mathf.Clamp(buttonCount, 2, 6);
 
         var cGO = new GameObject("Canvas_Simon");
         cGO.transform.SetParent(transform, false);
@@ -97,7 +97,7 @@ public class SimonUIController : MonoBehaviour
 
         var rdBox = MkImg(hdr, "RdBox", PANEL2, V(0.52f,0.10f), V(0.73f,0.90f), V(0,0), V(0,0));
         MkImg(rdBox, "LineT", ACCENT, V(0,1), V(1,1), V(0,-2), V(0,4));
-        _roundHeaderLbl = MkTxt(rdBox, "RdLbl", "FASE", DIM, 13, V(0,0.52f), V(1,0.96f));
+        _roundHeaderLbl = MkTxt(rdBox, "RdLbl", "SECUENCIA", DIM, 13, V(0,0.52f), V(1,0.96f));
         _roundHeaderLbl.alignment = TextAlignmentOptions.Center;
         _roundLbl = MkTxt(rdBox, "RdVal", "—", Color.white, 28, V(0,0.05f), V(1,0.55f));
         _roundLbl.fontStyle = FontStyles.Bold;
@@ -122,28 +122,45 @@ public class SimonUIController : MonoBehaviour
 
     void BuildButtonGrid(RectTransform R)
     {
-        bool fiveButtons = _buttonCount >= 5;
+        bool manyButtons = _buttonCount >= 5;
 
-        float gridW   = 520f;
-        float gridH   = fiveButtons ? 620f : 520f;
-        float btnSize = fiveButtons ? 200f : 220f;
-        float glowSize = fiveButtons ? 230f : 250f;
-        float shineOff = fiveButtons ? -42f : -46f;
+        float gridW    = manyButtons ? 700f : 520f;
+        float gridH    = manyButtons ? 480f : 520f;
+        float btnSize  = manyButtons ? 190f : 220f;
+        float glowSize = manyButtons ? 220f : 250f;
+        float shineOff = manyButtons ? -40f : -46f;
 
-        Vector2[] offsets = fiveButtons
-            ? new Vector2[] {
+        Vector2[] offsets;
+        if (_buttonCount >= 6)
+        {
+            offsets = new Vector2[] {
+                new Vector2(-225f,  115f),
+                new Vector2(   0f,  115f),
+                new Vector2( 225f,  115f),
+                new Vector2(-225f, -115f),
+                new Vector2(   0f, -115f),
+                new Vector2( 225f, -115f),
+            };
+        }
+        else if (_buttonCount == 5)
+        {
+            offsets = new Vector2[] {
                 new Vector2(-130f,  150f),
                 new Vector2( 130f,  150f),
                 new Vector2(-130f,  -60f),
                 new Vector2( 130f,  -60f),
                 new Vector2(   0f, -255f),
-            }
-            : new Vector2[] {
+            };
+        }
+        else
+        {
+            offsets = new Vector2[] {
                 new Vector2(-140f,  140f),
                 new Vector2( 140f,  140f),
                 new Vector2(-140f, -140f),
                 new Vector2( 140f, -140f),
             };
+        }
 
         var gridGO = new GameObject("ButtonGrid");
         gridGO.transform.SetParent(R, false);
@@ -152,7 +169,7 @@ public class SimonUIController : MonoBehaviour
         gridRT.anchorMax = new Vector2(0.5f, 0.5f);
         gridRT.pivot     = new Vector2(0.5f, 0.5f);
         gridRT.sizeDelta = new Vector2(gridW, gridH);
-        gridRT.anchoredPosition = new Vector2(0f, fiveButtons ? -30f : -20f);
+        gridRT.anchoredPosition = new Vector2(0f, manyButtons ? -30f : -20f);
         gridGO.AddComponent<Image>().color = Color.clear;
 
         Buttons = new SimonButtonController[_buttonCount];
@@ -218,7 +235,7 @@ public class SimonUIController : MonoBehaviour
             Buttons[i] = ctrl;
         }
 
-        if (!fiveButtons)
+        if (!manyButtons)
         {
             MkImg(gridRT, "SepH", C(1, 1, 1, 0.06f), V(0, 0.5f), V(1, 0.5f), V(0, 0), V(0, 2));
             MkImg(gridRT, "SepV", C(1, 1, 1, 0.06f), V(0.5f, 0), V(0.5f, 1), V(0, 0), V(2, 0));
@@ -268,14 +285,14 @@ public class SimonUIController : MonoBehaviour
         _resultPanel.SetActive(false);
     }
 
-    public void SetPhase(int phase, int total)
+    /// <summary>Progreso en RONDAS jugadas (1/5, 2/5...), no en longitud de secuencia
+    /// (antes en Medio salía "3/7" nada más entrar porque la secuencia inicial ya
+    /// tiene 3 colores — era confuso).</summary>
+    public void SetProgress(int current, int target)
     {
-        if (_roundHeaderLbl) _roundHeaderLbl.text = $"FASE {phase}/{total}";
-        if (_roundLbl) _roundLbl.text = "—";
+        if (_roundHeaderLbl) _roundHeaderLbl.text = "RONDA";
+        if (_roundLbl) _roundLbl.text = current > 0 ? $"{current}/{target}" : $"—/{target}";
     }
-
-    public void SetRound(int round) =>
-        _roundLbl.text = round > 0 ? round.ToString() : "—";
 
     public void SetRecord(int record) =>
         _recordLbl.text = record.ToString();
@@ -396,5 +413,6 @@ public class SimonUIController : MonoBehaviour
         b.onClick.AddListener(() => click?.Invoke());
         var t = MkTxt(rt, "T", lbl, Color.white, 22, V(0,0), V(1,1));
         t.fontStyle = FontStyles.Bold;
+        ButtonJuice.Attach(rt.gameObject);
     }
 }

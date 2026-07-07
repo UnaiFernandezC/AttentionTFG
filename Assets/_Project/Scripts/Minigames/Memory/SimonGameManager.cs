@@ -1,3 +1,4 @@
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 using System.Collections;
 using UnityEngine;
 
@@ -8,46 +9,39 @@ public class SimonGameManager : MinigameBase
     SimonAudioManager    _audio;
     SimonUIController    _ui;
 
-    enum State { Idle, ShowingSequence, PlayerTurn, RoundWon, GameOver }
+    enum State { Idle, ShowingSequence, PlayerTurn, GameOver }
     State _state = State.Idle;
 
-    [Header("Número de colores de la escena")]
-    [Tooltip("Cuántos colores distintos usa el juego en esta escena (4 o 5).")]
-    [SerializeField] int colorCount = 4;
+    // ------------------------------------------------ dificultad (runtime)
+    int   _colorCount   = 4;
+    int   _initialSteps = 2;
+    int   _stepsToWin   = 5;
+    float _stepDuration = 0.80f;
+    float _stepGap      = 0.35f;
+    float _previewPause = 0.90f;
 
-    [Header("Fase 1")]
-    [Tooltip("La fase termina cuando el jugador alcanza esta longitud de secuencia.")]
-    [SerializeField] int   stepsToWin1   = 3;
-    [Tooltip("Duración del flash de cada color (segundos).")]
-    [SerializeField] float stepDuration1 = 0.80f;
-    [Tooltip("Pausa entre flashes (segundos).")]
-    [SerializeField] float stepGap1      = 0.35f;
-    [Tooltip("Pausa antes del turno del jugador (segundos).")]
-    [SerializeField] float previewPause1 = 0.90f;
+    const int MAX_ERRORS      = 3;
+    const int POINTS_PER_STEP = 100;
 
-    [Header("Fase 2")]
-    [SerializeField] int   stepsToWin2   = 4;
-    [SerializeField] float stepDuration2 = 0.60f;
-    [SerializeField] float stepGap2      = 0.28f;
-    [SerializeField] float previewPause2 = 0.70f;
-
-    [Header("Fase 3")]
-    [SerializeField] int   stepsToWin3   = 5;
-    [SerializeField] float stepDuration3 = 0.45f;
-    [SerializeField] float stepGap3      = 0.22f;
-    [SerializeField] float previewPause3 = 0.55f;
-
-    [Header("Puntuación")]
-    [SerializeField] int pointsPerStep = 100;
-
-    float _stepDuration;
-    float _stepGap;
-    float _previewPause;
-    int   _currentPhase;
     int   _accumulatedScore;
     int   _totalErrors;
+    int   _correctPresses;
+    int   _totalPresses;
+    float _pressTimer;
 
-    const string PREF_RECORD = "simon_record";
+    /// <summary>Clave de récord POR PERFIL Y DIFICULTAD (antes era global y el
+    /// récord de un niño en Fácil aparecía a otro niño jugando en Difícil).</summary>
+    string RecordKey
+    {
+        get
+        {
+            string prof = (ProfileManager.Instance != null && ProfileManager.Instance.HasActiveProfile)
+                ? ProfileManager.Instance.ActiveProfile.id
+                : "guest";
+            int diff = GameManager.Instance != null ? (int)GameManager.Instance.CurrentDifficulty : 0;
+            return $"simon_record_{prof}_{diff}";
+        }
+    }
     int _record;
 
     Coroutine _gameLoop;
@@ -60,34 +54,55 @@ public class SimonGameManager : MinigameBase
     }
 
     protected override string GetIntroDescription() =>
-        "Observa la secuencia de colores que se ilumina.\n" +
-        "Cuando sea tu turno, repítela en el mismo orden.\n\n" +
-        "Supera las 3 fases para ganar. ¡Buena suerte!";
+        "Mira los colores que se encienden.\n" +
+        "¡Repítelos en el mismo orden!";
+
+    void ApplyDifficulty()
+    {
+        var diff = GameManager.Instance != null
+            ? GameManager.Instance.CurrentDifficulty
+            : DifficultyLevel.Easy;
+
+        switch (diff)
+        {
+            case DifficultyLevel.Medium:
+                _colorCount   = 4;  _initialSteps = 3;  _stepsToWin = 7;
+                _stepDuration = 0.62f; _stepGap = 0.26f; _previewPause = 0.70f;
+                break;
+            case DifficultyLevel.Hard:
+                _colorCount   = 6;  _initialSteps = 3;  _stepsToWin = 8;
+                _stepDuration = 0.45f; _stepGap = 0.20f; _previewPause = 0.55f;
+                break;
+            default:
+                _colorCount   = 4;  _initialSteps = 2;  _stepsToWin = 5;
+                _stepDuration = 0.80f; _stepGap = 0.35f; _previewPause = 0.90f;
+                break;
+        }
+    }
 
     protected override void OnMinigameStart()
     {
+        ApplyDifficulty();
+
         _seq   = GetComponent<SimonSequenceManager>();
         _audio = GetComponent<SimonAudioManager>();
         _ui    = GetComponent<SimonUIController>();
 
-        _seq.Initialize(colorCount);
+        _seq.Initialize(_colorCount);
 
-        _record           = PlayerPrefs.GetInt(PREF_RECORD, 0);
+        _record           = PlayerPrefs.GetInt(RecordKey, 0);
         _accumulatedScore = 0;
-        _currentPhase     = 0;
         _totalErrors      = 0;
+        _correctPresses   = 0;
+        _totalPresses     = 0;
 
-        _ui.BuildUI(colorCount);
+        _ui.BuildUI(_colorCount);
         _ui.SetRecord(_record);
-        _ui.SetRound(0);
-        _ui.SetPhase(1, 3);
+        _ui.SetProgress(0, TotalRounds);
         _ui.SetStatus("");
 
         foreach (var btn in _ui.Buttons)
-        {
             btn.SetInteractive(false);
-            btn.OnPressed += _ => { };
-        }
 
         _ui.OnRestartPressed += () => RestartMinigame();
         _ui.OnMenuPressed    += () => ReturnToGameSelector();
@@ -99,75 +114,60 @@ public class SimonGameManager : MinigameBase
     protected override void OnMinigameComplete() { }
     protected override void OnMinigameFailed()   { }
 
+    /// <summary>Ronda actual contando desde 1 (la secuencia inicial ya trae
+    /// _initialSteps colores, por eso no se muestra la longitud en bruto).</summary>
+    int CurrentRound => Mathf.Max(1, _seq.Round - _initialSteps + 1);
+
+    /// <summary>Rondas totales para ganar (p. ej. Medio: de 3 a 7 colores = 5 rondas).</summary>
+    int TotalRounds => Mathf.Max(1, _stepsToWin - _initialSteps + 1);
+
     IEnumerator GameLoop()
     {
-        int[] stepsToWin     = { stepsToWin1,   stepsToWin2,   stepsToWin3   };
-        float[] durations    = { stepDuration1, stepDuration2, stepDuration3 };
-        float[] gaps         = { stepGap1,      stepGap2,      stepGap3      };
-        float[] previews     = { previewPause1, previewPause2, previewPause3 };
+        _seq.ResetSequence();
+        for (int i = 0; i < _initialSteps - 1; i++)
+            _seq.AddStep();
 
-        for (_currentPhase = 0; _currentPhase < 3; _currentPhase++)
+        while (true)
         {
+            _seq.AddStep();
+            _ui.SetProgress(CurrentRound, TotalRounds);
+            SetAllInteractive(false);
 
-            _stepDuration = durations[_currentPhase];
-            _stepGap      = gaps[_currentPhase];
-            _previewPause = previews[_currentPhase];
-            int phaseSteps = stepsToWin[_currentPhase];
+            _state = State.ShowingSequence;
+            _ui.SetStatus("Mira con atención…", new Color(0.38f, 0.52f, 0.68f));
+            yield return new WaitForSeconds(0.55f);
 
-            _seq.ResetSequence();
+            yield return ShowSequence();
+            yield return new WaitForSeconds(_previewPause);
 
-            _ui.SetPhase(_currentPhase + 1, 3);
-            _ui.SetRound(0);
+            _state = State.PlayerTurn;
+            _ui.SetStatus("¡Tu turno!", new Color(0.22f, 0.86f, 0.54f));
+            SetAllInteractive(true);
 
-            bool gameOver = false;
+            bool[] failed = { false };
+            yield return WaitForPlayerInput(failed);
+            SetAllInteractive(false);
 
-            while (_seq.Round < phaseSteps)
-            {
-
-                _seq.AddStep();
-                _ui.SetRound(_seq.Round);
-                SetAllInteractive(false);
-
-                _state = State.ShowingSequence;
-                _ui.SetStatus("Observa la secuencia…", new Color(0.38f, 0.52f, 0.68f));
-                yield return new WaitForSeconds(0.55f);
-
-                yield return ShowSequence();
-
-                yield return new WaitForSeconds(_previewPause);
-
-                _state = State.PlayerTurn;
-                _ui.SetStatus("¡Tu turno!", new Color(0.22f, 0.86f, 0.54f));
-                SetAllInteractive(true);
-
-                bool[] failed = { false };
-                yield return WaitForPlayerInput(failed);
-                SetAllInteractive(false);
-
-                if (failed[0])
-                {
-                    gameOver = true;
-                    break;
-                }
-
-                _state = State.RoundWon;
-                _accumulatedScore += pointsPerStep * _seq.Round;
-                _ui.SetStatus("¡Correcto! +1 color", new Color(0.96f, 0.78f, 0.18f));
-                _audio.PlaySuccess();
-                yield return new WaitForSeconds(1.00f);
-            }
-
-            if (gameOver)
+            if (failed[0])
             {
                 yield return HandleGameOver();
                 yield break;
             }
 
-            if (_currentPhase < 2)
-                yield return PhaseTransition(_currentPhase + 1);
-        }
+            _accumulatedScore += POINTS_PER_STEP * _seq.Round;
 
-        yield return HandleWin();
+            if (_seq.Round >= _stepsToWin)
+            {
+                yield return HandleWin();
+                yield break;
+            }
+
+            _state = State.Idle;
+            _ui.SetStatus("¡Muy bien! Uno más…", new Color(0.96f, 0.78f, 0.18f));
+            _audio.PlaySuccess();
+            GameFeel.PlayStar();
+            yield return new WaitForSeconds(1.00f);
+        }
     }
 
     IEnumerator ShowSequence()
@@ -185,31 +185,43 @@ public class SimonGameManager : MinigameBase
     {
         bool done   = false;
         bool failed = false;
+        _pressTimer = Time.time;
 
         void OnInput(int idx)
         {
             if (_state != State.PlayerTurn || done) return;
 
+            float rtMs = (Time.time - _pressTimer) * 1000f;
+            _pressTimer = Time.time;
+
             bool correct = _seq.Submit(idx, out bool roundComplete);
             StartCoroutine(_ui.Buttons[idx].PlayerPress(0.18f));
+
+            _totalPresses++;
+            ReportEvent(correct, rtMs);
 
             if (!correct)
             {
                 _totalErrors++;
                 _audio.PlayFail();
+                GameFeel.Error(null);
                 StartCoroutine(_ui.FlashError());
-                if (_totalErrors >= 3)
+
+                if (_totalErrors >= MAX_ERRORS)
                 {
                     failed = true;
                     done   = true;
                 }
                 else
                 {
-                    _ui.SetStatus("¡Cuidado! Fallo " + _totalErrors + "/3", new Color(0.90f, 0.45f, 0.20f));
+                    _ui.SetStatus("¡Uy! Te quedan " + (MAX_ERRORS - _totalErrors) +
+                                  (MAX_ERRORS - _totalErrors == 1 ? " intento" : " intentos"),
+                                  new Color(0.90f, 0.45f, 0.20f));
                 }
             }
             else
             {
+                _correctPresses++;
                 _audio.PlayColor(idx);
                 if (roundComplete) done = true;
             }
@@ -222,60 +234,64 @@ public class SimonGameManager : MinigameBase
         failedOut[0] = failed;
     }
 
-    IEnumerator PhaseTransition(int nextPhase)
-    {
-        _state = State.Idle;
-        SetAllInteractive(false);
-
-        _ui.SetStatus($"¡Fase {nextPhase - 1} completada!\nPreparate para la fase {nextPhase}…",
-                      new Color(0.96f, 0.78f, 0.18f));
-        _audio.PlaySuccess();
-        yield return new WaitForSeconds(2.20f);
-
-        _ui.SetStatus("");
-    }
-
     IEnumerator HandleGameOver()
     {
         _state = State.GameOver;
-        _ui.SetStatus("¡Oh no! Secuencia incorrecta", new Color(0.90f, 0.22f, 0.28f));
+        _ui.SetStatus("¡Oh no! Esa no era…", new Color(0.90f, 0.22f, 0.28f));
 
-        bool newRecord = false;
-        int totalSteps = _seq.Round + _currentPhase * 10;
-        if (totalSteps > _record)
-        {
-            _record = totalSteps;
-            newRecord = true;
-            PlayerPrefs.SetInt(PREF_RECORD, _record);
-            PlayerPrefs.Save();
-        }
-        _ui.SetRecord(_record);
-        CompleteMinigame(_accumulatedScore);
+        SaveRecord(_seq.Round - 1);
 
-        yield return new WaitForSeconds(0.80f);
-        _ui.ShowResult(newRecord, _seq.Round, _record);
+        FailMinigame();
+
+        yield return new WaitForSeconds(0.9f);
+
+        ShowResults(false, 0, _accumulatedScore,
+            new string[]
+            {
+                "Colores seguidos: " + Mathf.Max(0, _seq.Round - 1),
+                "Meta: " + _stepsToWin,
+                "Récord: " + _record
+            },
+            "¡Casi!",
+            "Vuelve a intentarlo. ¡Tú puedes!");
     }
 
     IEnumerator HandleWin()
     {
         _state = State.GameOver;
-        _ui.SetStatus("¡Lo lograste! ¡Eres increíble!", new Color(0.22f, 0.86f, 0.54f));
+        _ui.SetStatus("¡Lo lograste!", new Color(0.22f, 0.86f, 0.54f));
         _audio.PlaySuccess();
+        GameFeel.Confetti(60);
 
-        bool newRecord = false;
-        int totalSteps = 999;
-        if (_record < totalSteps)
+        SaveRecord(_seq.Round);
+
+        CompleteMinigame(_accumulatedScore);
+
+        yield return new WaitForSeconds(1.1f);
+
+        float ratio = _totalPresses > 0 ? (float)_correctPresses / _totalPresses : 1f;
+        int   stars = GameFeel.StarsFromRatio(true, ratio);
+
+        ShowResults(true, stars, _accumulatedScore,
+            new string[]
+            {
+                "Colores seguidos: " + _seq.Round,
+                "Fallos: " + _totalErrors,
+                "Récord: " + _record
+            },
+            "¡Increíble memoria!",
+            "Repetiste toda la secuencia.");
+    }
+
+    void SaveRecord(int reached)
+    {
+        if (reached > _record)
         {
-            newRecord = true;
-            _record   = totalSteps;
-            PlayerPrefs.SetInt(PREF_RECORD, _record);
+            _record = reached;
+            PlayerPrefs.SetInt(RecordKey, _record);
             PlayerPrefs.Save();
         }
         _ui.SetRecord(_record);
-        CompleteMinigame(_accumulatedScore);
-
-        yield return new WaitForSeconds(0.80f);
-        _ui.ShowWin(newRecord, 3, 3);
     }
 
     void SetAllInteractive(bool value)

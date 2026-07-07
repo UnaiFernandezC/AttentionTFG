@@ -1,3 +1,4 @@
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 using System;
 using UnityEngine;
 using UnityEngine.UI;
@@ -31,7 +32,8 @@ public class QuickReactionUIController : MonoBehaviour
     GameObject      _resultPanel;
     TextMeshProUGUI _resultTitle, _resultSub;
 
-    int _totalRounds;
+    int  _totalRounds;
+    bool _trapMode;
 
     public void BuildUI(int rounds, Action onRestart, Action onMenu)
     {
@@ -179,6 +181,7 @@ public class QuickReactionUIController : MonoBehaviour
 
     public void SetWaiting()
     {
+        _trapMode = false;
         SetStimulusColor(CRED, false);
         _stimLabel.text  = "ESPERA…";
         _stimLabel.color = C(1, 1, 1, 0.40f);
@@ -192,6 +195,7 @@ public class QuickReactionUIController : MonoBehaviour
 
     public void SetStimulus(float timeLimit)
     {
+        _trapMode = false;
         SetStimulusColor(CGREEN, true);
         _stimLabel.text  = "¡YA!";
         _stimLabel.color = Color.white;
@@ -209,6 +213,51 @@ public class QuickReactionUIController : MonoBehaviour
             _countdownRing.color = C(1, 1, 1, 0.12f);
     }
 
+    /// <summary>Ronda trampa (dificil): circulo AMARILLO, hay que aguantar sin pulsar.</summary>
+    public void SetTrapStimulus()
+    {
+        _trapMode = true;
+        SetStimulusColor(CYELLOW, true);
+        _stimLabel.text  = "¡NO PULSES!";
+        _stimLabel.color = Color.white;
+        _statusLbl.text  = "¡Amarillo! Aguanta sin pulsar...";
+        _statusLbl.color = CYELLOW;
+        _timeLbl.text    = "";
+
+        if (_countdownFill != null)
+        {
+            _countdownFill.gameObject.SetActive(true);
+            _countdownFill.fillAmount = 1f;
+            _countdownFill.color      = CYELLOW;
+        }
+        if (_countdownRing != null)
+            _countdownRing.color = C(1, 1, 1, 0.12f);
+    }
+
+    /// <summary>Resultado de una ronda trampa.</summary>
+    public void ShowTrapResult(bool resisted)
+    {
+        if (_countdownFill != null) _countdownFill.gameObject.SetActive(false);
+
+        if (resisted)
+        {
+            SetStimulusColor(CGREEN, true);
+            _stimLabel.text  = "¡Aguantaste!";
+            _stimLabel.color = Color.white;
+            _statusLbl.text  = "¡Muy bien! Era una trampa";
+            _statusLbl.color = CGREEN;
+        }
+        else
+        {
+            SetStimulusColor(CRED, false);
+            _stimLabel.text  = "X";
+            _stimLabel.color = CRED;
+            _statusLbl.text  = "Era trampa, no habia que pulsar";
+            _statusLbl.color = CRED;
+        }
+        _timeLbl.text = "";
+    }
+
     public void UpdateCountdown(float elapsed, float total)
     {
         if (_countdownFill == null || total <= 0f) return;
@@ -222,6 +271,13 @@ public class QuickReactionUIController : MonoBehaviour
         else
             col = Color.Lerp(CRED,    CYELLOW,  t * 2f);
         _countdownFill.color = col;
+
+        if (_trapMode)
+        {
+            // En rondas trampa la barra baja pero el mensaje no cambia
+            _countdownFill.color = CYELLOW;
+            return;
+        }
 
         int secsLeft = Mathf.CeilToInt(total - elapsed);
         if (_stimLabel != null && secsLeft > 0)
@@ -240,7 +296,7 @@ public class QuickReactionUIController : MonoBehaviour
             SetStimulusColor(CYELLOW, false);
             _stimLabel.text  = "¡Pronto!";
             _stimLabel.color = CYELLOW;
-            _statusLbl.text  = "Demasiado pronto";
+            _statusLbl.text  = "¡Espera al verde!";
             _statusLbl.color = CYELLOW;
             _timeLbl.text    = "";
         }

@@ -1,8 +1,15 @@
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 using System;
 using UnityEngine;
 
-public enum RSStimColor { Red, Blue, Green }
-public enum RSRuleType  { ClickRed, ClickBlue, ClickGreen }
+public enum RSStimColor { Red, Blue, Green, Yellow }
+
+public enum RSRuleType
+{
+    ClickRed, ClickBlue, ClickGreen, ClickYellow,
+    // Reglas INVERSAS (dificil): pulsa todos MENOS ese color
+    AvoidRed, AvoidBlue, AvoidGreen, AvoidYellow
+}
 
 public class RSStimData
 {
@@ -44,9 +51,14 @@ public class RuleSwitchRuleManager : MonoBehaviour
     {
         switch (CurrentRule)
         {
-            case RSRuleType.ClickRed:   return s.Color == RSStimColor.Red;
-            case RSRuleType.ClickBlue:  return s.Color == RSStimColor.Blue;
-            case RSRuleType.ClickGreen: return s.Color == RSStimColor.Green;
+            case RSRuleType.ClickRed:    return s.Color == RSStimColor.Red;
+            case RSRuleType.ClickBlue:   return s.Color == RSStimColor.Blue;
+            case RSRuleType.ClickGreen:  return s.Color == RSStimColor.Green;
+            case RSRuleType.ClickYellow: return s.Color == RSStimColor.Yellow;
+            case RSRuleType.AvoidRed:    return s.Color != RSStimColor.Red;
+            case RSRuleType.AvoidBlue:   return s.Color != RSStimColor.Blue;
+            case RSRuleType.AvoidGreen:  return s.Color != RSStimColor.Green;
+            case RSRuleType.AvoidYellow: return s.Color != RSStimColor.Yellow;
             default: return false;
         }
     }
@@ -58,9 +70,14 @@ public class RuleSwitchRuleManager : MonoBehaviour
     {
         switch (r)
         {
-            case RSRuleType.ClickRed:   return "Pulsa solo los ROJOS";
-            case RSRuleType.ClickBlue:  return "Pulsa solo los AZULES";
-            case RSRuleType.ClickGreen: return "Pulsa solo los VERDES";
+            case RSRuleType.ClickRed:    return "Pulsa solo los ROJOS";
+            case RSRuleType.ClickBlue:   return "Pulsa solo los AZULES";
+            case RSRuleType.ClickGreen:  return "Pulsa solo los VERDES";
+            case RSRuleType.ClickYellow: return "Pulsa solo los AMARILLOS";
+            case RSRuleType.AvoidRed:    return "Pulsa TODOS MENOS el rojo";
+            case RSRuleType.AvoidBlue:   return "Pulsa TODOS MENOS el azul";
+            case RSRuleType.AvoidGreen:  return "Pulsa TODOS MENOS el verde";
+            case RSRuleType.AvoidYellow: return "Pulsa TODOS MENOS el amarillo";
             default: return "—";
         }
     }
@@ -71,9 +88,10 @@ public class RuleSwitchRuleManager : MonoBehaviour
     {
         switch (c)
         {
-            case RSStimColor.Red:   return new Color(0.88f, 0.22f, 0.22f);
-            case RSStimColor.Blue:  return new Color(0.22f, 0.52f, 0.90f);
-            case RSStimColor.Green: return new Color(0.18f, 0.80f, 0.38f);
+            case RSStimColor.Red:    return new Color(0.88f, 0.22f, 0.22f);
+            case RSStimColor.Blue:   return new Color(0.22f, 0.52f, 0.90f);
+            case RSStimColor.Green:  return new Color(0.18f, 0.80f, 0.38f);
+            case RSStimColor.Yellow: return new Color(0.95f, 0.78f, 0.10f);
             default: return Color.white;
         }
     }
@@ -82,9 +100,10 @@ public class RuleSwitchRuleManager : MonoBehaviour
     {
         switch (c)
         {
-            case RSStimColor.Red:   return "ROJO";
-            case RSStimColor.Blue:  return "AZUL";
-            case RSStimColor.Green: return "VERDE";
+            case RSStimColor.Red:    return "ROJO";
+            case RSStimColor.Blue:   return "AZUL";
+            case RSStimColor.Green:  return "VERDE";
+            case RSStimColor.Yellow: return "AMARILLO";
             default: return "";
         }
     }
@@ -93,9 +112,14 @@ public class RuleSwitchRuleManager : MonoBehaviour
     {
         switch (r)
         {
-            case RSRuleType.ClickRed:   return GetStimColor(RSStimColor.Red);
-            case RSRuleType.ClickBlue:  return GetStimColor(RSStimColor.Blue);
-            case RSRuleType.ClickGreen: return GetStimColor(RSStimColor.Green);
+            case RSRuleType.ClickRed:    return GetStimColor(RSStimColor.Red);
+            case RSRuleType.ClickBlue:   return GetStimColor(RSStimColor.Blue);
+            case RSRuleType.ClickGreen:  return GetStimColor(RSStimColor.Green);
+            case RSRuleType.ClickYellow: return GetStimColor(RSStimColor.Yellow);
+            case RSRuleType.AvoidRed:    return GetStimColor(RSStimColor.Red);
+            case RSRuleType.AvoidBlue:   return GetStimColor(RSStimColor.Blue);
+            case RSRuleType.AvoidGreen:  return GetStimColor(RSStimColor.Green);
+            case RSRuleType.AvoidYellow: return GetStimColor(RSStimColor.Yellow);
             default: return Color.white;
         }
     }
@@ -104,9 +128,14 @@ public class RuleSwitchRuleManager : MonoBehaviour
     {
         switch (r)
         {
-            case RSRuleType.ClickRed:   return RSStimColor.Red;
-            case RSRuleType.ClickBlue:  return RSStimColor.Blue;
-            case RSRuleType.ClickGreen: return RSStimColor.Green;
+            case RSRuleType.ClickRed:    return RSStimColor.Red;
+            case RSRuleType.ClickBlue:   return RSStimColor.Blue;
+            case RSRuleType.ClickGreen:  return RSStimColor.Green;
+            case RSRuleType.ClickYellow: return RSStimColor.Yellow;
+            case RSRuleType.AvoidRed:    return RSStimColor.Red;
+            case RSRuleType.AvoidBlue:   return RSStimColor.Blue;
+            case RSRuleType.AvoidGreen:  return RSStimColor.Green;
+            case RSRuleType.AvoidYellow: return RSStimColor.Yellow;
             default: return RSStimColor.Red;
         }
     }

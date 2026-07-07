@@ -1,3 +1,4 @@
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -20,6 +21,10 @@ public class BoardManager : MonoBehaviour
         new Color(0.43f, 0.71f, 1.00f),
         new Color(1.00f, 0.65f, 0.25f),
         new Color(0.98f, 0.44f, 0.68f),
+        new Color(0.55f, 0.30f, 0.10f),
+        new Color(0.80f, 0.80f, 0.85f),
+        new Color(0.45f, 0.10f, 0.55f),
+        new Color(0.10f, 0.45f, 0.25f),
     };
 
     private List<CardController> _allCards = new List<CardController>();
@@ -31,9 +36,13 @@ public class BoardManager : MonoBehaviour
 
     public System.Action<int> OnAttemptMade;
 
+    /// <summary>Se dispara al resolver cada intento de pareja: (acierto, tiempo de reacción ms).</summary>
+    public System.Action<bool, float> OnPairResolved;
+
     public System.Action OnAllMatched;
 
-    private int _totalAttempts = 0;
+    private int   _totalAttempts = 0;
+    private float _attemptStart  = -1f;
 
     public void Initialize(RectTransform container, int numPairs, float cardSize = 120f, float spacing = 12f)
     {
@@ -132,11 +141,13 @@ public class BoardManager : MonoBehaviour
     {
         if (_isComparing || card.IsMatched || card.IsRevealed) return;
 
+        GameFeel.PlayPop();
         card.FlipReveal();
 
         if (_firstSelected == null)
         {
             _firstSelected = card;
+            _attemptStart  = Time.time;
         }
         else if (_secondSelected == null && card != _firstSelected)
         {
@@ -153,8 +164,13 @@ public class BoardManager : MonoBehaviour
 
         yield return new WaitForSeconds(0.28f);
 
-        if (_firstSelected.ColorId == _secondSelected.ColorId)
+        float rtMs = _attemptStart >= 0f ? (Time.time - _attemptStart) * 1000f : -1f;
+        bool  match = _firstSelected.ColorId == _secondSelected.ColorId;
+        OnPairResolved?.Invoke(match, rtMs);
+
+        if (match)
         {
+            GameFeel.PlaySuccess();
 
             _firstSelected.SetMatched();
             _secondSelected.SetMatched();
@@ -172,6 +188,11 @@ public class BoardManager : MonoBehaviour
         }
         else
         {
+            GameFeel.PlayError();
+            var rt1 = _firstSelected.GetComponent<RectTransform>();
+            var rt2 = _secondSelected.GetComponent<RectTransform>();
+            GameFeel.Shake(rt1, 8f, 0.28f);
+            GameFeel.Shake(rt2, 8f, 0.28f);
 
             yield return new WaitForSeconds(flipBackDelay);
 
@@ -184,6 +205,23 @@ public class BoardManager : MonoBehaviour
             yield return new WaitForSeconds(0.28f);
             _isComparing = false;
         }
+    }
+
+    /// <summary>Vista previa: muestra todas las cartas y las vuelve a tapar (modo fácil).</summary>
+    public IEnumerator PreviewAll(float seconds)
+    {
+        _isComparing = true;   // bloquea la entrada mientras dura la vista previa
+
+        foreach (var card in _allCards)
+            if (card != null) card.FlipReveal();
+
+        yield return new WaitForSeconds(seconds + 0.3f);
+
+        foreach (var card in _allCards)
+            if (card != null) card.FlipHide();
+
+        yield return new WaitForSeconds(0.3f);
+        _isComparing = false;
     }
 
     private GameObject CreatePanel(Transform parent, string name, Color color,

@@ -1,35 +1,14 @@
-using System;
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 using UnityEngine;
 
+/// <summary>
+/// Componente ligero por bola en el minijuego de seguimiento multiple (MOT).
+/// Reenvia el toque de la bola al TrackingGameManager mediante un callback.
+/// La instancia colocada en la escena (GameController) permanece inactiva.
+/// </summary>
 public class TrackingDetector : MonoBehaviour
 {
+    public System.Action OnTapped;
 
-    [HideInInspector] public RectTransform CanvasRT;
-    [HideInInspector] public RectTransform ObjectRT;
-    [HideInInspector] public float         TrackRadius = 55f;
-
-    public bool IsTracking { get; private set; }
-    public bool Active     { get; set; } = false;
-
-    public event Action OnTrackingGained;
-    public event Action OnTrackingLost;
-
-    bool _wasTracking;
-    Camera _cam;
-
-    void Update()
-    {
-        if (!Active || CanvasRT == null || ObjectRT == null) return;
-
-        Vector2 local;
-        RectTransformUtility.ScreenPointToLocalPointInRectangle(
-            CanvasRT, Input.mousePosition, _cam, out local);
-
-        float dist = Vector2.Distance(local, ObjectRT.anchoredPosition);
-        IsTracking = dist <= TrackRadius;
-
-        if (IsTracking && !_wasTracking) OnTrackingGained?.Invoke();
-        if (!IsTracking && _wasTracking)  OnTrackingLost?.Invoke();
-        _wasTracking = IsTracking;
-    }
+    public void Tap() => OnTapped?.Invoke();
 }

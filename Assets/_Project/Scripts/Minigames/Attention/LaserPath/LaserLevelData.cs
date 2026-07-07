@@ -1,3 +1,4 @@
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 /// <summary>
 /// Datos de nivel para el minijuego Camino Laser.
 /// Codificacion de caracteres por fila:
@@ -205,7 +206,7 @@ public static class LaserLevels
     };
 
     // =========================================================================
-    // DIFICIL: cuadricula 7x7, 22 s, 5-6 espejos rotatables
+    // DIFICIL: cuadricula 7x7, 35 s, 5-6 espejos rotatables
     // =========================================================================
     public static readonly LaserLevelData[] Hard =
     {
@@ -216,7 +217,7 @@ public static class LaserLevels
         //                  -> (1,6)(2,6)(3,6)(4,6) -> b(4,6)=/ -> izquierda -> T(4,0)
         // Inicio (incorrecto):
         //   laser v(0,3) -> (1,3) -> (2,3)=\ -> derecha -> sale  [no llega T(4,0)]
-        LaserLevelData.Build(22f,
+        LaserLevelData.Build(35f,
             "Cinco espejos en zigzag, piensa el camino antes de hacer clic",
             "b..v..s",
             ".......",
@@ -233,7 +234,7 @@ public static class LaserLevels
         //                  -> (1,5)(1,4)(1,3)(1,2)(1,1) -> b(1,1)=/ -> abajo -> T(6,1)
         // Inicio (incorrecto):
         //   laser <(3,6) -> (3,5) -> (3,4)=\ -> sube -> sale  [no llega T(6,1)]
-        LaserLevelData.Build(22f,
+        LaserLevelData.Build(35f,
             "El laser viene desde la derecha y da cinco giros",
             ".......",
             ".b....s",
@@ -250,7 +251,7 @@ public static class LaserLevels
         //                  -> (2,3)(2,4)(2,5)(2,6) -> b(2,6)=/ -> arriba -> T(0,6)
         // Inicio (incorrecto):
         //   laser ^(6,0) -> (5,0) -> (4,0)=\ -> izquierda -> sale  [no llega T(0,6)]
-        LaserLevelData.Build(22f,
+        LaserLevelData.Build(35f,
             "Seis espejos, el laser da muchas vueltas. Piensa bien el orden!",
             "......T",
             ".......",

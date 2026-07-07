@@ -1,3 +1,4 @@
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -8,36 +9,33 @@ using TMPro;
 public class OptimalPathController : MinigameBase
 {
 
-    [Header("Ronda 1 - Muy facil")]
-    public int cols1 = 4;
-    public int rows1 = 4;
-    public int obs1  = 0;
-
-    [Header("Ronda 2 - Media")]
-    public int cols2 = 5;
-    public int rows2 = 5;
-    public int obs2  = 3;
-
-    [Header("Ronda 3 - Complicada")]
-    public int cols3 = 6;
-    public int rows3 = 6;
-    public int obs3  = 7;
-
     [Header("Semilla aleatoria (0 = distinto cada vez)")]
     public int randomSeed = 0;
 
     const int ROUNDS = 3;
+
+    // --- Config por dificultad (ApplyDifficulty) ---
+    int   _gridSide       = 4;
+    int[] _obsPerRound    = { 0, 1, 1 };
+    int   _maxRoundErrors = 5;
+    bool  _useToll        = false;
+
     int _round;
     int _totalSteps;
     int _totalOptimal;
-    int _errors;
+    int _totalErrors;
+    int _tollHits;
+    int _roundErrors;
 
     int    _cols, _rows, _numObs;
     bool[] _blocked;
     bool[] _visited;
     int    _startIdx, _goalIdx, _playerIdx;
+    int    _tollIdx = -1;
     int    _steps, _optimal;
     bool   _roundOver;
+    bool   _planning;
+    float  _roundStartTime;
 
     GameObject        _gridGO;
     Image[]           _cellBg;
@@ -48,16 +46,12 @@ public class OptimalPathController : MinigameBase
     TextMeshProUGUI _optVal;
     TextMeshProUGUI _statusLbl;
     TextMeshProUGUI _roundLbl;
+    TextMeshProUGUI _planLbl;
     Image[]         _dots;
 
     GameObject      _transPanel;
     TextMeshProUGUI _transTitle;
     TextMeshProUGUI _transSub;
-
-    GameObject      _endPanel;
-    Image           _endBar;
-    TextMeshProUGUI _endTitle;
-    TextMeshProUGUI _endSub;
 
     static readonly Color BG     = Hex(0.08f,0.09f,0.18f);
     static readonly Color PANEL  = Hex(0.12f,0.13f,0.24f);
@@ -77,41 +71,62 @@ public class OptimalPathController : MinigameBase
     static readonly Color CP = Hex(0.25f,0.70f,1.00f);
     static readonly Color CV = Hex(0.28f,0.32f,0.55f);
     static readonly Color CA = Hex(0.32f,0.38f,0.65f);
+    static readonly Color CT = Hex(0.95f,0.55f,0.12f);   // peaje
 
     static Color Hex(float r, float g, float b) { return new Color(r, g, b); }
 
     protected override string GetIntroDescription() =>
-        "Haz clic en las casillas para moverte desde INICIO hasta META.\n" +
-        "Intenta llegar con el menor numero de pasos posible.\n" +
-        "Hay 3 niveles, cada uno con un mapa diferente.";
+        "Primero PIENSA tu ruta con calma y luego muevete hasta la META.\n" +
+        "Intenta llegar con los minimos pasos. ¡Cuidado con los muros!";
 
     protected override void OnMinigameStart()
     {
         EnsureES();
+        ApplyDifficulty();
         _round        = 0;
         _totalSteps   = 0;
         _totalOptimal = 0;
-        _errors       = 0;
+        _totalErrors  = 0;
+        _tollHits     = 0;
         BuildUI();
         StartRound(0);
+    }
+
+    void ApplyDifficulty()
+    {
+        var diff = GameManager.Instance != null
+            ? GameManager.Instance.CurrentDifficulty
+            : DifficultyLevel.Easy;
+
+        switch (diff)
+        {
+            case DifficultyLevel.Medium:
+                _gridSide = 5; _obsPerRound = new[] { 3, 4, 4 };
+                _maxRoundErrors = 4; _useToll = false;
+                break;
+            case DifficultyLevel.Hard:
+                _gridSide = 6; _obsPerRound = new[] { 6, 8, 8 };
+                _maxRoundErrors = 3; _useToll = true;
+                break;
+            default:
+                _gridSide = 4; _obsPerRound = new[] { 0, 1, 1 };
+                _maxRoundErrors = 5; _useToll = false;
+                break;
+        }
     }
 
     protected override void OnMinigameComplete() { }
     protected override void OnMinigameFailed()   { }
 
-    void RoundConfig(int r, out int c, out int rw, out int obs)
-    {
-        if      (r == 0) { c = cols1; rw = rows1; obs = obs1; }
-        else if (r == 1) { c = cols2; rw = rows2; obs = obs2; }
-        else             { c = cols3; rw = rows3; obs = obs3; }
-    }
-
     void StartRound(int r)
     {
-        _round    = r;
-        _roundOver = false;
+        _round       = r;
+        _roundOver   = false;
+        _roundErrors = 0;
 
-        RoundConfig(r, out _cols, out _rows, out _numObs);
+        _cols   = _gridSide;
+        _rows   = _gridSide;
+        _numObs = _obsPerRound[Mathf.Clamp(r, 0, _obsPerRound.Length - 1)];
 
         int s = randomSeed != 0 ? randomSeed + r : System.Environment.TickCount;
         Random.InitState(s);
@@ -120,18 +135,36 @@ public class OptimalPathController : MinigameBase
         RebuildCells();
 
         if (_transPanel != null) _transPanel.SetActive(false);
-        if (_endPanel   != null) _endPanel.SetActive(false);
 
         UpdateRoundUI();
+        RefreshCells();
+        StartCoroutine(PlanPhase());
+    }
+
+    IEnumerator PlanPhase()
+    {
+        _planning = true;
+        RefreshCells();
+        for (int i = 3; i >= 1; i--)
+        {
+            if (_statusLbl != null) _statusLbl.text = "Piensa tu ruta antes de moverte...";
+            if (_planLbl   != null) _planLbl.text   = "Piensa tu ruta... " + i;
+            GameFeel.PlayPop();
+            yield return new WaitForSeconds(1f);
+        }
+        if (_planLbl != null) _planLbl.text = "";
+        _planning = false;
+        _roundStartTime = Time.realtimeSinceStartup;
+        if (_statusLbl != null) _statusLbl.text = "¡YA! Toca las casillas claras para moverte";
         RefreshCells();
     }
 
     void ResetRound()
     {
         StopAllCoroutines();
+        _planning = false;
+        if (_planLbl    != null) _planLbl.text = "";
         if (_transPanel != null) _transPanel.SetActive(false);
-        if (_endPanel   != null) _endPanel.SetActive(false);
-
         StartRound(_round);
     }
 
@@ -144,6 +177,7 @@ public class OptimalPathController : MinigameBase
         _goalIdx   = total - 1;
         _playerIdx = _startIdx;
         _steps     = 0;
+        _tollIdx   = -1;
 
         int placed = 0, tries = 0;
         while (placed < _numObs && tries < 3000)
@@ -158,8 +192,29 @@ public class OptimalPathController : MinigameBase
                 placed++;
         }
 
-        _optimal           = BFS(_startIdx, _goalIdx);
+        if (_useToll)
+            PlaceToll(total);
+
+        _optimal            = BFS(_startIdx, _goalIdx);
         _visited[_startIdx] = true;
+    }
+
+    void PlaceToll(int total)
+    {
+        for (int t = 0; t < 200; t++)
+        {
+            int idx = Random.Range(0, total);
+            if (idx == _startIdx || idx == _goalIdx || _blocked[idx]) continue;
+
+            // El peaje debe poder rodearse: la meta sigue alcanzable sin pisarlo.
+            _blocked[idx] = true;
+            bool avoidable = BFS(_startIdx, _goalIdx) >= 0;
+            _blocked[idx] = false;
+            if (!avoidable) continue;
+
+            _tollIdx = idx;
+            return;
+        }
     }
 
     int BFS(int from, int to)
@@ -193,7 +248,7 @@ public class OptimalPathController : MinigameBase
 
     void TryMove(int target)
     {
-        if (_roundOver) return;
+        if (_roundOver || _planning) return;
         int total = _cols * _rows;
         if (target < 0 || target >= total || _blocked[target]) return;
 
@@ -204,12 +259,20 @@ public class OptimalPathController : MinigameBase
         int oldDist = BFS(_playerIdx, _goalIdx);
         int newDist = BFS(target, _goalIdx);
 
+        bool firstVisit  = !_visited[target];
         _playerIdx       = target;
         _steps++;
         _visited[target] = true;
 
         RefreshCells();
         StartCoroutine(PulseCell(target));
+
+        if (target == _tollIdx && firstVisit)
+        {
+            _tollHits++;
+            GameFeel.PlayError();
+            GameFeel.FloatingText("-50 ¡Peaje!", CT, new Vector2(0f, 120f));
+        }
 
         if (_playerIdx == _goalIdx)
         {
@@ -220,19 +283,35 @@ public class OptimalPathController : MinigameBase
 
         if (newDist >= 0 && oldDist >= 0 && newDist > oldDist)
         {
-            _errors++;
-            if (_errors >= 3)
+            _roundErrors++;
+            _totalErrors++;
+            GameFeel.PlayError();
+            if (_cellBtn != null && target < _cellBtn.Length)
+                GameFeel.Shake(_cellBtn[target].GetComponent<RectTransform>(), 8f, 0.25f);
+
+            int left = _maxRoundErrors - _roundErrors;
+            if (left >= 0 && _statusLbl != null)
+                _statusLbl.text = "Te alejas de la META. Desvios restantes: " + Mathf.Max(0, left);
+
+            if (_roundErrors > _maxRoundErrors)
             {
-                _errors = 0;
-                _round  = 0;
-                _totalSteps   = 0;
-                _totalOptimal = 0;
-                StopAllCoroutines();
-                if (_statusLbl != null)
-                    _statusLbl.text = "Demasiados desvios. Vuelves a la ronda 1.";
-                StartRound(0);
+                _roundOver = true;
+                StartCoroutine(RoundResetRoutine());
             }
         }
+        else
+        {
+            GameFeel.PlayPop();
+        }
+    }
+
+    IEnumerator RoundResetRoutine()
+    {
+        if (_statusLbl != null)
+            _statusLbl.text = "Demasiados desvios. Repites esta ronda.";
+        GameFeel.ScreenFlash(RED, 0.18f, 0.3f);
+        yield return new WaitForSeconds(1.2f);
+        StartRound(_round);
     }
 
     IEnumerator HandleRoundEnd()
@@ -240,19 +319,37 @@ public class OptimalPathController : MinigameBase
         _totalSteps   += _steps;
         _totalOptimal += _optimal;
 
-        yield return new WaitForSeconds(0.5f);
+        float rtMs = (Time.realtimeSinceStartup - _roundStartTime) * 1000f;
+        ReportEvent(_steps == _optimal, rtMs);
+
+        GameFeel.PlaySuccess();
+        GameFeel.Confetti(25);
+
+        yield return new WaitForSeconds(0.6f);
 
         if (_round >= ROUNDS - 1)
-        {
-
-            int score = Mathf.Max(100, 1000 - (_totalSteps - _totalOptimal) * 50);
-            CompleteMinigame(score);
-            ShowEnd();
-        }
+            FinishGame();
         else
-        {
             StartCoroutine(Transition());
-        }
+    }
+
+    void FinishGame()
+    {
+        int extra = _totalSteps - _totalOptimal;
+        int score = Mathf.Max(100, 1000 - extra * 50 - _tollHits * 50);
+        float eff = _totalSteps > 0 ? (float)_totalOptimal / _totalSteps : 1f;
+        int   pct = Mathf.RoundToInt(eff * 100f);
+
+        CompleteMinigame(score);
+        ShowResults(true, GameFeel.StarsFromRatio(true, eff), score,
+            new[]
+            {
+                "Pasos: " + _totalSteps + "  ·  Optimo: " + _totalOptimal,
+                "Eficiencia: " + pct + "%",
+                "Desvios: " + _totalErrors + (_useToll ? "  ·  Peajes: " + _tollHits : "")
+            },
+            extra == 0 ? "¡Ruta perfecta!" : null,
+            extra == 0 ? "Camino optimo en todas las rondas" : null);
     }
 
     IEnumerator Transition()
@@ -316,6 +413,11 @@ public class OptimalPathController : MinigameBase
             {
                 col = CB;
             }
+            else if (i == _tollIdx && !_visited[i])
+            {
+                col = CT;
+                lbl = "-50";
+            }
             else if (adj[i])
             {
                 col = CA;
@@ -331,21 +433,14 @@ public class OptimalPathController : MinigameBase
 
             _cellBg[i].color         = col;
             _cellLbl[i].text         = lbl;
-            _cellBtn[i].interactable = adj[i] && !_roundOver;
+            _cellBtn[i].interactable = adj[i] && !_roundOver && !_planning;
         }
 
         if (_stepsVal != null) _stepsVal.text = _steps.ToString();
         if (_optVal   != null) _optVal.text   = _optimal >= 0 ? _optimal.ToString() : "?";
 
-        if (_statusLbl != null)
-        {
-            if (_roundOver)
-                _statusLbl.text = EvalMsg();
-            else if (_steps == 0)
-                _statusLbl.text = "Haz clic en las casillas azules claras para moverte";
-            else
-                _statusLbl.text = "Bien! Sigue hacia META";
-        }
+        if (_statusLbl != null && _roundOver)
+            _statusLbl.text = EvalMsg();
     }
 
     string EvalMsg()
@@ -364,12 +459,13 @@ public class OptimalPathController : MinigameBase
         float t = 0f;
         while (t < 1f)
         {
+            if (rt == null) yield break;
             t += Time.deltaTime * 14f;
             float s = 1f + 0.08f * Mathf.Sin(t * Mathf.PI);
             rt.localScale = new Vector3(s, s, 1f);
             yield return null;
         }
-        rt.localScale = Vector3.one;
+        if (rt != null) rt.localScale = Vector3.one;
     }
 
     void UpdateRoundUI()
@@ -380,18 +476,6 @@ public class OptimalPathController : MinigameBase
         if (_dots != null)
             for (int i = 0; i < _dots.Length; i++)
                 _dots[i].color = i <= _round ? ACCENT : DOTOFF;
-    }
-
-    void ShowEnd()
-    {
-        int extra  = _totalSteps - _totalOptimal;
-        bool perf  = extra == 0;
-        bool good  = extra <= 4;
-        _endBar.color  = perf ? YELLOW : (good ? GREEN : ACCENT);
-        _endTitle.text = perf ? "Camino optimo en todas!" : (good ? "Muy bien!" : "Completado!");
-        _endSub.text   = "Pasos totales: " + _totalSteps +
-                         "\nCamino optimo: " + _totalOptimal;
-        _endPanel.SetActive(true);
     }
 
     void BuildUI()
@@ -424,7 +508,6 @@ public class OptimalPathController : MinigameBase
         _dots = new Image[ROUNDS];
         for (int i = 0; i < ROUNDS; i++)
         {
-            int ii = i;
             GameObject dot = new GameObject("Dot" + i);
             dot.transform.SetParent(hdr, false);
             RectTransform drt = dot.AddComponent<RectTransform>();
@@ -456,12 +539,14 @@ public class OptimalPathController : MinigameBase
         glg.constraint        = GridLayoutGroup.Constraint.FixedColumnCount;
         glg.constraintCount   = 4;
 
+        _planLbl = MkTxt(R, "Plan", "", YELLOW, 42, V2(0.28f, 0.905f), V2(0.98f, 0.985f));
+        _planLbl.fontStyle    = FontStyles.Bold;
+        _planLbl.overflowMode = TextOverflowModes.Overflow;
+
         RectTransform bot = MkImg(R, "Bot", HDR, V2(0,0), V2(1,0), V2(0,45), V2(0,90));
         MkBtn(bot, "Reiniciar ronda", GREY,   V2(0.04f,0.12f), V2(0.96f,0.88f), () => ResetRound());
 
         BuildTransPanel(R);
-
-        BuildEndPanel(R);
     }
 
     void BuildStats(RectTransform p)
@@ -483,7 +568,7 @@ public class OptimalPathController : MinigameBase
         MkImg(p, "D2", new Color(1,1,1,0.08f), V2(0.1f,0.31f), V2(0.9f,0.315f), V2(0,0), V2(0,0));
 
         _statusLbl = MkTxt(p, "St",
-            "Haz clic en las casillas azules para moverte",
+            "Piensa tu ruta antes de moverte...",
             DIM, 17, V2(0.04f,0.01f), V2(0.96f,0.30f));
         _statusLbl.overflowMode = TextOverflowModes.Overflow;
         _statusLbl.alignment    = TextAlignmentOptions.Center;
@@ -506,38 +591,6 @@ public class OptimalPathController : MinigameBase
         _transSub   = MkTxt(card, "Su", "", DIM, 30, V2(0.05f,0.08f), V2(0.95f,0.50f));
 
         _transPanel.SetActive(false);
-    }
-
-    void BuildEndPanel(RectTransform R)
-    {
-        _endPanel = new GameObject("End");
-        _endPanel.transform.SetParent(R, false);
-        RectTransform er = _endPanel.AddComponent<RectTransform>();
-        er.anchorMin = Vector2.zero; er.anchorMax = Vector2.one;
-        er.sizeDelta = Vector2.zero; er.anchoredPosition = Vector2.zero;
-        _endPanel.AddComponent<Image>().color = new Color(0,0,0,0.82f);
-
-        RectTransform card = MkImg(er, "Card", PANEL, V2(0.5f,0.5f), V2(0.5f,0.5f), V2(0,0), V2(700,400));
-        _endBar   = MkImg(card, "Bar", GREEN, V2(0,1), V2(1,1), V2(0,-13), V2(0,26)).GetComponent<Image>();
-        _endTitle = MkTxt(card, "Ti", "", Color.white, 54, V2(0.05f,0.55f), V2(0.95f,0.92f));
-        _endTitle.fontStyle = FontStyles.Bold;
-        _endSub   = MkTxt(card, "Su", "", DIM, 30, V2(0.05f,0.40f), V2(0.95f,0.55f));
-
-        MkBtn(card, "Jugar de nuevo", ACCENT, V2(0.06f,0.20f), V2(0.48f,0.33f), () =>
-        {
-            StopAllCoroutines();
-            _totalSteps = 0; _totalOptimal = 0; _errors = 0;
-            _endPanel.SetActive(false);
-            StartRound(0);
-        });
-
-        MkBtn(card, "Volver a la seccion", new Color(0.18f,0.22f,0.36f), V2(0.52f,0.20f), V2(0.94f,0.33f),
-              () => ReturnToGameSelector());
-
-        MkBtn(card, "Menu principal", new Color(0.10f,0.13f,0.22f), V2(0.06f,0.05f), V2(0.94f,0.17f),
-              () => SceneLoader.GoToMainMenu());
-
-        _endPanel.SetActive(false);
     }
 
     void CalcCell(out float cell, out float gW, out float gH)
@@ -660,6 +713,7 @@ public class OptimalPathController : MinigameBase
         cb.pressedColor     = new Color(0.7f, 0.7f, 0.7f);
         b.colors = cb;
         b.onClick.AddListener(click);
+        ButtonJuice.Attach(bg.gameObject);
         var t = MkTxt(bg, "T", label, Color.white, 28, V2(0,0), V2(1,1));
         t.fontStyle = FontStyles.Bold;
     }

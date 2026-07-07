@@ -1,3 +1,4 @@
+// @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
 using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
@@ -63,6 +64,10 @@ public class SceneTransition : MonoBehaviour
 
     void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
+        // Red de seguridad: ninguna escena debe arrancar congelada. Evita toda la
+        // familia de bugs "navegué con el juego pausado y la nueva escena no se mueve".
+        Time.timeScale = 1f;
+
         if (_cg == null) return;
         StopAllCoroutines();
         _cg.alpha = 1f;
@@ -97,7 +102,8 @@ public class SceneTransition : MonoBehaviour
         while (t < duration)
         {
             t += Time.unscaledDeltaTime;
-            _cg.alpha = Mathf.Lerp(start, target, t / duration);
+            // Easing suave para una transición "cinematográfica" (sin corte lineal)
+            _cg.alpha = Mathf.Lerp(start, target, Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(t / duration)));
             yield return null;
         }
         _cg.alpha = target;
