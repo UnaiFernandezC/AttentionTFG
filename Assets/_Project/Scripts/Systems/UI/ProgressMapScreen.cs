@@ -92,10 +92,10 @@ public class ProgressMapScreen : MonoBehaviour
                           ProfileManager.Instance.SwitchProfile();
                   }, 15f);
 
-        // ---------- Planeta con zonas
+        // ---------- Planeta vivo e ilustrado (zonas como islas sobre la superficie)
         BuildPlanet(results);
 
-        // ---------- Misión de hoy
+        // ---------- Misión de hoy (visual, casi sin texto: 3 botones-estrella)
         BuildMissionCard(results);
 
         // ---------- Botones inferiores
@@ -108,7 +108,7 @@ public class ProgressMapScreen : MonoBehaviour
                       if (_firstPendingCat >= 0)
                           SceneLoader.LoadCategorySelector((MinigameCategory)_firstPendingCat);
                       else
-                          SceneLoader.LoadGameSelector();   // misión cumplida: elige libre
+                          SceneLoader.LoadGameSelector();    // misión cumplida: elige libre
                   }, 30f);
 
         KidUI.Btn(_root, "LOGROS", KidUI.BTNC,
@@ -125,93 +125,145 @@ public class ProgressMapScreen : MonoBehaviour
 
     // ---------------------------------------------------------------- PLANETA
 
+    /// <summary>Planeta VIVO y limpio: disco despejado con vetas de luz girando en
+    /// dos capas contrarias (la rotación se ve, sin sopa de círculos), borde
+    /// atmosférico luminoso, anillo elíptico por detrás, satélites en órbita, luna
+    /// y robots flotando. Las 5 zonas son medallones GRANDES en pentágono, quietos
+    /// y clicables.</summary>
     void BuildPlanet(List<MinigameResultData> results)
     {
-        Vector2 center = new Vector2(0.30f, 0.44f);
+        Vector2 center = new Vector2(0.285f, 0.45f);
+        const float SIZE = 600f;
 
-        // Cuerpo del planeta
-        var halo = KidUI.CircleAt(_root, "PlanetHalo", new Color(0.30f, 0.50f, 1f, 0.10f), center, 560f);
-        halo.GetComponent<Image>().raycastTarget = false;
-        var planet = KidUI.CircleAt(_root, "Planet", new Color(0.12f, 0.20f, 0.40f, 1f), center, 470f);
-        planet.GetComponent<Image>().raycastTarget = false;
+        // ----- Glow atmosférico exterior
+        NoRay(KidUI.CircleAt(_root, "Halo2", new Color(0.30f, 0.55f, 1f, 0.06f), center, SIZE + 170f));
+        NoRay(KidUI.CircleAt(_root, "Halo1", new Color(0.35f, 0.60f, 1f, 0.10f), center, SIZE + 80f));
 
-        // Detalles de superficie
-        var d1 = KidUI.CircleAt(planet, "D1", new Color(0.18f, 0.30f, 0.55f, 0.8f), new Vector2(0.34f, 0.62f), 120f);
-        var d2 = KidUI.CircleAt(planet, "D2", new Color(0.16f, 0.26f, 0.50f, 0.8f), new Vector2(0.68f, 0.36f), 90f);
-        var d3 = KidUI.CircleAt(planet, "D3", new Color(0.09f, 0.15f, 0.32f, 0.9f), new Vector2(0.58f, 0.72f), 70f);
-        d1.GetComponent<Image>().raycastTarget = false;
-        d2.GetComponent<Image>().raycastTarget = false;
-        d3.GetComponent<Image>().raycastTarget = false;
+        // ----- Anillo elíptico POR DETRÁS (el cuerpo lo tapa por el medio)
+        var ringA = RingImg(_root, "RingA", new Color(0.60f, 0.75f, 1f, 0.45f), center, new Vector2(1120f, 320f));
+        ringA.localRotation = Quaternion.Euler(0, 0, -16f);
+        var ringB = RingImg(_root, "RingB", new Color(0.60f, 0.75f, 1f, 0.16f), center, new Vector2(1230f, 360f));
+        ringB.localRotation = Quaternion.Euler(0, 0, -16f);
 
-        var core = KidUI.Txt(planet, "Core", "ATTENTIA", new Color(1f, 1f, 1f, 0.25f), 30,
-                             new Vector2(0.1f, 0.40f), new Vector2(0.9f, 0.60f));
-        core.characterSpacing = 6f;
-        core.fontStyle = FontStyles.Bold;
+        // ----- Cuerpo
+        var planet = KidUI.CircleAt(_root, "Planet", new Color(0.09f, 0.16f, 0.36f, 1f), center, SIZE);
+        NoRay(planet);
 
-        // Zonas (una por categoría) alrededor del planeta
+        // ----- Disco despejado: la vida la ponen el borde atmosférico, los
+        // satélites en órbita, la luna y los medallones (sin detalles dentro).
+
+        // ----- Borde atmosférico luminoso (rim light)
+        RingImg(_root, "Rim",  new Color(0.55f, 0.85f, 1f, 0.35f), center, new Vector2(SIZE + 14f, SIZE + 14f));
+        RingImg(_root, "Rim2", new Color(0.55f, 0.85f, 1f, 0.12f), center, new Vector2(SIZE + 52f, SIZE + 52f));
+
+        // ----- Las 5 zonas: medallones grandes en pentágono perfecto
+        // (QUIETOS encima de la superficie giratoria, clicables)
         string[] shortNames = { "Memoria", "Impulsos", "Emocional", "Atención", "Planif." };
         for (int c = 0; c < 5; c++)
         {
-            float ang = (90f - c * 72f) * Mathf.Deg2Rad;
-            Vector2 offset = new Vector2(Mathf.Cos(ang), Mathf.Sin(ang)) * 300f;
-            BuildZoneNode(c, shortNames[c], center, offset, results);
+            float zr = (90f - c * 72f) * Mathf.Deg2Rad;
+            Vector2 zpos = new Vector2(0.5f, 0.5f) +
+                           new Vector2(Mathf.Cos(zr), Mathf.Sin(zr)) * (195f / SIZE);
+            BuildZoneBadge(planet, c, shortNames[c], zpos, results);
         }
+
+        // ----- Satélites en órbita visible alrededor del planeta
+        var orbit = KidUI.CircleAt(_root, "Orbit", Color.clear, center, SIZE + 190f);
+        orbit.GetComponent<Image>().enabled = false;
+        orbit.gameObject.AddComponent<SlowSpin>().degreesPerSecond = 8f;
+        var sat = KidUI.CircleAt(orbit, "Sat", new Color(0.75f, 0.82f, 0.95f, 0.95f), new Vector2(1f, 0.5f), 22f);
+        NoRay(sat);
+        NoRay(KidUI.CircleAt(sat, "SatGlow", new Color(0.55f, 0.85f, 1f, 0.30f), new Vector2(0.5f, 0.5f), 40f));
+        var spark = KidUI.CircleAt(orbit, "Spark", new Color(0.65f, 0.90f, 1f, 0.8f), new Vector2(0f, 0.5f), 12f);
+        NoRay(spark);
+        spark.gameObject.AddComponent<StarTwinkle>();
+
+        // ----- Luna con cráter
+        var moon = KidUI.CircleAt(_root, "Moon", new Color(0.60f, 0.63f, 0.75f, 0.95f),
+                                  center + new Vector2(0.215f, 0.26f), 64f);
+        NoRay(moon);
+        NoRay(KidUI.CircleAt(moon, "MC", new Color(0.45f, 0.48f, 0.60f, 1f), new Vector2(0.36f, 0.58f), 20f));
+        moon.gameObject.AddComponent<FloatBob>().Configure(7f, 0.7f);
+
+        UITween.PopIn(planet, 0.5f, 0.85f);
     }
 
-    void BuildZoneNode(int cat, string shortName, Vector2 centerAnchor, Vector2 offsetPx,
-                       List<MinigameResultData> results)
+    /// <summary>Medallón-zona: aro de progreso grueso del color de la categoría,
+    /// glow pulsante, contador grande y estrella al completar. Grande, limpio y
+    /// clicable — sin sopa de círculos.</summary>
+    void BuildZoneBadge(RectTransform planet, int cat, string shortName, Vector2 pos,
+                        List<MinigameResultData> results)
     {
         string catName = MinigameResultData.CategoryDisplayName((MinigameCategory)cat);
         Color col = IntroPanel.CategoryColor(catName);
 
-        int reparados = results.Where(r => r.categoria == cat && r.completado)
-                               .Select(r => r.minijuego).Distinct().Count();
-        reparados = Mathf.Min(reparados, GAMES_PER_CATEGORY);
-        float progress = (float)reparados / GAMES_PER_CATEGORY;
+        // El aro del medallón mide el RETO acumulado de la zona (suma de rangos de
+        // sus 5 sectores, 0-20). La misión diaria de más abajo sigue usando su
+        // propio cómputo por juegos completados (GAMES_PER_CATEGORY) sin cambios.
+        string profileId = _profile != null ? _profile.id : null;
+        int sumaReto = ChallengeSystem.SumaDistrito(profileId, cat);   // 0-20
+        const int MAX_RETO = 20;
+        float progress = Mathf.Clamp01((float)sumaReto / MAX_RETO);
 
         var holder = new GameObject("Zone_" + catName);
-        holder.transform.SetParent(_root, false);
+        holder.transform.SetParent(planet, false);
         var hrt = holder.AddComponent<RectTransform>();
-        hrt.anchorMin = hrt.anchorMax = centerAnchor;
+        hrt.anchorMin = hrt.anchorMax = pos;
         hrt.pivot = new Vector2(0.5f, 0.5f);
-        hrt.anchoredPosition = offsetPx;
+        hrt.anchoredPosition = Vector2.zero;
         hrt.sizeDelta = new Vector2(150f, 168f);
 
         var hit = holder.AddComponent<Image>();
         hit.color = new Color(0, 0, 0, 0.001f);
 
-        // Anillo de progreso (radial)
-        var ringBg = KidUI.CircleAt(hrt, "RingBg", new Color(1f, 1f, 1f, 0.10f),
-                                    new Vector2(0.5f, 0.66f), 104f);
-        ringBg.GetComponent<Image>().raycastTarget = false;
-        var ring = KidUI.CircleAt(hrt, "Ring", col, new Vector2(0.5f, 0.66f), 104f);
-        var ringImg = ring.GetComponent<Image>();
-        ringImg.raycastTarget = false;
-        ringImg.type = Image.Type.Filled;
-        ringImg.fillMethod = Image.FillMethod.Radial360;
-        ringImg.fillOrigin = (int)Image.Origin360.Top;
-        ringImg.fillClockwise = true;
-        ringImg.fillAmount = Mathf.Max(progress, 0.02f);
+        Vector2 cc = new Vector2(0.5f, 0.60f);   // centro del medallón (deja sitio al chip)
 
-        var inner = KidUI.CircleAt(hrt, "Inner", new Color(0.06f, 0.09f, 0.18f, 1f),
-                                   new Vector2(0.5f, 0.66f), 84f);
-        inner.GetComponent<Image>().raycastTarget = false;
-        var count = KidUI.Txt(inner, "N", $"{reparados}/{GAMES_PER_CATEGORY}",
+        // Glow pulsante del color de la zona (más intenso con el progreso)
+        var glow = KidUI.CircleAt(hrt, "Glow",
+            new Color(col.r, col.g, col.b, 0.18f + 0.22f * progress), cc, 150f);
+        NoRay(glow);
+        glow.gameObject.AddComponent<StarTwinkle>();
+
+        // Disco interior oscuro con borde
+        NoRay(KidUI.CircleAt(hrt, "Border", new Color(0.03f, 0.05f, 0.13f, 1f), cc, 112f));
+        NoRay(KidUI.CircleAt(hrt, "Disc",   new Color(0.07f, 0.11f, 0.22f, 1f), cc, 102f));
+
+        // Aro de progreso grueso: base tenue + relleno radial brillante
+        RingImg(hrt, "RingBase", new Color(col.r, col.g, col.b, 0.25f), cc,
+                new Vector2(122f, 122f), thick: true);
+        var ringFill = RingImg(hrt, "RingFill", col, cc, new Vector2(122f, 122f), thick: true);
+        var rf = ringFill.GetComponent<Image>();
+        rf.type = Image.Type.Filled;
+        rf.fillMethod = Image.FillMethod.Radial360;
+        rf.fillOrigin = (int)Image.Origin360.Top;
+        rf.fillClockwise = true;
+        rf.fillAmount = Mathf.Max(progress, 0.03f);
+
+        // Contador en el centro (reto acumulado de la zona)
+        var count = KidUI.Txt(hrt, "N", $"{sumaReto}/{MAX_RETO}",
                               progress >= 1f ? col : Color.white, 24,
-                              Vector2.zero, Vector2.one);
+                              new Vector2(0.10f, 0.46f), new Vector2(0.90f, 0.74f));
         count.fontStyle = FontStyles.Bold;
 
-        // Etiqueta
-        var chip = KidUI.RoundImg(hrt, "Chip", new Color(col.r, col.g, col.b, 0.18f),
-                                  new Vector2(0f, 0.02f), new Vector2(1f, 0.26f),
+        // Baliza viva sobre el medallón en cuanto hay progreso
+        if (progress > 0f)
+        {
+            var beacon = KidUI.CircleAt(hrt, "Beacon", Color.white, new Vector2(0.5f, 0.965f), 12f);
+            NoRay(beacon);
+            beacon.gameObject.AddComponent<StarTwinkle>();
+        }
+
+        // Etiqueta bajo el medallón, del color de la zona
+        var chip = KidUI.RoundImg(hrt, "Chip", new Color(col.r, col.g, col.b, 0.26f),
+                                  new Vector2(0.02f, 0.0f), new Vector2(0.98f, 0.155f),
                                   Vector2.zero, Vector2.zero, 2.4f);
-        chip.GetComponent<Image>().raycastTarget = false;
-        var lbl = KidUI.Txt(chip, "T", shortName, col, 17, Vector2.zero, Vector2.one);
+        NoRay(chip);
+        var lbl = KidUI.Txt(chip, "T", shortName, Color.white, 18, Vector2.zero, Vector2.one);
         lbl.fontStyle = FontStyles.Bold;
 
-        // Zona completa = estrella dorada dibujada (la fuente TMP no trae "★")
+        // Zona completa = estrella dorada
         if (progress >= 1f)
-            DrawMiniStar(hrt, new Vector2(0.80f, 0.95f), 30f, new Color(1f, 0.82f, 0.12f));
+            DrawMiniStar(hrt, new Vector2(0.86f, 0.90f), 34f, new Color(1f, 0.82f, 0.12f));
 
         var btn = holder.AddComponent<Button>();
         btn.targetGraphic = hit;
@@ -220,96 +272,246 @@ public class ProgressMapScreen : MonoBehaviour
         {
             if (UIAudioManager.Instance != null) UIAudioManager.Instance.PlayClick();
             // Sin Destroy: el fundido de escena cubre el hub y lo destruye al cambiar
-            // de escena (evita el "flash" de la PrimeraPantalla al ir a la categoría).
+            // de escena (evita el "flash" de la PrimeraPantalla).
             SceneLoader.LoadCategorySelector(captured);
         });
         ButtonJuice.Attach(holder);
 
-        UITween.PopIn(hrt, 0.4f, 0.6f, 0.07f * cat);
+        UITween.PopIn(hrt, 0.4f, 0.6f, 0.08f * cat + 0.2f);
+    }
+
+    static void NoRay(RectTransform rt) => rt.GetComponent<Image>().raycastTarget = false;
+
+    // ------------------------------------------------ sprites de ARO (anillo hueco)
+    // Generados una sola vez por código: fino para el anillo orbital y el borde
+    // atmosférico; grueso para los aros de progreso de las zonas.
+    static Sprite _ringThin, _ringThick;
+    static Sprite RingThin  => _ringThin  != null ? _ringThin  : (_ringThin  = MakeRing(16f));
+    static Sprite RingThick => _ringThick != null ? _ringThick : (_ringThick = MakeRing(42f));
+
+    static Sprite MakeRing(float thickness)
+    {
+        const int size = 256;
+        var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+        tex.wrapMode = TextureWrapMode.Clamp;
+        float c = (size - 1) / 2f;
+        float rOut = size / 2f - 1.5f;
+        float rIn  = rOut - thickness;
+        for (int y = 0; y < size; y++)
+            for (int x = 0; x < size; x++)
+            {
+                float d = Mathf.Sqrt((x - c) * (x - c) + (y - c) * (y - c));
+                float a = Mathf.Clamp01(rOut - d + 0.75f) * Mathf.Clamp01(d - rIn + 0.75f);
+                tex.SetPixel(x, y, new Color(1f, 1f, 1f, a));
+            }
+        tex.Apply();
+        return Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100f);
+    }
+
+    /// <summary>Aro colocado por punto central y tamaño en píxeles (con tamaño no
+    /// uniforme se vuelve elíptico). thick=true usa el aro grueso.</summary>
+    RectTransform RingImg(RectTransform p, string n, Color col, Vector2 anchorPoint,
+                          Vector2 sizePx, bool thick = false)
+    {
+        var rt = KidUI.Img(p, n, col, anchorPoint, anchorPoint, Vector2.zero, sizePx);
+        rt.GetComponent<Image>().sprite = thick ? RingThick : RingThin;
+        NoRay(rt);
+        return rt;
     }
 
     // ---------------------------------------------------------------- MISIÓN
 
+    /// <summary>Misión de hoy ESPECÍFICA: 3 retos concretos, cada uno un minijuego
+    /// nombrado de las zonas más flojas del niño, con un objetivo claro (reavivarlo o
+    /// subirlo de rango). Deterministas por día y perfil; cada fila lleva directa al
+    /// juego. Se marcan al jugarlos hoy.</summary>
     void BuildMissionCard(List<MinigameResultData> results)
     {
         var card = KidUI.RoundImg(_root, "Mission", new Color(0.055f, 0.075f, 0.15f, 0.95f),
-                                  new Vector2(0.60f, 0.30f), new Vector2(0.97f, 0.76f),
+                                  new Vector2(0.60f, 0.30f), new Vector2(0.97f, 0.72f),
                                   Vector2.zero, Vector2.zero, 0.9f);
         var pill = KidUI.RoundImg(card, "Pill", KidUI.WARN,
                                   new Vector2(0.32f, 0.985f), new Vector2(0.68f, 0.995f),
                                   Vector2.zero, Vector2.zero, 4f);
         pill.GetComponent<Image>().raycastTarget = false;
 
-        var title = KidUI.Txt(card, "T", "MISIÓN DE HOY", Color.white, 28,
-                              new Vector2(0.06f, 0.86f), new Vector2(0.94f, 0.97f));
+        var title = KidUI.Txt(card, "T", "MISIÓN DE HOY", Color.white, 30,
+                              new Vector2(0.06f, 0.90f), new Vector2(0.94f, 0.99f));
         title.fontStyle = FontStyles.Bold;
         title.characterSpacing = 3f;
+        var subt = KidUI.Txt(card, "Sub", "3 retos elegidos para " + _profile.nombre,
+                             KidUI.DIM, 14, new Vector2(0.06f, 0.85f), new Vector2(0.94f, 0.905f));
 
-        KidUI.Txt(card, "Sub", "Los robots necesitan tu ayuda en estas zonas:",
-                  KidUI.DIM, 17, new Vector2(0.06f, 0.78f), new Vector2(0.94f, 0.86f));
+        string pid = _profile.id;
+        var missions = BuildDailyMissions(pid);
 
-        // 3 categorías objetivo: las que menos completadas / peor % llevan
-        var targets = Enumerable.Range(0, 5)
-            .OrderBy(c => results.Count(r => r.categoria == c && r.completado))
-            .ThenBy(c =>
-            {
-                var rr = results.Where(r => r.categoria == c && r.Intentos > 0).ToList();
-                return rr.Count > 0 ? rr.Average(r => r.PorcentajeAcierto) : 0f;
-            })
-            .Take(3)
-            .ToList();
-
-        string today = DateTime.Now.ToString("dd/MM/yyyy");
         int done = 0;
-        for (int i = 0; i < targets.Count; i++)
+        for (int i = 0; i < missions.Count; i++)
         {
-            int cat = targets[i];
-            string catName = MinigameResultData.CategoryDisplayName((MinigameCategory)cat);
-            Color col = IntroPanel.CategoryColor(catName);
-            bool completed = results.Any(r => r.categoria == cat && r.completado &&
-                                              DataUtils.TicksToLocalDate(r.fechaUtcTicks) == today);
+            var mis = missions[i];
+            Color col = IntroPanel.CategoryColor(MinigameResultData.CategoryDisplayName((MinigameCategory)mis.cat));
+            bool completed = mis.done;
             if (completed) done++;
-            else if (_firstPendingCat < 0) _firstPendingCat = cat;
+            else if (_firstPendingCat < 0) _firstPendingCat = mis.cat;
 
-            float y1 = 0.72f - i * 0.215f;
-            var row = KidUI.RoundImg(card, "Row" + i, new Color(1f, 1f, 1f, 0.04f),
-                                     new Vector2(0.06f, y1 - 0.17f), new Vector2(0.94f, y1),
-                                     Vector2.zero, Vector2.zero, 1.8f);
-            row.GetComponent<Image>().raycastTarget = false;
+            // Fila del reto
+            float top = 0.80f - i * 0.205f;
+            var row = new GameObject("Mission" + i);
+            row.transform.SetParent(card, false);
+            var rrt = row.AddComponent<RectTransform>();
+            rrt.anchorMin = new Vector2(0.05f, top - 0.185f);
+            rrt.anchorMax = new Vector2(0.95f, top);
+            rrt.offsetMin = rrt.offsetMax = Vector2.zero;
+            var rbg = row.AddComponent<Image>();
+            rbg.color = new Color(col.r, col.g, col.b, completed ? 0.10f : 0.18f);
+            rbg.sprite = KidUI.RoundedSprite; rbg.type = Image.Type.Sliced; rbg.pixelsPerUnitMultiplier = 1.4f;
 
-            var dot = KidUI.CircleAt(row, "Dot", col, new Vector2(0.075f, 0.5f), 26f);
-            dot.GetComponent<Image>().raycastTarget = false;
-
-            var txt = KidUI.Txt(row, "Txt", "Completa 1 juego de " + catName,
-                                completed ? KidUI.DIM : Color.white, 18,
-                                new Vector2(0.14f, 0f), new Vector2(0.72f, 1f));
-            txt.alignment = TextAlignmentOptions.MidlineLeft;
-
-            if (completed)
+            // Disco con logo del minijuego (o color de la zona)
+            var disc = KidUI.CircleAt(rrt, "Disc",
+                completed ? new Color(col.r * 0.5f, col.g * 0.5f, col.b * 0.5f, 1f) : col,
+                new Vector2(0.11f, 0.5f), 66f);
+            NoRay(disc);
+            Sprite logo = mis.g.LoadLogo();
+            if (logo != null)
             {
-                DrawCheck(row, new Vector2(0.86f, 0.5f), 42f);
+                var lg = KidUI.Sprite(disc, "Logo", logo, new Vector2(0.12f, 0.12f), new Vector2(0.88f, 0.88f));
+                NoRay(lg);
             }
-            else
+
+            // Nombre del minijuego + objetivo CONCRETO (rango + puntos)
+            var nm = KidUI.Txt(rrt, "N", mis.g.display, completed ? KidUI.DIM : Color.white, 18,
+                               new Vector2(0.24f, 0.50f), new Vector2(0.85f, 0.95f));
+            nm.fontStyle = FontStyles.Bold;
+            nm.alignment = TextAlignmentOptions.MidlineLeft;
+            var gl = KidUI.Txt(rrt, "G", mis.goal, completed ? KidUI.DIM : mis.goalCol, 13,
+                               new Vector2(0.24f, 0.08f), new Vector2(0.85f, 0.52f));
+            gl.alignment = TextAlignmentOptions.MidlineLeft;
+
+            // Estado a la derecha: estrella + check si está logrado
+            DrawMiniStar(rrt, new Vector2(0.92f, 0.68f), 34f,
+                completed ? new Color(1f, 0.82f, 0.12f) : new Color(1f, 1f, 1f, 0.35f));
+            if (completed) DrawCheck(rrt, new Vector2(0.92f, 0.30f), 26f);
+
+            // Toda la fila lleva directa al minijuego
+            var btn = row.AddComponent<Button>();
+            btn.targetGraphic = rbg;
+            var captured = mis.g;
+            btn.onClick.AddListener(() =>
             {
-                MinigameCategory captured = (MinigameCategory)cat;
-                KidUI.Btn(row, "IR", col,
-                          new Vector2(0.76f, 0.16f), new Vector2(0.94f, 0.84f),
-                          () =>
-                          {
-                              // Sin Destroy: la transición de escena cubre y destruye
-                              // el hub (evita el flash de la PrimeraPantalla).
-                              SceneLoader.LoadCategorySelector(captured);
-                          }, 18f);
-            }
+                if (UIAudioManager.Instance != null) UIAudioManager.Instance.PlayClick();
+                SceneLoader.LoadScene(GameCatalog.SceneFor(captured));
+            });
+            ButtonJuice.Attach(row);
+
+            UITween.PopIn(rrt, 0.4f, 0.7f, 0.08f * i + 0.1f);
         }
 
-        // Estado de la misión
-        var status = KidUI.Txt(card, "Status",
-            done >= 3 ? "¡MISIÓN CUMPLIDA! Eres increíble." : $"Progreso: {done} / 3",
-            done >= 3 ? KidUI.GOOD : KidUI.DIM, 17,
-            new Vector2(0.06f, 0.015f), new Vector2(0.94f, 0.09f));
-        status.fontStyle = FontStyles.Bold;
-        if (done >= 3) GameFeel.Confetti(30);
+        // Progreso: 3 estrellas
+        for (int s = 0; s < 3; s++)
+            DrawMiniStar(card, new Vector2(0.40f + 0.10f * s, 0.10f), 26f,
+                s < done ? new Color(1f, 0.82f, 0.12f) : new Color(1f, 1f, 1f, 0.18f));
+        if (done >= 3)
+        {
+            var wow = KidUI.Txt(card, "Wow", "¡MISIÓN CUMPLIDA!", KidUI.GOOD, 19,
+                                new Vector2(0.06f, 0.015f), new Vector2(0.94f, 0.07f));
+            wow.fontStyle = FontStyles.Bold;
+            GameFeel.Confetti(30);
+        }
+    }
+
+    // ---------------------------------------------------------------- MISIONES (datos)
+
+    struct Mision
+    {
+        public GameCatalog.GameInfo g;
+        public int cat;
+        public int target;      // 1=reavivar(bronce) · 2/3/4=diana de rango · 5=récord(diamante+)
+        public bool done;
+        public string goal;
+        public Color goalCol;
+    }
+
+    /// <summary>3 misiones diarias CONCRETAS, fijadas por día y perfil (persisten en
+    /// PlayerPrefs para que al lograrlas se queden marcadas). Cada una apunta a un
+    /// minijuego concreto con objetivo claro: llegar a un rango (con su diana de
+    /// puntos) o batir el récord. Se logran de verdad al subir el rango del sector.</summary>
+    List<Mision> BuildDailyMissions(string pid)
+    {
+        string keyDay = DateTime.Now.ToString("yyyyMMdd");
+        string todayDisp = DateTime.Now.ToString("dd/MM/yyyy");
+        string key = "mision_" + pid + "_" + keyDay;
+        var list = new List<Mision>();
+
+        string saved = PlayerPrefs.GetString(key, "");
+        if (!string.IsNullOrEmpty(saved))
+            foreach (var part in saved.Split(';'))
+            {
+                var kv = part.Split('|');
+                if (kv.Length != 2) continue;
+                var found = FindGame(kv[0]);
+                if (found.g != null && int.TryParse(kv[1], out int t))
+                    list.Add(MakeMision(pid, found.g, found.cat, t, todayDisp));
+            }
+
+        if (list.Count < 3)
+        {
+            // Baraja diaria estable + prioriza sectores de menor rango (más flojos)
+            var rng = new System.Random(key.GetHashCode());
+            var pool = new List<(GameCatalog.GameInfo g, int cat, int rank)>();
+            for (int c = 0; c < 5; c++)
+                foreach (var gi in GameCatalog.Get(c).games)
+                    pool.Add((gi, c, ChallengeSystem.Rank(pid, gi.sceneBase)));
+            var chosen = pool.OrderBy(_ => rng.Next()).OrderBy(x => x.rank).Take(3).ToList();
+
+            list.Clear();
+            var save = new List<string>();
+            foreach (var x in chosen)
+            {
+                // Objetivo del día: el siguiente rango, con un mínimo de PLATA para que
+                // hasta un sector nuevo tenga una meta de puntos concreta (no solo "reavívalo").
+                int target = x.rank >= ChallengeSystem.MAX_RANK ? 5 : Mathf.Max(2, x.rank + 1);
+                list.Add(MakeMision(pid, x.g, x.cat, target, todayDisp));
+                save.Add(x.g.sceneBase + "|" + target);
+            }
+            PlayerPrefs.SetString(key, string.Join(";", save));
+            PlayerPrefs.Save();
+        }
+        return list;
+    }
+
+    Mision MakeMision(string pid, GameCatalog.GameInfo g, int cat, int target, string todayDisp)
+    {
+        int live = ChallengeSystem.Rank(pid, g.sceneBase);
+        string goal; bool done; int colRank;
+
+        if (target >= 5)
+        {
+            // Sector ya en DIAMANTE: batir la mejor marca
+            int best = ChallengeSystem.MejorPuntuacion(pid, g.sceneBase);
+            goal = best > 0 ? $"Bate tu récord: supera {best} pts" : "Consigue tu mejor marca";
+            done = GameCatalog.CompletedToday(pid, g, todayDisp); colRank = 4;
+        }
+        else
+        {
+            // Objetivo concreto: llegar a un rango con su diana de puntos
+            int diana = ChallengeSystem.DianaPuntos(g.sceneBase, target);
+            string rn = ChallengeSystem.NombreRango(target);
+            goal = diana > 0 ? $"Llega a {rn}: saca {diana} pts" : $"Llega a {rn}";
+            done = live >= target; colRank = target;
+        }
+        return new Mision
+        {
+            g = g, cat = cat, target = target, done = done, goal = goal,
+            goalCol = ChallengeSystem.ColorRango(colRank)
+        };
+    }
+
+    static (GameCatalog.GameInfo g, int cat) FindGame(string sceneBase)
+    {
+        for (int c = 0; c < 5; c++)
+            foreach (var gi in GameCatalog.Get(c).games)
+                if (gi.sceneBase == sceneBase) return (gi, c);
+        return (null, 0);
     }
 
     // ---------------------------------------------------------------- LOGROS
@@ -459,4 +661,14 @@ public class ProgressMapScreen : MonoBehaviour
         if (banner != null) UITween.FadeOut(banner.gameObject, 0.4f,
             () => { if (banner != null) Destroy(banner.gameObject); });
     }
+}
+
+/// <summary>Rotación lenta y constante (tiempo no escalado). Se usa en la
+/// superficie, las nubes y la órbita del planeta para que "viva" sin distraer.</summary>
+public class SlowSpin : MonoBehaviour
+{
+    public float degreesPerSecond = 1f;
+
+    void Update() =>
+        transform.Rotate(0f, 0f, degreesPerSecond * Time.unscaledDeltaTime);
 }

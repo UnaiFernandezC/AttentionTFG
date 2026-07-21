@@ -50,25 +50,29 @@ public class OptimalPathController : MinigameBase
     Image[]         _dots;
 
     GameObject      _transPanel;
+    RectTransform   _transCard;
     TextMeshProUGUI _transTitle;
     TextMeshProUGUI _transSub;
 
-    static readonly Color BG     = Hex(0.08f,0.09f,0.18f);
-    static readonly Color PANEL  = Hex(0.12f,0.13f,0.24f);
-    static readonly Color HDR    = Hex(0.10f,0.11f,0.22f);
-    static readonly Color ACCENT = Hex(0.25f,0.55f,1.00f);
+    // --- Solo presentacion (trazo del camino y halos) ---
+    RectTransform _trailLayer;   // capa del trazo animado del recorrido
+    Image[]       _cellGlow;     // halo suave de cada casilla
+    float         _cellPx;       // lado de la casilla en px (para el trazo)
+
+    // Paleta de Planificacion (azul 0.28, 0.60, 1.00) sobre fondo espacial KidUI
+    static readonly Color PANEL  = Hex(0.10f,0.13f,0.24f);
+    static readonly Color ACCENT = Hex(0.28f,0.60f,1.00f);
     static readonly Color GREEN  = Hex(0.20f,0.78f,0.48f);
     static readonly Color RED    = Hex(0.85f,0.25f,0.32f);
     static readonly Color YELLOW = Hex(1.00f,0.84f,0.22f);
     static readonly Color DIM    = Hex(0.55f,0.58f,0.75f);
-    static readonly Color GREY   = Hex(0.28f,0.30f,0.42f);
     static readonly Color DOTOFF = Hex(0.25f,0.27f,0.45f);
 
     static readonly Color CN = Hex(0.20f,0.22f,0.38f);
     static readonly Color CB = Hex(0.07f,0.07f,0.12f);
     static readonly Color CS = Hex(0.22f,0.80f,0.50f);
     static readonly Color CG = Hex(0.88f,0.26f,0.32f);
-    static readonly Color CP = Hex(0.25f,0.70f,1.00f);
+    static readonly Color CP = Hex(0.28f,0.60f,1.00f);
     static readonly Color CV = Hex(0.28f,0.32f,0.55f);
     static readonly Color CA = Hex(0.32f,0.38f,0.65f);
     static readonly Color CT = Hex(0.95f,0.55f,0.12f);   // peaje
@@ -132,6 +136,7 @@ public class OptimalPathController : MinigameBase
         Random.InitState(s);
 
         GenerateGrid();
+        ClearTrail();
         RebuildCells();
 
         if (_transPanel != null) _transPanel.SetActive(false);
@@ -260,12 +265,14 @@ public class OptimalPathController : MinigameBase
         int newDist = BFS(target, _goalIdx);
 
         bool firstVisit  = !_visited[target];
+        int  fromIdx     = _playerIdx;
         _playerIdx       = target;
         _steps++;
         _visited[target] = true;
 
         RefreshCells();
         StartCoroutine(PulseCell(target));
+        AddTrailSegment(fromIdx, target);   // trazo animado del recorrido
 
         if (target == _tollIdx && firstVisit)
         {
@@ -323,7 +330,11 @@ public class OptimalPathController : MinigameBase
         ReportEvent(_steps == _optimal, rtMs);
 
         GameFeel.PlaySuccess();
-        GameFeel.Confetti(25);
+        GameFeel.Confetti(30);
+        GameFeel.FloatingText(_steps == _optimal ? "¡Ruta perfecta!" : "¡Has llegado!",
+                              GREEN, new Vector2(0f, 90f));
+        if (_cellBtn != null && _goalIdx < _cellBtn.Length)
+            UITween.PulseOnce((RectTransform)_cellBtn[_goalIdx].transform, 1.22f, 0.30f);
 
         yield return new WaitForSeconds(0.6f);
 
@@ -355,6 +366,7 @@ public class OptimalPathController : MinigameBase
     IEnumerator Transition()
     {
         _transPanel.SetActive(true);
+        if (_transCard != null) UITween.PopIn(_transCard, 0.40f, 0.80f);
         _transTitle.text = "Ronda " + (_round + 1) + " completada!";
         _transSub.text   = "Pasos: " + _steps + "  (optimo: " + _optimal + ")";
 
@@ -434,6 +446,21 @@ public class OptimalPathController : MinigameBase
             _cellBg[i].color         = col;
             _cellLbl[i].text         = lbl;
             _cellBtn[i].interactable = adj[i] && !_roundOver && !_planning;
+
+            // Halo: jugador y meta brillan fuerte; peaje avisa; adyacentes invitan
+            if (_cellGlow != null && _cellGlow[i] != null)
+            {
+                Color halo = new Color(0f, 0f, 0f, 0f);
+                if (i == _playerIdx)
+                    halo = new Color(ACCENT.r, ACCENT.g, ACCENT.b, 0.50f);
+                else if (i == _goalIdx)
+                    halo = new Color(CG.r, CG.g, CG.b, 0.42f);
+                else if (i == _tollIdx && !_visited[i])
+                    halo = new Color(CT.r, CT.g, CT.b, 0.38f);
+                else if (adj[i] && !_planning && !_roundOver)
+                    halo = new Color(ACCENT.r, ACCENT.g, ACCENT.b, 0.20f);
+                _cellGlow[i].color = halo;
+            }
         }
 
         if (_stepsVal != null) _stepsVal.text = _steps.ToString();
@@ -480,25 +507,19 @@ public class OptimalPathController : MinigameBase
 
     void BuildUI()
     {
+        // Canvas estandar de minijuego + fondo espacial opaco (tapa la escena vieja)
+        Canvas cv = KidUI.MakeCanvas("RutaOptimaCanvas", 50, transform);
+        RectTransform R = cv.GetComponent<RectTransform>();
+        KidUI.BuildSpaceBackground(R);
 
-        GameObject cGO = new GameObject("Canvas");
-        cGO.transform.SetParent(transform, false);
-        Canvas cv = cGO.AddComponent<Canvas>();
-        cv.renderMode   = RenderMode.ScreenSpaceOverlay;
-        cv.sortingOrder = 10;
-        CanvasScaler sc = cGO.AddComponent<CanvasScaler>();
-        sc.uiScaleMode         = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        sc.referenceResolution = new Vector2(1920f, 1080f);
-        sc.matchWidthOrHeight  = 0.5f;
-        cGO.AddComponent<GraphicRaycaster>();
-        RectTransform R = cGO.GetComponent<RectTransform>();
+        // ---- cabecera redondeada ----
+        RectTransform hdr = KidUI.RoundImg(R, "Hdr", PANEL,
+            V2(0.02f,0.905f), V2(0.98f,0.985f), V2(0,0), V2(0,0), 1.4f);
+        var hl = KidUI.RoundImg(hdr, "HL", ACCENT,
+            V2(0.02f,0), V2(0.98f,0), V2(0,2f), V2(0,4f), 4f);
+        hl.GetComponent<Image>().raycastTarget = false;
 
-        MkImg(R, "BG", BG, V2(0,0), V2(1,1), V2(0,0), V2(0,0));
-
-        RectTransform hdr = MkImg(R, "Hdr", HDR, V2(0,1), V2(1,1), V2(0,-40), V2(0,80));
-        MkImg(hdr, "HL", ACCENT, V2(0,0), V2(1,0), V2(0,1.5f), V2(0,3));
-
-        var ht = MkTxt(hdr, "T", "Ruta optima", Color.white, 40, V2(0.03f,0), V2(0.50f,1));
+        var ht = MkTxt(hdr, "T", "RUTA OPTIMA", Color.white, 36, V2(0.03f,0), V2(0.50f,1));
         ht.fontStyle = FontStyles.Bold;
         ht.alignment = TextAlignmentOptions.MidlineLeft;
 
@@ -517,11 +538,17 @@ public class OptimalPathController : MinigameBase
             drt.anchoredPosition = new Vector2(-45f - (ROUNDS - 1 - i) * 26f, 0f);
             drt.sizeDelta        = new Vector2(16f, 16f);
             _dots[i]             = dot.AddComponent<Image>();
+            _dots[i].sprite      = KidUI.CircleSpr;
             _dots[i].color       = DOTOFF;
+            _dots[i].raycastTarget = false;
         }
+        UITween.PopIn(hdr, 0.40f, 0.90f);
 
-        RectTransform lp = MkImg(R, "LP", PANEL, V2(0.01f,0.10f), V2(0.22f,0.91f), V2(0,0), V2(0,0));
+        // ---- panel lateral de estadisticas, redondeado ----
+        RectTransform lp = KidUI.RoundImg(R, "LP", PANEL,
+            V2(0.01f,0.10f), V2(0.22f,0.91f), V2(0,0), V2(0,0), 1.2f);
         BuildStats(lp);
+        UITween.PopIn(lp, 0.45f, 0.85f, 0.08f);
 
         _gridGO = new GameObject("Grid");
         _gridGO.transform.SetParent(R, false);
@@ -539,12 +566,24 @@ public class OptimalPathController : MinigameBase
         glg.constraint        = GridLayoutGroup.Constraint.FixedColumnCount;
         glg.constraintCount   = 4;
 
-        _planLbl = MkTxt(R, "Plan", "", YELLOW, 42, V2(0.28f, 0.905f), V2(0.98f, 0.985f));
+        // ---- capa del trazo del camino (encima de las casillas) ----
+        GameObject trailGO = new GameObject("Trail");
+        trailGO.transform.SetParent(R, false);
+        _trailLayer = trailGO.AddComponent<RectTransform>();
+        _trailLayer.anchorMin        = grt.anchorMin;
+        _trailLayer.anchorMax        = grt.anchorMax;
+        _trailLayer.pivot            = new Vector2(0.5f, 0.5f);
+        _trailLayer.anchoredPosition = Vector2.zero;
+        _trailLayer.sizeDelta        = grt.sizeDelta;
+
+        // Aviso de fase de planificacion (franja inferior libre, junto al boton)
+        _planLbl = MkTxt(R, "Plan", "", YELLOW, 38, V2(0.24f, 0.015f), V2(0.98f, 0.095f));
         _planLbl.fontStyle    = FontStyles.Bold;
         _planLbl.overflowMode = TextOverflowModes.Overflow;
 
-        RectTransform bot = MkImg(R, "Bot", HDR, V2(0,0), V2(1,0), V2(0,45), V2(0,90));
-        MkBtn(bot, "Reiniciar ronda", GREY,   V2(0.04f,0.12f), V2(0.96f,0.88f), () => ResetRound());
+        // ---- boton reiniciar, redondeado con juice ----
+        KidUI.Btn(R, "Reiniciar ronda", KidUI.BTNC,
+            V2(0.02f,0.02f), V2(0.20f,0.095f), () => ResetRound(), 24f);
 
         BuildTransPanel(R);
     }
@@ -583,8 +622,12 @@ public class OptimalPathController : MinigameBase
         tr.sizeDelta = Vector2.zero; tr.anchoredPosition = Vector2.zero;
         _transPanel.AddComponent<Image>().color = new Color(0,0,0,0.82f);
 
-        RectTransform card = MkImg(tr, "Card", PANEL, V2(0.5f,0.5f), V2(0.5f,0.5f), V2(0,0), V2(680,300));
-        MkImg(card, "Bar", GREEN, V2(0,1), V2(1,1), V2(0,-12), V2(0,24));
+        RectTransform card = KidUI.RoundImg(tr, "Card", PANEL,
+            V2(0.5f,0.5f), V2(0.5f,0.5f), V2(0,0), V2(680,300), 1f);
+        var bar = KidUI.RoundImg(card, "Bar", GREEN,
+            V2(0.04f,1), V2(0.96f,1), V2(0,-10), V2(0,18), 3f);
+        bar.GetComponent<Image>().raycastTarget = false;
+        _transCard = card;
 
         _transTitle = MkTxt(card, "Ti", "", Color.white, 52, V2(0.05f,0.50f), V2(0.95f,0.90f));
         _transTitle.fontStyle = FontStyles.Bold;
@@ -614,6 +657,8 @@ public class OptimalPathController : MinigameBase
 
         RectTransform grt = _gridGO.GetComponent<RectTransform>();
         grt.sizeDelta = new Vector2(gW, gH);
+        _cellPx = cell;
+        if (_trailLayer != null) _trailLayer.sizeDelta = new Vector2(gW, gH);
 
         GridLayoutGroup glg    = _gridGO.GetComponent<GridLayoutGroup>();
         glg.cellSize           = new Vector2(cell, cell);
@@ -623,9 +668,10 @@ public class OptimalPathController : MinigameBase
         int   total    = _cols * _rows;
         float fontSize = Mathf.Clamp(cell * 0.18f, 11f, 22f);
 
-        _cellBg  = new Image[total];
-        _cellLbl = new TextMeshProUGUI[total];
-        _cellBtn = new Button[total];
+        _cellBg   = new Image[total];
+        _cellLbl  = new TextMeshProUGUI[total];
+        _cellBtn  = new Button[total];
+        _cellGlow = new Image[total];
 
         for (int i = 0; i < total; i++)
         {
@@ -634,9 +680,23 @@ public class OptimalPathController : MinigameBase
             GameObject go = new GameObject("C" + i);
             go.transform.SetParent(_gridGO.transform, false);
 
+            // Nodo redondeado
             Image bg  = go.AddComponent<Image>();
+            bg.sprite = KidUI.RoundedSprite;
+            bg.type   = Image.Type.Sliced;
+            bg.pixelsPerUnitMultiplier = 1.25f;
             bg.color  = CN;
             _cellBg[i] = bg;
+
+            // Halo suave alrededor del nodo (se enciende segun su estado)
+            RectTransform crt  = (RectTransform)go.transform;
+            RectTransform glow = KidUI.RoundImg(crt, "Glow", new Color(0f,0f,0f,0f),
+                Vector2.zero, Vector2.one, Vector2.zero, new Vector2(16f,16f), 0.8f);
+            glow.GetComponent<Image>().raycastTarget = false;
+            _cellGlow[i] = glow.GetComponent<Image>();
+
+            // Entrada escalonada en oleada diagonal
+            UITween.PopIn(crt, 0.30f, 0.55f, (i % _cols + i / _cols) * 0.035f);
 
             Button btn = go.AddComponent<Button>();
             btn.targetGraphic = bg;
@@ -700,22 +760,61 @@ public class OptimalPathController : MinigameBase
         return tmp;
     }
 
-    void MkBtn(RectTransform p, string label, Color bgC,
-               Vector2 amin, Vector2 amax,
-               UnityEngine.Events.UnityAction click)
+    // ---------------- trazo animado del camino (solo presentacion) ----------------
+
+    /// <summary>Centro de una casilla en px locales de la capa del trazo.</summary>
+    Vector2 CellCenter(int idx)
     {
-        RectTransform bg = MkImg(p, "B" + label, bgC, amin, amax, V2(0,0), V2(0,0));
-        Button b  = bg.gameObject.AddComponent<Button>();
-        b.targetGraphic = bg.GetComponent<Image>();
-        ColorBlock cb   = b.colors;
-        cb.normalColor      = Color.white;
-        cb.highlightedColor = new Color(1, 1, 1, 0.85f);
-        cb.pressedColor     = new Color(0.7f, 0.7f, 0.7f);
-        b.colors = cb;
-        b.onClick.AddListener(click);
-        ButtonJuice.Attach(bg.gameObject);
-        var t = MkTxt(bg, "T", label, Color.white, 28, V2(0,0), V2(1,1));
-        t.fontStyle = FontStyles.Bold;
+        const float sp = 6f;
+        RectTransform grt = _gridGO.GetComponent<RectTransform>();
+        float gW = grt.sizeDelta.x, gH = grt.sizeDelta.y;
+        int r = idx / _cols, c = idx % _cols;
+        return new Vector2(-gW * 0.5f + _cellPx * 0.5f + c * (_cellPx + sp),
+                            gH * 0.5f - _cellPx * 0.5f - r * (_cellPx + sp));
+    }
+
+    /// <summary>Dibuja un tramo del recorrido que crece animado de casilla a casilla.</summary>
+    void AddTrailSegment(int from, int to)
+    {
+        if (_trailLayer == null || _gridGO == null) return;
+        Vector2 a = CellCenter(from), b = CellCenter(to);
+        Vector2 mid = (a + b) * 0.5f;
+        float len = Vector2.Distance(a, b);
+        float ang = Mathf.Atan2(b.y - a.y, b.x - a.x) * Mathf.Rad2Deg;
+
+        var seg = KidUI.RoundImg(_trailLayer, "Seg",
+            new Color(ACCENT.r, ACCENT.g, ACCENT.b, 0.55f),
+            new Vector2(0.5f,0.5f), new Vector2(0.5f,0.5f), mid, new Vector2(0f, 10f), 5f);
+        seg.localRotation = Quaternion.Euler(0f, 0f, ang);
+        seg.GetComponent<Image>().raycastTarget = false;
+        StartCoroutine(GrowSegment(seg, len));
+
+        var dot = KidUI.CircleAt(_trailLayer, "Dot",
+            new Color(ACCENT.r, ACCENT.g, ACCENT.b, 0.75f), new Vector2(0.5f,0.5f), 13f);
+        dot.anchoredPosition = b;
+        dot.GetComponent<Image>().raycastTarget = false;
+        UITween.PopIn(dot, 0.25f, 0.2f);
+    }
+
+    IEnumerator GrowSegment(RectTransform seg, float len)
+    {
+        const float dur = 0.16f;
+        float t = 0f;
+        while (t < dur)
+        {
+            if (seg == null) yield break;
+            t += Time.unscaledDeltaTime;
+            seg.sizeDelta = new Vector2(len * Mathf.SmoothStep(0f, 1f, t / dur), 10f);
+            yield return null;
+        }
+        if (seg != null) seg.sizeDelta = new Vector2(len, 10f);
+    }
+
+    void ClearTrail()
+    {
+        if (_trailLayer == null) return;
+        for (int i = _trailLayer.childCount - 1; i >= 0; i--)
+            Destroy(_trailLayer.GetChild(i).gameObject);
     }
 
     static void EnsureES()

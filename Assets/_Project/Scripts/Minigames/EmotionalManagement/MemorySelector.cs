@@ -1,4 +1,5 @@
 // @made by Unai Fernandez Cobos - @unaifdezcobos@gmail.com
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -13,46 +14,69 @@ public class MemoryQuestion
 }
 
 /// <summary>
-/// Aventura emocional: preguntas de reconocimiento emocional y empatia.
-/// Cada acierto hace saltar al personaje 3D hacia la meta (si la escena lo tiene).
-/// Hereda de MinigameBase: intro, telemetria y resultados unificados.
+/// "Detective de emociones" (Gestion emocional): reconocimiento emocional.
+/// Una gran cara de robot (EmotionFaceArt) muestra una emocion con una
+/// mini-situacion de una linea; abajo, 3-4 botones grandes con nombres de
+/// emociones y el nino toca la correcta. 8 rondas, sin fracaso duro:
+/// exito si acierta al menos la mitad.
+/// UI 100% por codigo sobre fondo espacial opaco (tapa la UI vieja de la escena).
 /// </summary>
 public class MemorySelector : MinigameBase
 {
-    [Header("Preguntas y opciones (si esta vacio se usa el banco por defecto)")]
+    // ---------- Campos serializados LEGACY (se conservan para no romper la escena) ----------
+    [Header("Preguntas y opciones (legacy, sin uso)")]
     public List<MemoryQuestion> questions;
 
     public TextMeshProUGUI questionTitleText;
     public List<Button> optionButtons;
     public TextMeshProUGUI[] optionTexts;
 
-    [Header("Controlador de salto")]
+    [Header("Controlador de salto (legacy, sin uso)")]
     public CharacterJumper characterJumper;
 
-    int _questionCount = 6;
-    int _maxErrors     = 3;
+    // ---------- Configuracion por dificultad ----------
+    const int ROUNDS = 8;
+    int   _optionCount = 3;
+    bool  _useMatices  = false;
+    float _timeLimit   = 0f;      // 0 = sin tiempo (barra solo en dificil)
 
-    List<MemoryQuestion> _remaining;
-    MemoryQuestion       _current;
-    int   _answered;
-    int   _correct;
-    int   _errors;
-    int   _score;
-    bool  _busy;
-    float _shownAt;
+    // Paleta de Gestion emocional (verde)
+    static readonly Color VERDE = new Color(0.18f, 0.80f, 0.58f);
 
-    const int POINTS_PER_CORRECT = 20;
+    // ---------- UI ----------
+    RectTransform   _root;
+    RobotFace       _face;
+    TextMeshProUGUI _situLbl, _feedLbl, _roundHdrLbl;
+    RectTransform   _situChip;
+    RectTransform   _optionsRow;
+    Image[]         _roundDots;
+    Image           _timerFill;
+    RectTransform   _timerPanel;
 
-    void Awake()
+    // ---------- Estado ----------
+    int          _round;
+    int          _correct;
+    int          _score;
+    bool         _busy;
+    float        _shownAt;
+    float        _rtSum;
+    int          _rtCount;
+    RobotEmotion _current;
+    RobotEmotion _last = (RobotEmotion)(-1);
+    Coroutine    _timerCo;
+    readonly List<Button> _liveButtons = new List<Button>();
+
+    protected override void Start()
     {
-        // La escena serializa la clase antigua (sin estos campos): se fijan aqui.
-        minigameName = "Aventura emocional";
+        // Debe coincidir EXACTAMENTE con GameCatalog.
+        minigameName = "Detective de emociones";
         category     = MinigameCategory.EmotionalManagement;
+        base.Start();
     }
 
     protected override string GetIntroDescription() =>
-        "Lee cada situacion y elige la mejor respuesta emocional.\n" +
-        "Cada acierto hace avanzar al personaje hacia la meta.";
+        "Robi el robot siente algo... ¡Sé su detective!\n" +
+        "Mira su cara, lee la pista y toca la emoción correcta.";
 
     void ApplyDifficulty()
     {
@@ -61,208 +85,381 @@ public class MemorySelector : MinigameBase
             : DifficultyLevel.Easy;
         switch (diff)
         {
-            case DifficultyLevel.Medium: _questionCount = 8;  _maxErrors = 2; break;
-            case DifficultyLevel.Hard:   _questionCount = 10; _maxErrors = 1; break;
-            default:                     _questionCount = 6;  _maxErrors = 3; break;
+            case DifficultyLevel.Medium:
+                _optionCount = 4; _useMatices = false; _timeLimit = 0f;
+                break;
+            case DifficultyLevel.Hard:
+                _optionCount = 4; _useMatices = true;  _timeLimit = 9f;
+                break;
+            default:
+                _optionCount = 3; _useMatices = false; _timeLimit = 0f;
+                break;
         }
     }
 
     protected override void OnMinigameStart()
     {
         ApplyDifficulty();
+        KidUI.EnsureEventSystem();
 
-        bool usingDefault = questions == null || questions.Count == 0;
-        var bank = usingDefault ? DefaultQuestions() : questions;
+        _round   = 0;
+        _correct = 0;
+        _score   = 0;
+        _rtSum   = 0f;
+        _rtCount = 0;
+        _busy    = false;
 
-        var diff = GameManager.Instance != null
-            ? GameManager.Instance.CurrentDifficulty
-            : DifficultyLevel.Easy;
-
-        if (usingDefault && diff == DifficultyLevel.Hard && bank.Count >= 15)
-        {
-            // En dificil se garantizan las 5 preguntas matizadas (indices 10-14)
-            // y se completan con 5 basicas al azar.
-            _remaining = bank.GetRange(10, 5);
-            var basics = bank.GetRange(0, 10);
-            for (int i = 0; i < 5 && basics.Count > 0; i++)
-            {
-                int r = Random.Range(0, basics.Count);
-                _remaining.Add(basics[r]);
-                basics.RemoveAt(r);
-            }
-        }
-        else
-        {
-            _remaining = new List<MemoryQuestion>(bank);
-        }
-
-        _questionCount = Mathf.Min(_questionCount, _remaining.Count);
-        _answered = _correct = _errors = _score = 0;
-        _busy = false;
-
-        if (optionButtons != null)
-            foreach (var b in optionButtons)
-                if (b != null) ButtonJuice.Attach(b.gameObject);
-
-        LoadRandomQuestion();
+        BuildUI();
+        NextRound();
     }
 
     protected override void OnMinigameComplete() { }
     protected override void OnMinigameFailed()   { }
 
-    void LoadRandomQuestion()
+    // ================================================================ UI
+
+    void BuildUI()
     {
-        if (!IsPlaying) return;
-        _busy = false;
+        Canvas cv = KidUI.MakeCanvas("DetectiveCanvas", 50, transform);
+        _root = cv.GetComponent<RectTransform>();
+        KidUI.BuildSpaceBackground(_root);
 
-        if (_remaining.Count == 0) { EndWon(); return; }
+        // ---- cabecera flotante redondeada ----
+        var hdr = KidUI.RoundImg(_root, "Hdr", KidUI.PANEL,
+            new Vector2(0.02f, 0.905f), new Vector2(0.98f, 0.985f),
+            Vector2.zero, Vector2.zero, 1.4f);
+        var hl = KidUI.RoundImg(hdr, "HL", VERDE,
+            new Vector2(0.02f, 0f), new Vector2(0.98f, 0f),
+            new Vector2(0f, 2f), new Vector2(0f, 4f), 4f);
+        hl.GetComponent<Image>().raycastTarget = false;
 
-        int randomIndex = Random.Range(0, _remaining.Count);
-        _current = _remaining[randomIndex];
-        _remaining.RemoveAt(randomIndex);
+        var ttl = KidUI.Txt(hdr, "T", "DETECTIVE DE EMOCIONES", Color.white, 34,
+                            new Vector2(0.03f, 0f), new Vector2(0.58f, 1f));
+        ttl.fontStyle = FontStyles.Bold;
+        ttl.alignment = TextAlignmentOptions.MidlineLeft;
 
-        if (questionTitleText != null)
-            questionTitleText.text = _current.questionTitle;
+        var cat = KidUI.Txt(hdr, "Cat", "GESTION EMOCIONAL", VERDE, 18,
+                            new Vector2(0.58f, 0f), new Vector2(0.82f, 1f));
+        cat.alignment = TextAlignmentOptions.MidlineRight;
 
-        int n = Mathf.Min(
-            optionTexts != null ? optionTexts.Length : 0,
-            optionButtons != null ? optionButtons.Count : 0);
-        n = Mathf.Min(n, _current.options.Length);
+        _roundHdrLbl = KidUI.Txt(hdr, "R", "Ronda 1 de " + ROUNDS, KidUI.DIM, 22,
+                                 new Vector2(0.82f, 0f), new Vector2(0.98f, 1f));
+        _roundHdrLbl.fontStyle = FontStyles.Bold;
+        _roundHdrLbl.alignment = TextAlignmentOptions.MidlineRight;
+        UITween.PopIn(hdr, 0.45f, 0.90f);
 
-        for (int i = 0; i < n; i++)
+        // ---- puntos de ronda ----
+        _roundDots = new Image[ROUNDS];
+        float spacing = 38f, startX = -(ROUNDS - 1) * 19f;
+        var dotsGO = new GameObject("Dots");
+        dotsGO.transform.SetParent(_root, false);
+        var dotsRT = dotsGO.AddComponent<RectTransform>();
+        dotsRT.anchorMin = dotsRT.anchorMax = new Vector2(0.5f, 0.878f);
+        dotsRT.pivot = new Vector2(0.5f, 0.5f);
+        dotsRT.sizeDelta = Vector2.zero;
+        for (int i = 0; i < ROUNDS; i++)
         {
-            if (optionTexts[i] != null) optionTexts[i].text = _current.options[i];
-            if (optionButtons[i] == null) continue;
-
-            int index = i;
-            optionButtons[i].onClick.RemoveAllListeners();
-            optionButtons[i].onClick.AddListener(() => CheckAnswer(index));
+            var d = KidUI.CircleAt(dotsRT, "D" + i, new Color(1f, 1f, 1f, 0.18f),
+                                   new Vector2(0.5f, 0.5f), 20f);
+            d.anchoredPosition = new Vector2(startX + i * spacing, 0f);
+            d.GetComponent<Image>().raycastTarget = false;
+            _roundDots[i] = d.GetComponent<Image>();
         }
 
-        _shownAt = Time.realtimeSinceStartup;
+        // ---- barra de tiempo suave (solo dificil) ----
+        if (_timeLimit > 0f)
+        {
+            _timerPanel = KidUI.RoundImg(_root, "TimerBG", new Color(0.02f, 0.05f, 0.10f, 0.9f),
+                new Vector2(0.32f, 0.833f), new Vector2(0.68f, 0.852f),
+                Vector2.zero, Vector2.zero, 3f);
+            _timerPanel.GetComponent<Image>().raycastTarget = false;
+            var fGO = new GameObject("Fill");
+            fGO.transform.SetParent(_timerPanel, false);
+            var fRT = fGO.AddComponent<RectTransform>();
+            fRT.anchorMin = Vector2.zero; fRT.anchorMax = Vector2.one;
+            fRT.sizeDelta = new Vector2(-4f, -4f); fRT.anchoredPosition = Vector2.zero;
+            _timerFill = fGO.AddComponent<Image>();
+            _timerFill.sprite        = KidUI.RoundedSprite;
+            _timerFill.type          = Image.Type.Filled;
+            _timerFill.fillMethod    = Image.FillMethod.Horizontal;
+            _timerFill.fillOrigin    = 0;
+            _timerFill.fillAmount    = 1f;
+            _timerFill.color         = VERDE;
+            _timerFill.raycastTarget = false;
+        }
+
+        // ---- gran cara de robot ----
+        _face = EmotionFaceArt.Build(_root, new Vector2(0.5f, 0.60f), 300f);
+
+        // ---- pregunta + mini-situacion ----
+        var q = KidUI.Txt(_root, "Q", "¿Cómo se siente Robi?", Color.white, 34,
+                          new Vector2(0.15f, 0.395f), new Vector2(0.85f, 0.445f));
+        q.fontStyle = FontStyles.Bold;
+
+        _situChip = KidUI.RoundImg(_root, "SituChip", KidUI.PANEL2,
+            new Vector2(0.20f, 0.325f), new Vector2(0.80f, 0.385f),
+            Vector2.zero, Vector2.zero, 1.6f);
+        _situChip.GetComponent<Image>().raycastTarget = false;
+        _situLbl = KidUI.Txt(_situChip, "Situ", "", KidUI.DIM, 25,
+                             new Vector2(0.02f, 0f), new Vector2(0.98f, 1f));
+        _situLbl.enableAutoSizing = true;
+        _situLbl.fontSizeMin = 16f; _situLbl.fontSizeMax = 25f;
+
+        // ---- fila de botones de emocion ----
+        var rowGO = new GameObject("OptionsRow");
+        rowGO.transform.SetParent(_root, false);
+        _optionsRow = rowGO.AddComponent<RectTransform>();
+        _optionsRow.anchorMin = new Vector2(0.04f, 0.115f);
+        _optionsRow.anchorMax = new Vector2(0.96f, 0.295f);
+        _optionsRow.sizeDelta = Vector2.zero;
+        _optionsRow.anchoredPosition = Vector2.zero;
+
+        // ---- feedback ----
+        _feedLbl = KidUI.Txt(_root, "Feed", "", VERDE, 28,
+                             new Vector2(0.10f, 0.03f), new Vector2(0.90f, 0.09f));
+        _feedLbl.fontStyle = FontStyles.Bold;
     }
 
-    void CheckAnswer(int selectedIndex)
+    // ================================================================ RONDAS
+
+    void NextRound()
     {
-        if (!IsPlaying || _busy || _current == null) return;
+        if (!IsPlaying) return;
+        if (_round >= ROUNDS) { FinishGame(); return; }
+
+        _busy = false;
+        _roundHdrLbl.text = "Ronda " + (_round + 1) + " de " + ROUNDS;
+        _feedLbl.text = "";
+
+        // Emocion objetivo (sin repetir la anterior)
+        var pool = BuildPool();
+        do { _current = pool[Random.Range(0, pool.Count)]; }
+        while (_current == _last && pool.Count > 1);
+        _last = _current;
+
+        _face.SetEmotion(_current, Random.Range(0.7f, 1f));
+        _face.Pulse();
+
+        _situLbl.text = Situacion(_current);
+        UITween.PopIn(_situChip, 0.30f, 0.92f);
+
+        BuildOptionButtons(pool);
+
+        _shownAt = Time.realtimeSinceStartup;
+        if (_timeLimit > 0f)
+        {
+            if (_timerCo != null) StopCoroutine(_timerCo);
+            _timerCo = StartCoroutine(TimerRoutine());
+        }
+    }
+
+    List<RobotEmotion> BuildPool()
+    {
+        var pool = new List<RobotEmotion>(EmotionFaceArt.BASICAS);
+        if (_useMatices) pool.AddRange(EmotionFaceArt.MATICES);
+        return pool;
+    }
+
+    void BuildOptionButtons(List<RobotEmotion> pool)
+    {
+        foreach (Transform ch in _optionsRow) Destroy(ch.gameObject);
+        _liveButtons.Clear();
+
+        // Opciones: la correcta + distractores distintos
+        var opts = new List<RobotEmotion> { _current };
+        var distract = new List<RobotEmotion>(pool);
+        distract.Remove(_current);
+        while (opts.Count < _optionCount && distract.Count > 0)
+        {
+            int r = Random.Range(0, distract.Count);
+            opts.Add(distract[r]);
+            distract.RemoveAt(r);
+        }
+        // Barajar
+        for (int i = opts.Count - 1; i > 0; i--)
+        {
+            int j = Random.Range(0, i + 1);
+            (opts[i], opts[j]) = (opts[j], opts[i]);
+        }
+
+        int   n     = opts.Count;
+        float gap   = 0.025f;
+        float w     = (1f - gap * (n - 1)) / n;
+        for (int i = 0; i < n; i++)
+        {
+            var emo  = opts[i];
+            float x0 = i * (w + gap);
+            var btn  = KidUI.Btn(_optionsRow, EmotionFaceArt.Nombre(emo), KidUI.BTNC,
+                                 new Vector2(x0, 0f), new Vector2(x0 + w, 1f),
+                                 () => OnPick(emo), 32f);
+            UITween.PopIn((RectTransform)btn.transform, 0.32f, 0.85f, i * 0.05f);
+            _liveButtons.Add(btn);
+        }
+    }
+
+    IEnumerator TimerRoutine()
+    {
+        float t = 0f;
+        while (t < _timeLimit)
+        {
+            if (_busy || !IsPlaying) yield break;
+            t += Time.deltaTime;
+            float frac = 1f - Mathf.Clamp01(t / _timeLimit);
+            if (_timerFill != null)
+            {
+                _timerFill.fillAmount = frac;
+                _timerFill.color = Color.Lerp(KidUI.WARN, VERDE, frac);
+            }
+            yield return null;
+        }
+        if (!_busy && IsPlaying) OnTimeout();
+    }
+
+    void OnPick(RobotEmotion picked)
+    {
+        if (!IsPlaying || _busy) return;
         _busy = true;
-        _answered++;
 
         float rtMs = (Time.realtimeSinceStartup - _shownAt) * 1000f;
-        bool  ok   = selectedIndex == _current.correctIndex;
+        bool  ok   = picked == _current;
         ReportEvent(ok, rtMs);
 
         RectTransform btnRT = null;
-        if (optionButtons != null && selectedIndex < optionButtons.Count
-            && optionButtons[selectedIndex] != null)
-            btnRT = optionButtons[selectedIndex].GetComponent<RectTransform>();
+        foreach (var b in _liveButtons)
+        {
+            var lbl = b.GetComponentInChildren<TextMeshProUGUI>();
+            if (lbl != null && lbl.text == EmotionFaceArt.Nombre(picked))
+                btnRT = (RectTransform)b.transform;
+            b.interactable = false;
+        }
 
         if (ok)
         {
             _correct++;
-            _score += POINTS_PER_CORRECT;
+            _score += 100;
+            _rtSum += rtMs;
+            _rtCount++;
+            _roundDots[_round].color = VERDE;
+            UITween.PulseOnce(_roundDots[_round].rectTransform, 1.4f, 0.28f);
             GameFeel.Success(btnRT);
-            GameFeel.FloatingText("+" + POINTS_PER_CORRECT,
-                                  new Color(0.22f, 0.86f, 0.54f), new Vector2(0f, 160f));
-
-            // Salto 3D null-safe: solo si la escena tiene jumper con plataformas.
-            if (characterJumper != null
-                && characterJumper.jumpTargets != null
-                && characterJumper.jumpTargets.Length > 0)
-                characterJumper.JumpToNextPlatform();
+            GameFeel.FloatingText("¡Detective genial! +100", VERDE, new Vector2(0f, 150f), 42f);
+            _face.Pulse();
+            _feedLbl.text  = "¡Sí! Robi siente " + EmotionFaceArt.Nombre(_current).ToLower() + ".";
+            _feedLbl.color = VERDE;
         }
         else
         {
-            _errors++;
-            GameFeel.Error(btnRT);
-            GameFeel.FloatingText("Piensa como se sentiria...",
-                                  new Color(0.92f, 0.45f, 0.35f), new Vector2(0f, 160f), 36f);
+            _roundDots[_round].color = KidUI.WARN;
+            GameFeel.PlayError();
+            if (btnRT != null) GameFeel.Shake(btnRT, 10f, 0.3f);
+            _feedLbl.text  = "Casi... era " + EmotionFaceArt.Nombre(_current).ToLower() +
+                             ". ¡Fíjate en sus cejas y su boca!";
+            _feedLbl.color = KidUI.WARN;
         }
 
-        if (_errors >= _maxErrors)       { Invoke(nameof(EndLost), 1.0f); return; }
-        if (_answered >= _questionCount) { Invoke(nameof(EndWon),  1.0f); return; }
-
-        Invoke(nameof(LoadRandomQuestion), 1.2f);
+        _round++;
+        StartCoroutine(NextRoundDelayed(ok ? 1.0f : 1.5f));
     }
 
-    void EndWon()
+    void OnTimeout()
     {
-        if (!IsPlaying) return;
-        CompleteMinigame(_score);
-        GameFeel.Confetti();
+        if (!IsPlaying || _busy) return;
+        _busy = true;
 
-        float ratio = _answered > 0 ? (float)_correct / _answered : 0f;
+        ReportEvent(false, _timeLimit * 1000f);
+        foreach (var b in _liveButtons) b.interactable = false;
+
+        _roundDots[_round].color = KidUI.WARN;
+        GameFeel.PlayPop();
+        _feedLbl.text  = "Se acabó el tiempo. Era " +
+                         EmotionFaceArt.Nombre(_current).ToLower() + ". ¡A por la siguiente!";
+        _feedLbl.color = KidUI.WARN;
+
+        _round++;
+        StartCoroutine(NextRoundDelayed(1.5f));
+    }
+
+    IEnumerator NextRoundDelayed(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+        NextRound();
+    }
+
+    // ================================================================ FINAL
+
+    void FinishGame()
+    {
+        bool won = _correct >= ROUNDS / 2;   // exito si acierta al menos la mitad
+        float ratio = (float)_correct / ROUNDS;
+        int   avgMs = _rtCount > 0 ? Mathf.RoundToInt(_rtSum / _rtCount) : 0;
+
+        if (won)
+        {
+            CompleteMinigame(_score);
+            GameFeel.Confetti();
+        }
+        else
+        {
+            FailMinigame();
+        }
+
+        string rtStat = _rtCount > 0
+            ? "Rapidez media: " + (avgMs / 1000f).ToString("0.0") + " s"
+            : "Rapidez media: -";
+
         ShowResults(
-            true,
-            GameFeel.StarsFromRatio(true, ratio),
+            won,
+            GameFeel.StarsFromRatio(won, ratio),
             _score,
-            BuildStats(),
-            "¡Llegaste a la meta!",
-            "Entender como se sienten los demas ayuda a elegir mejor.");
+            new[]
+            {
+                "Emociones descubiertas: " + _correct + " de " + ROUNDS,
+                rtStat
+            },
+            won ? "¡Caso resuelto, detective!" : "¡Casi lo resuelves!",
+            won ? "Leer las caras te ayuda a entender a los demás."
+                : "Cada cara da pistas: mira los ojos, las cejas y la boca.");
     }
 
-    void EndLost()
+    // ================================================================ DATOS
+
+    /// <summary>Mini-situacion de una linea para dar contexto a la emocion.</summary>
+    static string Situacion(RobotEmotion e)
     {
-        if (!IsPlaying) return;
-        FailMinigame();
-        ShowResults(
-            false,
-            0,
-            _score,
-            BuildStats(),
-            "El camino se corto",
-            "Antes de responder, imagina como se siente cada persona.");
+        string[] opts;
+        switch (e)
+        {
+            case RobotEmotion.Alegria:
+                opts = new[] { "¡Le han regalado un cohete nuevo!",
+                               "Hoy juega con sus mejores amigos." }; break;
+            case RobotEmotion.Tristeza:
+                opts = new[] { "Se le ha perdido su peluche favorito.",
+                               "Su mejor amigo se muda a otro planeta." }; break;
+            case RobotEmotion.Enfado:
+                opts = new[] { "Le han quitado su turno en el juego.",
+                               "Alguien rompió su torre sin pedir perdón." }; break;
+            case RobotEmotion.Miedo:
+                opts = new[] { "Ha oído un ruido raro en la oscuridad.",
+                               "Se ha perdido en un sitio nuevo." }; break;
+            case RobotEmotion.Calma:
+                opts = new[] { "Está descansando después de jugar.",
+                               "Escucha su música tranquila favorita." }; break;
+            case RobotEmotion.Sorpresa:
+                opts = new[] { "¡Ha encontrado un regalo inesperado!",
+                               "Sus amigos le han preparado una fiesta." }; break;
+            case RobotEmotion.Frustracion:
+                opts = new[] { "Lleva mil intentos y el puzle no le sale.",
+                               "Su dibujo no queda como él quería." }; break;
+            case RobotEmotion.Nervios:
+                opts = new[] { "Mañana actúa delante de toda la clase.",
+                               "Está esperando una noticia importante." }; break;
+            case RobotEmotion.Verguenza:
+                opts = new[] { "Se ha tropezado delante de todos.",
+                               "Le han pedido cantar en público." }; break;
+            default: // Orgullo
+                opts = new[] { "¡Ha montado en bici sin ayuda por primera vez!",
+                               "Terminó su primer libro él solito." }; break;
+        }
+        return opts[Random.Range(0, opts.Length)];
     }
-
-    string[] BuildStats() => new[]
-    {
-        "Aciertos: " + _correct + " de " + _questionCount,
-        "Errores: " + _errors + " (maximo " + _maxErrors + ")"
-    };
-
-    /// <summary>
-    /// Banco por defecto (15): reconocimiento de emociones, empatia y
-    /// "que hacer cuando..." para 5-10 anos. Las 5 ultimas son matizadas
-    /// (opciones mas parecidas entre si) y se priorizan en dificil.
-    /// </summary>
-    static List<MemoryQuestion> DefaultQuestions() => new List<MemoryQuestion>
-    {
-        // ----- Reconocimiento de emociones -----
-        new MemoryQuestion { questionTitle = "Tu amiga llora porque perdio su peluche. ¿Como se siente?",
-            options = new[] { "Contenta", "Triste", "Aburrida", "Sorprendida" }, correctIndex = 1 },
-        new MemoryQuestion { questionTitle = "Marcos grita y aprieta los punos porque le quitaron su turno. ¿Que siente?",
-            options = new[] { "Enfado", "Alegria", "Sueno", "Calma" }, correctIndex = 0 },
-        new MemoryQuestion { questionTitle = "Lucia sonrie y salta porque manana es su cumpleanos. ¿Que siente?",
-            options = new[] { "Miedo", "Verguenza", "Alegria", "Tristeza" }, correctIndex = 2 },
-        new MemoryQuestion { questionTitle = "A Hugo le tiemblan las piernas antes de hablar en clase. ¿Que siente?",
-            options = new[] { "Nervios o miedo", "Rabia", "Felicidad", "Aburrimiento" }, correctIndex = 0 },
-        new MemoryQuestion { questionTitle = "Sara se pone roja cuando la aplauden. ¿Que puede sentir?",
-            options = new[] { "Verguenza", "Enfado", "Hambre", "Frio" }, correctIndex = 0 },
-
-        // ----- Empatia -----
-        new MemoryQuestion { questionTitle = "Un companero nuevo esta solo en el recreo. ¿Que puedes hacer?",
-            options = new[] { "Ignorarlo", "Reirme de el", "Invitarlo a jugar", "Esconderme" }, correctIndex = 2 },
-        new MemoryQuestion { questionTitle = "Tu hermano rompio su juguete favorito y llora. ¿Que le dices?",
-            options = new[] { "\"No es para tanto\"", "\"Te entiendo, era tu favorito\"", "\"Callate ya\"", "Nada, me voy" }, correctIndex = 1 },
-        new MemoryQuestion { questionTitle = "Alguien se cae en el patio y todos rien. ¿Que haces tu?",
-            options = new[] { "Reirme mas fuerte", "Hacerle una foto", "Mirar hacia otro lado", "Preguntarle si esta bien" }, correctIndex = 3 },
-
-        // ----- Que hacer cuando... -----
-        new MemoryQuestion { questionTitle = "Estas muy enfadado con un amigo. ¿Que haces primero?",
-            options = new[] { "Pegarle", "Respirar hondo y calmarme", "Gritarle muy fuerte", "Romper sus cosas" }, correctIndex = 1 },
-        new MemoryQuestion { questionTitle = "Pierdes en un juego y tienes ganas de llorar. ¿Que puedes hacer?",
-            options = new[] { "Tirar el juego al suelo", "Culpar a los demas", "Respirar y pedir la revancha", "No jugar nunca mas" }, correctIndex = 2 },
-
-        // ----- Matizadas (opciones mas parecidas: se usan en dificil) -----
-        new MemoryQuestion { questionTitle = "Tu amigo saco mala nota y tu sacaste un 10. ¿Que es mejor decirle?",
-            options = new[] { "\"Yo saque un 10, mira\"", "\"Si quieres practicamos juntos\"", "\"La proxima vez estudia\"", "\"No pasa nada, olvidalo\"" }, correctIndex = 1 },
-        new MemoryQuestion { questionTitle = "Ves a tu mejor amiga jugando con otra nina y sientes celos. ¿Que haces?",
-            options = new[] { "Decirle que ya no es mi amiga", "Jugar solo y no contarselo", "Acercarme y jugar los tres", "Decirle a la otra nina que se vaya" }, correctIndex = 2 },
-        new MemoryQuestion { questionTitle = "Rompiste sin querer el dibujo de un companero. ¿Que es lo mejor?",
-            options = new[] { "Esconder el dibujo", "Decir que fue otro", "Pedir perdon y ofrecer ayuda", "Esperar a que no se de cuenta" }, correctIndex = 2 },
-        new MemoryQuestion { questionTitle = "Tu amigo esta callado y con la mirada baja, pero dice \"estoy bien\". ¿Que haces?",
-            options = new[] { "Creerle y marcharme", "Decirle \"te noto triste, ¿quieres hablar?\"", "Contarselo a todos", "Hacerle cosquillas sin preguntar" }, correctIndex = 1 },
-        new MemoryQuestion { questionTitle = "Estas nervioso por un examen aunque estudiaste mucho. ¿Que piensas?",
-            options = new[] { "\"Seguro que suspendo\"", "\"Me prepare bien, lo intentare con calma\"", "\"No voy a ir al examen\"", "\"Los examenes no importan\"" }, correctIndex = 1 },
-    };
 }

@@ -326,9 +326,12 @@ public static class KidUI
         return Resources.Load<UnityEngine.Sprite>("Avatars/" + avatarId);
     }
 
-    /// <summary>Ids de avatar disponibles (deben existir en Resources/Avatars).</summary>
+    /// <summary>Ids de avatar elegibles por el niño (deben existir en
+    /// Resources/Avatars). Los sprites antiguos (neo, axel, titan, bombilla,
+    /// globo, atencion) siguen en Resources para los perfiles ya creados y
+    /// para el resto de la interfaz, pero ya no se ofrecen en el selector.</summary>
     public static readonly string[] AVATAR_IDS =
-        { "neo", "axel", "titan", "bombilla", "globo", "atencion" };
+        { "ager", "dili", "jun", "marxa", "orbo", "oti" };
 
     /// <summary>
     /// Dibuja un avatar: sprite si existe; si no, círculo de color con la inicial.

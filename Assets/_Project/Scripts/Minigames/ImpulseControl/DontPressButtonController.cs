@@ -27,6 +27,8 @@ public class DontPressButtonController : MonoBehaviour
 
     [HideInInspector] public Image           ButtonImage;
     [HideInInspector] public Image           GlowImage;
+    /// <summary>Aro de estado alrededor del boton (rojo = espera, verde = ¡ahora!).</summary>
+    [HideInInspector] public Image           RingImage;
     [HideInInspector] public TextMeshProUGUI ButtonText;
 
     public enum State { Idle, Waiting, FakeOut, Orange, Active, FakeGreen, Correct, Early, Missed }
@@ -45,13 +47,20 @@ public class DontPressButtonController : MonoBehaviour
     public void SetEarly()     => Apply(State.Early,     COL_EARLY,   TXT_EARLY,   pulse: false);
     public void SetMissed()    => Apply(State.Missed,    COL_MISSED,  TXT_MISSED,  pulse: false);
 
+    // Tiempo total en el estado actual (para la tension creciente de la espera)
+    float _stateT = 0f;
+
     public void Tick()
     {
         if (ButtonImage == null) return;
 
         if (_pulsing)   // rojo "respirando" durante la espera
         {
-            _pulseT += Time.deltaTime * 2.8f;
+            _stateT += Time.deltaTime;
+            // Tension visual sutil creciente: la respiracion se acelera un poco
+            // cuanto mas dura la espera (solo estetica, no cambia tiempos).
+            float speed = 2.8f + Mathf.Min(1.4f, _stateT * 0.22f);
+            _pulseT += Time.deltaTime * speed;
             float pulse = 0.80f + Mathf.Sin(_pulseT) * 0.20f;
 
             ButtonImage.color = new Color(
@@ -62,6 +71,11 @@ public class DontPressButtonController : MonoBehaviour
             if (GlowImage != null)
                 GlowImage.color = new Color(COL_WAIT.r, COL_WAIT.g, COL_WAIT.b,
                                             0.25f + Mathf.Sin(_pulseT) * 0.20f);
+
+            // El aro rojo late en contrafase (marca inequivoca de "espera")
+            if (RingImage != null)
+                RingImage.color = new Color(COL_WAIT.r, COL_WAIT.g, COL_WAIT.b,
+                                            0.65f + Mathf.Sin(_pulseT + Mathf.PI) * 0.25f);
         }
         else if (_state == State.FakeGreen)   // verde PARPADEANTE = trampa
         {
@@ -71,6 +85,9 @@ public class DontPressButtonController : MonoBehaviour
             if (GlowImage != null)
                 GlowImage.color = new Color(COL_ACTIVE.r, COL_ACTIVE.g, COL_ACTIVE.b,
                                             on ? 0.35f : 0.05f);
+            if (RingImage != null)
+                RingImage.color = new Color(COL_ACTIVE.r, COL_ACTIVE.g, COL_ACTIVE.b,
+                                            on ? 0.85f : 0.15f);
         }
     }
 
@@ -79,6 +96,7 @@ public class DontPressButtonController : MonoBehaviour
         _state   = s;
         _pulsing = pulse;
         _pulseT  = 0f;
+        _stateT  = 0f;
 
         if (ButtonImage != null) ButtonImage.color = col;
         if (ButtonText  != null)
@@ -90,6 +108,17 @@ public class DontPressButtonController : MonoBehaviour
         {
             GlowImage.color = new Color(col.r, col.g, col.b,
                                         s == State.Active ? 0.45f : 0.22f);
+        }
+        // Aro de estado: verde solido brillante en "¡ahora!", tenue en reposo,
+        // y del color del estado en el resto de feedbacks.
+        if (RingImage != null)
+        {
+            float ringA = s == State.Active  ? 0.95f
+                        : s == State.Idle    ? 0.10f
+                        : s == State.Correct ? 0.85f
+                                             : 0.55f;
+            Color ringC = s == State.Idle ? Color.white : col;
+            RingImage.color = new Color(ringC.r, ringC.g, ringC.b, ringA);
         }
     }
 }

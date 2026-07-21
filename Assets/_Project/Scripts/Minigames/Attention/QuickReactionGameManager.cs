@@ -260,6 +260,9 @@ public class QuickReactionGameManager : MinigameBase
         if (won) CompleteMinigame(score);
         else     FailMinigame();
 
+        // Celebracion visual moderada al ganar (no cambia mecanicas)
+        if (won) GameFeel.Confetti(30);
+
         float ratio = (float)_correctCount / rounds;
         int   stars = GameFeel.StarsFromRatio(won, ratio);
 

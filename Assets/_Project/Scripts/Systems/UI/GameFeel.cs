@@ -312,12 +312,19 @@ public static class GameFeel
         ScreenFlash(new Color(0.90f, 0.22f, 0.28f), 0.15f, 0.25f);
     }
 
-    /// <summary>Estrellas 0-3 a partir del rendimiento (ratio 0-1). Fracaso = 0.</summary>
+    /// <summary>Estrellas 0-3 a partir del rendimiento (ratio 0-1). Fracaso = 0.
+    /// En Difícil (TITAN) los umbrales bajan un poco: los desafíos ya son más
+    /// exigentes de por sí, así que las estrellas deben seguir siendo alcanzables
+    /// (sin regalarlas: 3 estrellas siguen pidiendo un 75% de rendimiento).</summary>
     public static int StarsFromRatio(bool success, float ratio)
     {
         if (!success) return 0;
-        if (ratio >= 0.85f) return 3;
-        if (ratio >= 0.60f) return 2;
+        bool hard = GameManager.Instance != null &&
+                    GameManager.Instance.CurrentDifficulty == DifficultyLevel.Hard;
+        float tres = hard ? 0.75f : 0.85f;
+        float dos  = hard ? 0.50f : 0.60f;
+        if (ratio >= tres) return 3;
+        if (ratio >= dos)  return 2;
         return 1;
     }
 }

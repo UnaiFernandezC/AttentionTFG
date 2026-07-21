@@ -2,589 +2,755 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using TMPro;
 
+/// <summary>
+/// EL TREN DE ATTENTIA — minijuego de planificacion pura.
+/// Narrativa: los trenes de la Gran Fabrica vuelven a circular.
+/// El niño ve una red de vias con desvios (flechas que puede girar),
+/// planifica TODO antes de pulsar "¡EN MARCHA!" y luego observa si el
+/// tren llega a la estacion meta o acaba en una via muerta.
+/// La clase conserva su nombre original (ActionSequenceController) para
+/// no romper las referencias serializadas de las escenas.
+/// </summary>
 public class ActionSequenceController : MinigameBase
 {
-
-    class Routine
-    {
-        public string   title;
-        public string[] steps;
-        public Routine(string t, params string[] s) { title = t; steps = s; }
-    }
-
-    // ---- Banco de rutinas por dificultad (orden = causa-efecto) ----
-
-    static readonly Routine[] EASY_POOL =
-    {
-        new Routine("La mañana",
-            "Despertarte", "Vestirte", "Desayunar", "Coger la mochila"),
-        new Routine("A dormir",
-            "Ponerte el pijama", "Lavarte los dientes", "Meterte en la cama", "Apagar la luz"),
-        new Routine("El bocadillo",
-            "Lavarte las manos", "Coger el pan", "Poner el queso", "Comer el bocadillo"),
-        new Routine("La mascota",
-            "Coger la correa", "Salir a pasear", "Volver a casa", "Darle de comer"),
-    };
-
-    static readonly Routine[] MEDIUM_POOL =
-    {
-        new Routine("El colegio",
-            "Llegar al colegio", "Sacar los libros", "Escuchar al profesor",
-            "Hacer los ejercicios", "Guardar las cosas"),
-        new Routine("La excursion",
-            "Preparar la mochila", "Ponerte las botas", "Subir al autobus",
-            "Caminar por el bosque", "Hacer un picnic"),
-        new Routine("El bizcocho",
-            "Lavarte las manos", "Sacar los ingredientes", "Mezclar la masa",
-            "Hornear el bizcocho", "Probar un trozo"),
-        new Routine("A dormir",
-            "Cenar", "Ponerte el pijama", "Lavarte los dientes",
-            "Leer un cuento", "Apagar la luz"),
-    };
-
-    static readonly Routine[] HARD_POOL =
-    {
-        new Routine("La mañana",
-            "Despertarte", "Ponerte los calcetines", "Ponerte los zapatos",
-            "Desayunar", "Lavarte los dientes", "Coger la mochila"),
-        new Routine("El bizcocho",
-            "Lavarte las manos", "Encender el horno", "Mezclar la masa",
-            "Meter la masa al horno", "Sacar la masa del horno", "Probar el bizcocho"),
-        new Routine("La excursion",
-            "Preparar la mochila", "Subir al autobus", "Bajar del autobus",
-            "Caminar hasta el rio", "Hacer un picnic", "Volver a casa"),
-        new Routine("La mascota",
-            "Coger la correa", "Ponerle la correa", "Salir a pasear",
-            "Quitarle la correa", "Llenar su comedero", "Dejarle descansar"),
-    };
-
-    [Header("Segundos de feedback de error antes de reiniciar")]
+    [Header("Campo legacy (conservado para la escena, sin uso)")]
     public float errorDelay = 0.9f;
 
-    const int ROUNDS = 3;
-    int _round;
-    int _maxErrors = 3;
-    int _errors;
-    int _correctPresses;
+    // ================================================================ MODELO
 
-    Routine[] _pool;
-    int[]     _routineOrder;
-    Routine   _routine;
+    class RailNode
+    {
+        public Vector2 pos;                    // posicion en px dentro del tablero
+        public int  next = -1;                 // salida unica (nodos normales)
+        public int  outA = -1, outB = -1;      // salidas de un desvio
+        public int  state;                     // 0 → outA, 1 → outB
+        public bool isSwitch, isStation, isDeadEnd, isBroken;
+        public bool hasStar, starTaken;
+        public RectTransform rt;               // circulo del nodo
+        public RectTransform arrow;            // flecha giratoria del desvio
+        public GameObject    starGO;
+        public Button        btn;
+    }
 
-    string[] _sequence;
-    string[] _shuffled;
-    int      _progress;
-    bool     _locked;
-    float    _lastPressTime;
+    class RailEdge
+    {
+        public int   a, b;
+        public Image stripe;                   // franja interior coloreable
+    }
 
-    RectTransform _canvasRT;
+    enum Phase { Planning, Driving, Over }
 
-    TextMeshProUGUI _progressLbl;
-    TextMeshProUGUI _roundLbl;
-    TextMeshProUGUI _instructLbl;
-    Image[]         _dots;
+    const int ROUNDS     = 3;
+    const int MAX_ERRORS = 3;
 
-    GameObject        _btnAreaGO;
-    Button[]          _btns;
-    Image[]           _btnBgs;
-    TextMeshProUGUI[] _btnLbls;
-    Color[]           _btnDefaultColors;
+    // ------- dificultad -------
+    int   _numSwitches = 2;
+    bool  _hasBroken   = false;
+    float _halfWidth   = 520f;
+    int   _starsPerRound = 2;
 
-    GameObject      _transPanel;
-    TextMeshProUGUI _transTitle;
-    TextMeshProUGUI _transSub;
+    // ------- estado de partida -------
+    Phase _phase = Phase.Planning;
+    int   _round;
+    int   _errors;
+    int   _launches;
+    int   _score;
+    int   _starsCollected;
+    int   _starsTotalSeen;
+    int   _roundStars;
+    float _planStart;
 
-    static readonly Color BG     = C(0.08f, 0.09f, 0.18f);
-    static readonly Color PANEL  = C(0.12f, 0.13f, 0.24f);
-    static readonly Color HDR    = C(0.10f, 0.11f, 0.22f);
-    static readonly Color ACCENT = C(0.25f, 0.55f, 1.00f);
-    static readonly Color GREEN  = C(0.20f, 0.78f, 0.48f);
-    static readonly Color RED    = C(0.85f, 0.25f, 0.32f);
-    static readonly Color YELLOW = C(1.00f, 0.84f, 0.22f);
-    static readonly Color DIM    = C(0.55f, 0.58f, 0.75f);
-    static readonly Color GREY   = C(0.28f, 0.30f, 0.42f);
-    static readonly Color DOTOFF = C(0.25f, 0.27f, 0.45f);
-    static readonly Color BTNC   = C(0.18f, 0.22f, 0.45f);
+    List<RailNode> _nodes = new List<RailNode>();
+    List<RailEdge> _edges = new List<RailEdge>();
+    int _startIdx;
 
-    static Color C(float r, float g, float b) { return new Color(r, g, b); }
+    // ------- UI -------
+    RectTransform _root, _board, _trainRT;
+    Button        _goBtn;
+    TextMeshProUGUI _roundLbl, _starLbl, _msgLbl;
+    Image[] _tryDots;
+
+    // Paleta (azul de Planificacion + carriles)
+    static readonly Color ACCENT2   = new Color(0.28f, 0.60f, 1.00f);
+    static readonly Color RAIL_DARK = new Color(0.15f, 0.19f, 0.34f);
+    static readonly Color RAIL_DIM  = new Color(0.36f, 0.44f, 0.64f);
+    static readonly Color STAR_YEL  = new Color(0.98f, 0.80f, 0.10f);
+
+    // ================================================================ CICLO
+
+    protected override void Start()
+    {
+        minigameName = "El tren de Attentia";
+        category     = MinigameCategory.Planning;
+        base.Start();
+    }
 
     protected override string GetIntroDescription() =>
-        "Los pasos de cada mision estan desordenados.\n" +
-        "Piensa que va primero y pulsalos en el orden logico.";
+        "Los trenes de la Gran Fabrica vuelven a circular.\n" +
+        "Toca los desvios naranjas para girar sus flechas y, cuando\n" +
+        "tengas la ruta lista, pulsa ¡EN MARCHA! para llevar el tren\n" +
+        "a la estacion. ¡Recoge las estrellas del camino!";
 
     protected override void OnMinigameStart()
     {
-        EnsureES();
+        KidUI.EnsureEventSystem();
         ApplyDifficulty();
-        BuildUI();
-        StartRound(0);
+
+        _errors         = 0;
+        _launches       = 0;
+        _score          = 0;
+        _starsCollected = 0;
+        _starsTotalSeen = 0;
+
+        BuildBaseUI();
+        BuildRound(0);
     }
+
+    protected override void OnMinigameComplete() { }
+    protected override void OnMinigameFailed()   { }
 
     void ApplyDifficulty()
     {
         var diff = GameManager.Instance != null
             ? GameManager.Instance.CurrentDifficulty
             : DifficultyLevel.Easy;
+
         switch (diff)
         {
-            case DifficultyLevel.Medium: _maxErrors = 3; _pool = MEDIUM_POOL; break;
-            case DifficultyLevel.Hard:   _maxErrors = 1; _pool = HARD_POOL;   break;
-            default:                     _maxErrors = 5; _pool = EASY_POOL;   break;
-        }
-        _errors         = 0;
-        _correctPresses = 0;
-
-        // Elige 3 rutinas distintas al azar → rejugabilidad
-        _routineOrder = new int[_pool.Length];
-        for (int i = 0; i < _routineOrder.Length; i++) _routineOrder[i] = i;
-        for (int i = _routineOrder.Length - 1; i > 0; i--)
-        {
-            int j = Random.Range(0, i + 1);
-            int tmp = _routineOrder[i]; _routineOrder[i] = _routineOrder[j]; _routineOrder[j] = tmp;
+            case DifficultyLevel.Medium:
+                _numSwitches = 3; _hasBroken = false;
+                _halfWidth = 640f; _starsPerRound = 3;
+                break;
+            case DifficultyLevel.Hard:
+                _numSwitches = 4; _hasBroken = true;
+                _halfWidth = 700f; _starsPerRound = 2; // + 1 estrella en el rodeo
+                break;
+            default: // Easy: red pequeña
+                _numSwitches = 2; _hasBroken = false;
+                _halfWidth = 520f; _starsPerRound = 2;
+                break;
         }
     }
 
-    protected override void OnMinigameComplete() { }
-    protected override void OnMinigameFailed()   { }
+    // ================================================================ UI BASE
 
-    void StartRound(int r)
+    void BuildBaseUI()
     {
-        _round = r;
-        _locked = false;
+        var cv = KidUI.MakeCanvas("TrainCanvas", 50, transform);
+        _root  = cv.GetComponent<RectTransform>();
+        KidUI.BuildSpaceBackground(_root);
 
-        if (_transPanel != null) _transPanel.SetActive(false);
+        // ---- cabecera redondeada ----
+        var hdr = KidUI.RoundImg(_root, "Hdr", KidUI.PANEL,
+            new Vector2(0.02f, 0.905f), new Vector2(0.98f, 0.985f),
+            Vector2.zero, Vector2.zero, 1.4f);
+        var line = KidUI.RoundImg(hdr, "Line", ACCENT2,
+            new Vector2(0.02f, 0f), new Vector2(0.98f, 0f),
+            new Vector2(0f, 2f), new Vector2(0f, 4f), 4f);
+        line.GetComponent<Image>().raycastTarget = false;
 
-        _routine  = _pool[_routineOrder[r % _routineOrder.Length]];
-        _sequence = _routine.steps;
-        _shuffled = (string[])_sequence.Clone();
-        do { Shuffle(_shuffled); } while (SameOrder(_shuffled, _sequence));
+        var title = KidUI.Txt(hdr, "T", "EL TREN DE ATTENTIA", Color.white, 36,
+            new Vector2(0.02f, 0f), new Vector2(0.42f, 1f));
+        title.fontStyle = FontStyles.Bold;
+        title.alignment = TextAlignmentOptions.MidlineLeft;
 
-        RebuildButtons();
+        _roundLbl = KidUI.Txt(hdr, "Round", "Viaje 1 / " + ROUNDS, KidUI.DIM, 26,
+            new Vector2(0.42f, 0f), new Vector2(0.62f, 1f));
 
-        UpdateRoundUI();
-        ResetRound();
-        _lastPressTime = Time.realtimeSinceStartup;
-    }
+        _starLbl = KidUI.Txt(hdr, "Stars", "Estrellas: 0", STAR_YEL, 26,
+            new Vector2(0.62f, 0f), new Vector2(0.80f, 1f));
+        _starLbl.fontStyle = FontStyles.Bold;
 
-    static bool SameOrder(string[] a, string[] b)
-    {
-        for (int i = 0; i < a.Length; i++)
-            if (a[i] != b[i]) return false;
-        return true;
-    }
-
-    void ResetRound()
-    {
-        _progress = 0;
-        _locked   = false;
-        RefreshProgress();
-        ResetButtonColors();
-    }
-
-    IEnumerator HandleRoundComplete()
-    {
-        GameFeel.PlaySuccess();
-        GameFeel.Confetti(20);
-        yield return new WaitForSeconds(0.5f);
-
-        if (_round >= ROUNDS - 1)
+        // Intentos restantes: 3 circulitos
+        _tryDots = new Image[MAX_ERRORS];
+        for (int i = 0; i < MAX_ERRORS; i++)
         {
-            int score = Mathf.Max(200, 1000 - _errors * 100);
-            float ratio = _correctPresses + _errors > 0
-                ? (float)_correctPresses / (_correctPresses + _errors)
-                : 1f;
-
-            CompleteMinigame(score);
-            ShowResults(true, GameFeel.StarsFromRatio(true, ratio), score,
-                new[]
-                {
-                    "Misiones: " + ROUNDS + " / " + ROUNDS,
-                    "Pasos correctos: " + _correctPresses,
-                    "Errores: " + _errors
-                });
+            var d = KidUI.CircleAt(hdr, "Try" + i, KidUI.GOOD,
+                new Vector2(0.86f + i * 0.04f, 0.5f), 22f);
+            _tryDots[i] = d.GetComponent<Image>();
+            _tryDots[i].raycastTarget = false;
         }
-        else
-        {
-            StartCoroutine(Transition());
-        }
+        UITween.PopIn(hdr, 0.4f, 0.9f);
+
+        // ---- mensaje-guia ----
+        _msgLbl = KidUI.Txt(_root, "Msg",
+            "Gira los desvios y planifica la ruta hasta la estacion",
+            KidUI.DIM, 28, new Vector2(0.05f, 0.83f), new Vector2(0.95f, 0.90f));
+        _msgLbl.overflowMode = TextOverflowModes.Overflow;
+
+        // ---- tablero de vias ----
+        var boardGO = new GameObject("Board");
+        boardGO.transform.SetParent(_root, false);
+        _board = boardGO.AddComponent<RectTransform>();
+        _board.anchorMin = _board.anchorMax = new Vector2(0.5f, 0.47f);
+        _board.pivot = new Vector2(0.5f, 0.5f);
+        _board.anchoredPosition = Vector2.zero;
+        _board.sizeDelta = Vector2.zero;
+
+        // ---- boton EN MARCHA ----
+        _goBtn = KidUI.Btn(_root, "¡EN MARCHA!", KidUI.GOOD,
+            new Vector2(0.38f, 0.02f), new Vector2(0.62f, 0.105f),
+            OnGoPressed, 34f);
+        UITween.PopIn((RectTransform)_goBtn.transform, 0.45f, 0.7f, 0.15f);
     }
 
-    IEnumerator Transition()
+    // ================================================================ RONDA
+
+    void BuildRound(int r)
     {
-        _transPanel.SetActive(true);
-        _transPanel.transform.SetAsLastSibling();
-        _transTitle.text = "\"" + _routine.title + "\" completada!";
-        _transSub.text   = "Pulsa Continuar para la siguiente mision";
-        yield break;
+        _round      = r;
+        _roundStars = 0;
+        _phase      = Phase.Planning;
+
+        // Limpia el tablero anterior
+        for (int i = _board.childCount - 1; i >= 0; i--)
+            Destroy(_board.GetChild(i).gameObject);
+        _nodes.Clear();
+        _edges.Clear();
+
+        GenerateNetwork();
+        DrawNetwork();
+        BuildTrain();
+        RefreshRouteHighlight();
+        UpdateHUD();
+
+        _msgLbl.text  = "Gira los desvios y planifica la ruta hasta la estacion";
+        _msgLbl.color = KidUI.DIM;
+        _goBtn.interactable = true;
+        _planStart = Time.realtimeSinceStartup;
     }
 
-    void OnActionPressed(int shuffleIdx)
+    /// <summary>Genera la red: linea principal con desvios, vias muertas,
+    /// estrellas y (en dificil) un tramo roto con rodeo obligatorio.</summary>
+    void GenerateNetwork()
     {
-        if (_locked) return;
+        int n = _numSwitches;
+        float x0 = -_halfWidth, x1 = _halfWidth;
+        float step = (x1 - x0) / (n + 1);
 
-        float rtMs = (Time.realtimeSinceStartup - _lastPressTime) * 1000f;
-        _lastPressTime = Time.realtimeSinceStartup;
-
-        string pressed  = _shuffled[shuffleIdx];
-        string expected = _sequence[_progress];
-
-        if (pressed == expected)
+        // --- puntos principales: inicio, desvios W1..Wn, estacion ---
+        int[] mains = new int[n + 2];
+        mains[0] = AddNode(new Vector2(x0, 0f));
+        for (int i = 1; i <= n; i++)
         {
-            _correctPresses++;
-            ReportEvent(true, rtMs);
-            StartCoroutine(CorrectFeedback(shuffleIdx));
+            float wy = (i % 2 == 0) ? 42f : -42f;
+            int w = AddNode(new Vector2(x0 + step * i, wy));
+            _nodes[w].isSwitch = true;
+            mains[i] = w;
         }
-        else
+        mains[n + 1] = AddNode(new Vector2(x1, 0f));
+        _nodes[mains[n + 1]].isStation = true;
+
+        // --- nodos intermedios en cada tramo principal (para estrellas) ---
+        int[] mids = new int[n + 1];
+        for (int j = 0; j <= n; j++)
         {
-            ReportEvent(false, rtMs);
-            StartCoroutine(WrongFeedback(shuffleIdx));
-        }
-    }
-
-    IEnumerator CorrectFeedback(int shuffleIdx)
-    {
-        _locked = true;
-        GameFeel.PlayPop();
-        _btnBgs[shuffleIdx].color = GREEN;
-        yield return StartCoroutine(PulseBtn(shuffleIdx, 1.12f));
-
-        _progress++;
-        RefreshProgress();
-
-        if (_progress >= _sequence.Length)
-        {
-
-            UpdateDots();
-            yield return StartCoroutine(HandleRoundComplete());
-        }
-        else
-        {
-            _locked = false;
-        }
-    }
-
-    IEnumerator WrongFeedback(int shuffleIdx)
-    {
-        _locked = true;
-        GameFeel.PlayError();
-        _btnBgs[shuffleIdx].color = RED;
-        GameFeel.Shake(_btns[shuffleIdx].GetComponent<RectTransform>(), 10f, 0.3f);
-        yield return StartCoroutine(PulseBtn(shuffleIdx, 1.08f));
-        yield return new WaitForSeconds(errorDelay * 0.5f);
-        _btnBgs[shuffleIdx].color = RED;
-        yield return new WaitForSeconds(errorDelay * 0.5f);
-
-        _progress = 0;
-        RefreshProgress();
-        ResetButtonColors();
-
-        _errors++;
-        if (_errors > _maxErrors)
-        {
-            _locked = true;
-            FailMinigame();
-            ShowResults(false, 0, 0,
-                new[]
-                {
-                    "Misiones superadas: " + _round + " / " + ROUNDS,
-                    "Errores: " + _errors
-                },
-                "¡Casi!",
-                "Lee cada paso y piensa que va primero");
-            yield break;
+            Vector2 pa = _nodes[mains[j]].pos, pb = _nodes[mains[j + 1]].pos;
+            mids[j] = AddNode(Vector2.Lerp(pa, pb, 0.5f));
         }
 
-        if (_instructLbl != null)
+        // --- desvio con rodeo (solo dificil): tramo roto que hay que esquivar ---
+        int detour = _hasBroken ? Mathf.Clamp(n / 2, 1, n) : -1;   // indice 1..n
+
+        // --- cableado de la red ---
+        _nodes[mains[0]].next = mids[0];
+        for (int j = 0; j <= n; j++)
         {
-            int left = _maxErrors - _errors + 1;
-            _instructLbl.text = "Ese paso no toca aun. Te quedan " + left +
-                                (left == 1 ? " intento" : " intentos");
+            int endOfMid = mains[j + 1];
+            _nodes[mids[j]].next = endOfMid;
         }
 
-        _locked = false;
-    }
-
-    void RefreshProgress()
-    {
-        if (_progressLbl != null)
-            _progressLbl.text = "Paso " + _progress + " de " + _sequence.Length;
-
-        if (_instructLbl != null)
+        for (int i = 1; i <= n; i++)
         {
-            if (_progress == 0)
-                _instructLbl.text = "Mision: " + _routine.title + " — ¿que haces primero?";
-            else if (_progress < _sequence.Length)
-                _instructLbl.text = "Mision: " + _routine.title + " — ¡bien! ¿y despues?";
-        }
-    }
+            var w = _nodes[mains[i]];
+            int continueTo = mids[i];
 
-    void ResetButtonColors()
-    {
-        if (_btnBgs == null) return;
-        for (int i = 0; i < _btnBgs.Length; i++)
-            _btnBgs[i].color = _btnDefaultColors[i];
-    }
+            if (i == detour)
+            {
+                // El tramo recto esta ROTO: el nodo intermedio se marca roto y
+                // el desvio ofrece un rodeo por arriba que reengancha despues.
+                _nodes[mids[i]].isBroken = true;
 
-    void UpdateRoundUI()
-    {
-        if (_roundLbl != null)
-            _roundLbl.text = "Mision " + (_round + 1) + " / " + ROUNDS;
-    }
+                float dy   = 190f;
+                Vector2 wp = w.pos;
+                int t1 = AddNode(new Vector2(wp.x + step * 0.33f, wp.y + dy));
+                int t2 = AddNode(new Vector2(wp.x + step * 0.66f, wp.y + dy));
+                _nodes[t1].next = t2;
+                _nodes[t2].next = mains[i + 1];
+                _nodes[t2].hasStar = true;     // premio por esquivar el tramo roto
+                _starsTotalSeen++;
 
-    void UpdateDots()
-    {
-        if (_dots == null) return;
-        for (int i = 0; i < _dots.Length; i++)
-            _dots[i].color = i <= _round ? ACCENT : DOTOFF;
-    }
+                bool swap = Random.value < 0.5f;
+                w.outA = swap ? t1 : mids[i];
+                w.outB = swap ? mids[i] : t1;
+                AddEdgeVisualPair(mains[i], t1);
+                AddEdgeVisualPair(t1, t2);
+                AddEdgeVisualPair(t2, mains[i + 1]);
+            }
+            else
+            {
+                // Via muerta: pequeño ramal que no lleva a ningun sitio
+                float dir = (i % 2 == 0) ? 1f : -1f;
+                if (Random.value < 0.4f) dir = -dir;
+                Vector2 wp = w.pos;
+                int stub = AddNode(new Vector2(wp.x + step * 0.45f, wp.y + dir * 175f));
+                _nodes[stub].isDeadEnd = true;
 
-    void RebuildButtons()
-    {
-
-        if (_btnAreaGO != null)
-            DestroyImmediate(_btnAreaGO);
-
-        int n = _shuffled.Length;
-        int cols = (n <= 4) ? n : Mathf.CeilToInt(n / 2f);
-        int rows = (n <= 4) ? 1 : 2;
-
-        _btnAreaGO = new GameObject("BtnArea");
-        _btnAreaGO.transform.SetParent(_canvasRT, false);
-        RectTransform area = _btnAreaGO.AddComponent<RectTransform>();
-        area.anchorMin = V2(0.05f, 0.22f);
-        area.anchorMax = V2(0.95f, 0.79f);
-        area.sizeDelta = Vector2.zero;
-        area.anchoredPosition = Vector2.zero;
-        _btnAreaGO.AddComponent<Image>().color = new Color(0, 0, 0, 0);
-
-        _btns             = new Button[n];
-        _btnBgs           = new Image[n];
-        _btnLbls          = new TextMeshProUGUI[n];
-        _btnDefaultColors = new Color[n];
-
-        float btnW = 1f / cols;
-        float btnH = 1f / rows;
-        float pad  = 0.015f;
-
-        for (int i = 0; i < n; i++)
-        {
-            int col = i % cols;
-            int row = i / cols;
-
-            float xMin = col * btnW + pad;
-            float xMax = (col + 1) * btnW - pad;
-            float yMin = (rows - 1 - row) * btnH + pad;
-            float yMax = (rows - row) * btnH - pad;
-
-            RectTransform bg = MkImg(area, "BtnBg" + i, BTNC,
-                V2(xMin, yMin), V2(xMax, yMax), V2(0, 0), V2(0, 0));
-            MkImg(bg, "Top", ACCENT, V2(0, 1), V2(1, 1), V2(0, -3), V2(0, 6));
-
-            Button btn = bg.gameObject.AddComponent<Button>();
-            btn.targetGraphic = bg.GetComponent<Image>();
-            ColorBlock cb = btn.colors;
-            cb.normalColor      = Color.white;
-            cb.highlightedColor = new Color(1, 1, 1, 0.85f);
-            cb.pressedColor     = new Color(0.7f, 0.7f, 0.7f);
-            cb.disabledColor    = new Color(0.5f, 0.5f, 0.5f, 0.5f);
-            btn.colors = cb;
-
-            int idx = i;
-            btn.onClick.AddListener(() => OnActionPressed(idx));
-            ButtonJuice.Attach(bg.gameObject);
-
-            float fSize = n >= 6 ? 30f : 36f;
-            var lbl = MkTxt(bg, "Lbl", _shuffled[i], Color.white, fSize, V2(0.05f, 0.1f), V2(0.95f, 0.9f));
-            lbl.fontStyle = FontStyles.Bold;
-
-            _btns[i]             = btn;
-            _btnBgs[i]           = bg.GetComponent<Image>();
-            _btnLbls[i]          = lbl;
-            _btnDefaultColors[i] = BTNC;
+                bool swap = Random.value < 0.5f;
+                w.outA = swap ? stub : continueTo;
+                w.outB = swap ? continueTo : stub;
+                AddEdgeVisualPair(mains[i], stub);
+            }
+            w.state = Random.Range(0, 2);
         }
 
-        if (_transPanel != null) _transPanel.transform.SetAsLastSibling();
-    }
+        // --- aristas de la linea principal ---
+        AddEdgeVisualPair(mains[0], mids[0]);
+        for (int j = 0; j <= n; j++)
+            AddEdgeVisualPair(mids[j], mains[j + 1]);
+        for (int i = 1; i <= n; i++)
+            AddEdgeVisualPair(mains[i], mids[i]);
 
-    IEnumerator PulseBtn(int idx, float peak)
-    {
-        if (_btns == null || idx >= _btns.Length) yield break;
-        RectTransform rt = _btns[idx].GetComponent<RectTransform>();
-        float t = 0f;
-        while (t < 1f)
+        _startIdx = mains[0];
+
+        // --- estrellas sobre nodos intermedios transitables ---
+        var candidates = new List<int>();
+        for (int j = 0; j <= n; j++)
+            if (!_nodes[mids[j]].isBroken) candidates.Add(mids[j]);
+        for (int s = 0; s < _starsPerRound && candidates.Count > 0; s++)
         {
-            if (rt == null) yield break;
-            t += Time.deltaTime * 12f;
-            float s = 1f + (peak - 1f) * Mathf.Sin(t * Mathf.PI);
-            rt.localScale = new Vector3(s, s, 1f);
-            yield return null;
-        }
-        if (rt != null) rt.localScale = Vector3.one;
-    }
-
-    void BuildUI()
-    {
-
-        GameObject cGO = new GameObject("Canvas");
-        cGO.transform.SetParent(transform, false);
-        Canvas cv = cGO.AddComponent<Canvas>();
-        cv.renderMode   = RenderMode.ScreenSpaceOverlay;
-        cv.sortingOrder = 10;
-        CanvasScaler sc = cGO.AddComponent<CanvasScaler>();
-        sc.uiScaleMode         = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        sc.referenceResolution = new Vector2(1920f, 1080f);
-        sc.matchWidthOrHeight  = 0.5f;
-        cGO.AddComponent<GraphicRaycaster>();
-        _canvasRT = cGO.GetComponent<RectTransform>();
-
-        MkImg(_canvasRT, "BG", BG, V2(0, 0), V2(1, 1), V2(0, 0), V2(0, 0));
-
-        RectTransform hdr = MkImg(_canvasRT, "Hdr", HDR, V2(0, 1), V2(1, 1), V2(0, -40), V2(0, 80));
-        MkImg(hdr, "HL", ACCENT, V2(0, 0), V2(1, 0), V2(0, 1.5f), V2(0, 3));
-
-        var ht = MkTxt(hdr, "T", "Secuencia de acciones", Color.white, 40, V2(0.03f, 0), V2(0.50f, 1));
-        ht.fontStyle = FontStyles.Bold;
-        ht.alignment = TextAlignmentOptions.MidlineLeft;
-
-        _roundLbl = MkTxt(hdr, "RL", "Mision 1 / 3", DIM, 26, V2(0.50f, 0), V2(0.68f, 1));
-        _roundLbl.alignment = TextAlignmentOptions.MidlineRight;
-
-        _progressLbl = MkTxt(hdr, "PL", "Paso 0 de 4", ACCENT, 26, V2(0.68f, 0), V2(0.86f, 1));
-        _progressLbl.fontStyle = FontStyles.Bold;
-        _progressLbl.alignment = TextAlignmentOptions.MidlineRight;
-
-        _dots = new Image[ROUNDS];
-        for (int i = 0; i < ROUNDS; i++)
-        {
-            GameObject dot = new GameObject("Dot" + i);
-            dot.transform.SetParent(hdr, false);
-            RectTransform drt = dot.AddComponent<RectTransform>();
-            drt.anchorMin        = new Vector2(1f, 0.5f);
-            drt.anchorMax        = new Vector2(1f, 0.5f);
-            drt.pivot            = new Vector2(0.5f, 0.5f);
-            drt.anchoredPosition = new Vector2(-45f - (ROUNDS - 1 - i) * 26f, 0f);
-            drt.sizeDelta        = new Vector2(16f, 16f);
-            _dots[i]             = dot.AddComponent<Image>();
-            _dots[i].color       = DOTOFF;
+            int pick = Random.Range(0, candidates.Count);
+            _nodes[candidates[pick]].hasStar = true;
+            _starsTotalSeen++;
+            candidates.RemoveAt(pick);
         }
 
-        RectTransform instrArea = MkImg(_canvasRT, "IA", new Color(0, 0, 0, 0),
-            V2(0.05f, 0.80f), V2(0.95f, 0.91f), V2(0, 0), V2(0, 0));
-        _instructLbl = MkTxt(instrArea, "IL",
-            "Pulsa los pasos en el orden logico",
-            DIM, 30, V2(0, 0), V2(1, 1));
-        _instructLbl.alignment = TextAlignmentOptions.Center;
-        _instructLbl.overflowMode = TextOverflowModes.Overflow;
-
-        RectTransform bot = MkImg(_canvasRT, "Bot", HDR, V2(0, 0), V2(1, 0), V2(0, 45), V2(0, 90));
-        MkImg(bot, "BotL", ACCENT, V2(0, 1), V2(1, 1), V2(0, -1.5f), V2(0, 3));
-        MkBtn(bot, "Reiniciar mision", GREY,      V2(0.04f, 0.12f), V2(0.35f, 0.88f), () =>
+        // --- garantiza que la ruta inicial NO este ya resuelta ---
+        var route = ComputeRoute();
+        if (_nodes[route[route.Count - 1]].isStation)
         {
-            if (!IsPlaying) return;
-            StopAllCoroutines();
-            if (_transPanel != null) _transPanel.SetActive(false);
-            StartRound(_round);
-        });
-
-        BuildTransPanel(_canvasRT);
-    }
-
-    void BuildTransPanel(RectTransform R)
-    {
-        _transPanel = new GameObject("Trans");
-        _transPanel.transform.SetParent(R, false);
-        RectTransform tr = _transPanel.AddComponent<RectTransform>();
-        tr.anchorMin = Vector2.zero; tr.anchorMax = Vector2.one;
-        tr.sizeDelta = Vector2.zero; tr.anchoredPosition = Vector2.zero;
-        _transPanel.AddComponent<Image>().color = new Color(0, 0, 0, 0.82f);
-
-        RectTransform card = MkImg(tr, "Card", PANEL, V2(0.5f, 0.5f), V2(0.5f, 0.5f), V2(0, 0), V2(680, 380));
-        MkImg(card, "Bar", GREEN, V2(0, 1), V2(1, 1), V2(0, -12), V2(0, 24));
-
-        _transTitle = MkTxt(card, "Ti", "", Color.white, 46, V2(0.05f, 0.60f), V2(0.95f, 0.90f));
-        _transTitle.fontStyle = FontStyles.Bold;
-        _transSub   = MkTxt(card, "Su", "", DIM, 30, V2(0.05f, 0.32f), V2(0.95f, 0.58f));
-
-        MkBtn(card, "Continuar", GREEN, V2(0.30f, 0.06f), V2(0.70f, 0.24f), () =>
-        {
-            _transPanel.SetActive(false);
-            StartRound(_round + 1);
-        });
-
-        _transPanel.SetActive(false);
-    }
-
-    static void Shuffle(string[] arr)
-    {
-        for (int i = arr.Length - 1; i > 0; i--)
-        {
-            int j = Random.Range(0, i + 1);
-            string tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+            var switches = new List<RailNode>();
+            foreach (var nd in _nodes) if (nd.isSwitch) switches.Add(nd);
+            var flip = switches[Random.Range(0, switches.Count)];
+            flip.state = 1 - flip.state;
         }
     }
 
-    static Vector2 V2(float x, float y) { return new Vector2(x, y); }
-
-    RectTransform MkImg(RectTransform p, string n, Color col,
-                        Vector2 amin, Vector2 amax, Vector2 pos, Vector2 sd)
+    int AddNode(Vector2 pos)
     {
-        GameObject go = new GameObject(n);
-        go.transform.SetParent(p, false);
-        RectTransform rt = go.AddComponent<RectTransform>();
-        rt.anchorMin = amin; rt.anchorMax = amax;
-        rt.pivot     = new Vector2(0.5f, 0.5f);
-        rt.anchoredPosition = pos; rt.sizeDelta = sd;
-        go.AddComponent<Image>().color = col;
+        _nodes.Add(new RailNode { pos = pos });
+        return _nodes.Count - 1;
+    }
+
+    // Solo registra el par logico; el dibujo real se hace en DrawNetwork
+    List<Vector2Int> _edgePairs = new List<Vector2Int>();
+    void AddEdgeVisualPair(int a, int b) { _edgePairs.Add(new Vector2Int(a, b)); }
+
+    // ================================================================ DIBUJO
+
+    void DrawNetwork()
+    {
+        // ---- vias (debajo de todo) ----
+        foreach (var pr in _edgePairs)
+            DrawEdge(pr.x, pr.y);
+        _edgePairs.Clear();
+
+        // ---- nodos ----
+        float delay = 0f;
+        for (int i = 0; i < _nodes.Count; i++)
+        {
+            var nd = _nodes[i];
+
+            if (nd.isStation)      DrawStation(nd);
+            else if (nd.isDeadEnd) DrawDeadEnd(nd, i);
+            else if (nd.isBroken)  DrawBroken(nd);
+            else if (nd.isSwitch)  DrawSwitch(nd, i);
+            else                   DrawPlainNode(nd);
+
+            if (nd.hasStar) DrawStar(nd);
+
+            if (nd.rt != null)
+            {
+                UITween.PopIn(nd.rt, 0.32f, 0.5f, delay);
+                delay += 0.04f;
+            }
+        }
+    }
+
+    RectTransform Pill(RectTransform p, string n, Color col, Vector2 mid,
+                       float len, float th, float angleDeg, float corner = 1f)
+    {
+        var rt = KidUI.RoundImg(p, n, col,
+            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+            mid, new Vector2(len, th), corner);
+        rt.localRotation = Quaternion.Euler(0f, 0f, angleDeg);
+        rt.GetComponent<Image>().raycastTarget = false;
         return rt;
     }
 
-    TextMeshProUGUI MkTxt(RectTransform p, string n, string text,
-                          Color col, float size, Vector2 amin, Vector2 amax)
+    RectTransform Circle(RectTransform p, string n, Color col, Vector2 pos, float size)
     {
-        GameObject go = new GameObject(n);
-        go.transform.SetParent(p, false);
-        RectTransform rt = go.AddComponent<RectTransform>();
-        rt.anchorMin = amin; rt.anchorMax = amax;
-        rt.pivot     = new Vector2(0.5f, 0.5f);
-        rt.anchoredPosition = Vector2.zero; rt.sizeDelta = Vector2.zero;
-        TextMeshProUGUI tmp = go.AddComponent<TextMeshProUGUI>();
-        tmp.text         = text;
-        tmp.color        = col;
-        tmp.fontSize     = size;
-        tmp.alignment    = TextAlignmentOptions.Center;
-        tmp.overflowMode = TextOverflowModes.Ellipsis;
-        return tmp;
+        var rt = KidUI.CircleAt(p, n, col, new Vector2(0.5f, 0.5f), size);
+        rt.anchoredPosition = pos;
+        rt.GetComponent<Image>().raycastTarget = false;
+        return rt;
     }
 
-    void MkBtn(RectTransform p, string label, Color bgC,
-               Vector2 amin, Vector2 amax,
-               UnityEngine.Events.UnityAction click)
+    void DrawEdge(int a, int b)
     {
-        RectTransform bg = MkImg(p, "B" + label, bgC, amin, amax, V2(0, 0), V2(0, 0));
-        Button b = bg.gameObject.AddComponent<Button>();
-        b.targetGraphic = bg.GetComponent<Image>();
-        ColorBlock cb   = b.colors;
-        cb.normalColor      = Color.white;
-        cb.highlightedColor = new Color(1, 1, 1, 0.85f);
-        cb.pressedColor     = new Color(0.7f, 0.7f, 0.7f);
-        b.colors = cb;
-        b.onClick.AddListener(click);
-        ButtonJuice.Attach(bg.gameObject);
-        var t = MkTxt(bg, "T", label, Color.white, 28, V2(0, 0), V2(1, 1));
-        t.fontStyle = FontStyles.Bold;
+        Vector2 pa = _nodes[a].pos, pb = _nodes[b].pos;
+        Vector2 mid = (pa + pb) * 0.5f;
+        float len = Vector2.Distance(pa, pb);
+        float ang = Mathf.Atan2(pb.y - pa.y, pb.x - pa.x) * Mathf.Rad2Deg;
+
+        Pill(_board, "EdgeBase", RAIL_DARK, mid, len + 10f, 24f, ang, 0.9f);
+        var stripe = Pill(_board, "EdgeStripe", RAIL_DIM, mid, len - 18f, 8f, ang, 4f);
+
+        _edges.Add(new RailEdge { a = a, b = b, stripe = stripe.GetComponent<Image>() });
     }
 
-    static void EnsureES()
+    void DrawPlainNode(RailNode nd)
     {
-        if (FindObjectOfType<EventSystem>() == null)
+        nd.rt = Circle(_board, "Node", new Color(0.50f, 0.60f, 0.85f), nd.pos, 18f);
+    }
+
+    void DrawStation(RailNode nd)
+    {
+        nd.rt = Circle(_board, "Station", KidUI.GOOD, nd.pos, 52f);
+        Circle(nd.rt, "Inner", new Color(1f, 1f, 1f, 0.85f), Vector2.zero, 24f);
+        var lbl = KidUI.Txt(_board, "MetaLbl", "META", KidUI.GOOD, 24,
+            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f));
+        var lrt = (RectTransform)lbl.transform;
+        lrt.anchoredPosition = nd.pos + new Vector2(0f, -48f);
+        lrt.sizeDelta = new Vector2(140f, 34f);
+        lbl.fontStyle = FontStyles.Bold;
+        nd.rt.gameObject.AddComponent<FloatBob>().Configure(4f, 1.2f);
+    }
+
+    void DrawDeadEnd(RailNode nd, int idx)
+    {
+        nd.rt = Circle(_board, "DeadEnd", new Color(0.45f, 0.30f, 0.35f), nd.pos, 22f);
+        // Tope de via perpendicular a su carril de entrada
+        float ang = 0f;
+        foreach (var e in _edges)
+            if (e.b == idx)
+            {
+                Vector2 d = nd.pos - _nodes[e.a].pos;
+                ang = Mathf.Atan2(d.y, d.x) * Mathf.Rad2Deg;
+            }
+        Pill(_board, "Buffer", KidUI.BAD, nd.pos + new Vector2(0f, 0f), 10f, 38f, ang, 2f);
+    }
+
+    void DrawBroken(RailNode nd)
+    {
+        // Cruz roja: tramo roto
+        nd.rt = Circle(_board, "Broken", new Color(0.30f, 0.10f, 0.14f), nd.pos, 26f);
+        Pill(_board, "BrkX1", KidUI.BAD, nd.pos, 40f, 9f, 45f, 3f);
+        Pill(_board, "BrkX2", KidUI.BAD, nd.pos, 40f, 9f, -45f, 3f);
+    }
+
+    void DrawSwitch(RailNode nd, int idx)
+    {
+        nd.rt = Circle(_board, "Switch", KidUI.WARN, nd.pos, 58f);
+        var img = nd.rt.GetComponent<Image>();
+        img.raycastTarget = true;
+
+        Circle(nd.rt, "SwInner", new Color(1f, 1f, 1f, 0.16f), Vector2.zero, 44f);
+
+        // Flecha giratoria: eje + punta
+        var arrowGO = new GameObject("Arrow");
+        arrowGO.transform.SetParent(nd.rt, false);
+        nd.arrow = arrowGO.AddComponent<RectTransform>();
+        nd.arrow.anchorMin = nd.arrow.anchorMax = new Vector2(0.5f, 0.5f);
+        nd.arrow.pivot = new Vector2(0.5f, 0.5f);
+        nd.arrow.sizeDelta = Vector2.zero;
+        Pill(nd.arrow, "Shaft", Color.white, new Vector2(12f, 0f), 26f, 8f, 0f, 4f);
+        Pill(nd.arrow, "Head1", Color.white, new Vector2(26f, 5f), 15f, 7f, -42f, 4f);
+        Pill(nd.arrow, "Head2", Color.white, new Vector2(26f, -5f), 15f, 7f, 42f, 4f);
+
+        nd.btn = nd.rt.gameObject.AddComponent<Button>();
+        nd.btn.targetGraphic = img;
+        int captured = idx;
+        nd.btn.onClick.AddListener(() => ToggleSwitch(captured));
+        ButtonJuice.Attach(nd.rt.gameObject);
+
+        AimArrow(nd, true);
+    }
+
+    void DrawStar(RailNode nd)
+    {
+        // Estrella dibujada con formas (sin depender de glifos de la fuente):
+        // halo + dos cuadrados redondeados girados 45 grados entre si.
+        var holder = new GameObject("Star");
+        holder.transform.SetParent(_board, false);
+        var srt = holder.AddComponent<RectTransform>();
+        srt.anchorMin = srt.anchorMax = new Vector2(0.5f, 0.5f);
+        srt.pivot = new Vector2(0.5f, 0.5f);
+        srt.anchoredPosition = nd.pos + new Vector2(0f, 42f);
+        srt.sizeDelta = Vector2.zero;
+
+        Circle(srt, "Halo", new Color(STAR_YEL.r, STAR_YEL.g, STAR_YEL.b, 0.22f),
+               Vector2.zero, 48f);
+        Pill(srt, "Sq1", STAR_YEL, Vector2.zero, 24f, 24f, 0f, 1.6f);
+        Pill(srt, "Sq2", STAR_YEL, Vector2.zero, 24f, 24f, 45f, 1.6f);
+
+        holder.AddComponent<FloatBob>().Configure(6f, 1.6f);
+        nd.starGO = holder;
+    }
+
+    void BuildTrain()
+    {
+        var trainGO = new GameObject("Train");
+        trainGO.transform.SetParent(_board, false);
+        _trainRT = trainGO.AddComponent<RectTransform>();
+        _trainRT.anchorMin = _trainRT.anchorMax = new Vector2(0.5f, 0.5f);
+        _trainRT.pivot = new Vector2(0.5f, 0.5f);
+        _trainRT.sizeDelta = Vector2.zero;
+        _trainRT.anchoredPosition = _nodes[_startIdx].pos;
+
+        Circle(_trainRT, "WheelL", new Color(0.08f, 0.10f, 0.18f), new Vector2(-13f, -20f), 16f);
+        Circle(_trainRT, "WheelR", new Color(0.08f, 0.10f, 0.18f), new Vector2(13f, -20f), 16f);
+        var body = Circle(_trainRT, "Body", ACCENT2, Vector2.zero, 54f);
+        Circle(body, "Win1", Color.white, new Vector2(-10f, 5f), 14f);
+        Circle(body, "Win2", Color.white, new Vector2(10f, 5f), 14f);
+        Circle(body, "Light", STAR_YEL, new Vector2(21f, -6f), 10f);
+
+        _trainRT.SetAsLastSibling();
+        UITween.PopIn(_trainRT, 0.4f, 0.4f, 0.2f);
+    }
+
+    // ================================================================ LOGICA
+
+    List<int> ComputeRoute()
+    {
+        var list = new List<int>();
+        int cur = _startIdx, guard = 0;
+        while (cur >= 0 && guard++ < 80)
         {
-            GameObject go = new GameObject("EventSystem");
-            go.AddComponent<EventSystem>();
-            go.AddComponent<StandaloneInputModule>();
+            list.Add(cur);
+            var nd = _nodes[cur];
+            if (nd.isStation || nd.isDeadEnd || nd.isBroken) break;
+            cur = nd.isSwitch ? (nd.state == 0 ? nd.outA : nd.outB) : nd.next;
         }
+        return list;
+    }
+
+    void ToggleSwitch(int idx)
+    {
+        if (_phase != Phase.Planning) return;
+        var nd = _nodes[idx];
+        nd.state = 1 - nd.state;
+        GameFeel.PlayPop();
+        UITween.PulseOnce(nd.rt, 1.18f, 0.20f);
+        AimArrow(nd, false);
+        RefreshRouteHighlight();
+    }
+
+    void AimArrow(RailNode nd, bool instant)
+    {
+        int target = nd.state == 0 ? nd.outA : nd.outB;
+        if (target < 0 || nd.arrow == null) return;
+        Vector2 d = _nodes[target].pos - nd.pos;
+        float ang = Mathf.Atan2(d.y, d.x) * Mathf.Rad2Deg;
+        if (instant) nd.arrow.localRotation = Quaternion.Euler(0f, 0f, ang);
+        else StartCoroutine(RotateArrow(nd.arrow, ang));
+    }
+
+    IEnumerator RotateArrow(RectTransform arrow, float targetAng)
+    {
+        Quaternion from = arrow.localRotation;
+        Quaternion to   = Quaternion.Euler(0f, 0f, targetAng);
+        float t = 0f;
+        while (t < 0.18f)
+        {
+            if (arrow == null) yield break;
+            t += Time.unscaledDeltaTime;
+            arrow.localRotation = Quaternion.Slerp(from, to,
+                Mathf.SmoothStep(0f, 1f, t / 0.18f));
+            yield return null;
+        }
+        if (arrow != null) arrow.localRotation = to;
+    }
+
+    void RefreshRouteHighlight()
+    {
+        var route = ComputeRoute();
+        var onSet = new HashSet<long>();
+        for (int i = 1; i < route.Count; i++)
+            onSet.Add((long)route[i - 1] * 1000 + route[i]);
+
+        foreach (var e in _edges)
+        {
+            bool on = onSet.Contains((long)e.a * 1000 + e.b);
+            if (e.stripe != null)
+                e.stripe.color = on ? ACCENT2 : RAIL_DIM;
+        }
+    }
+
+    void OnGoPressed()
+    {
+        if (_phase != Phase.Planning || !IsPlaying) return;
+        float planMs = (Time.realtimeSinceStartup - _planStart) * 1000f;
+        _launches++;
+        StartCoroutine(DriveTrain(ComputeRoute(), planMs));
+    }
+
+    IEnumerator DriveTrain(List<int> route, float planMs)
+    {
+        _phase = Phase.Driving;
+        _goBtn.interactable = false;
+        SetSwitchesInteractable(false);
+        _msgLbl.text  = "¡Chu-chuu! El tren esta en camino…";
+        _msgLbl.color = ACCENT2;
+
+        for (int i = 1; i < route.Count; i++)
+        {
+            Vector2 a = _nodes[route[i - 1]].pos;
+            Vector2 b = _nodes[route[i]].pos;
+            float dur = Vector2.Distance(a, b) / 380f;
+            float t = 0f;
+            while (t < dur)
+            {
+                t += Time.deltaTime;
+                _trainRT.anchoredPosition =
+                    Vector2.Lerp(a, b, Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(t / dur)));
+                yield return null;
+            }
+
+            var nd = _nodes[route[i]];
+            if (nd.hasStar && !nd.starTaken)
+            {
+                nd.starTaken = true;
+                _roundStars++;
+                GameFeel.PlayStar();
+                GameFeel.FloatingText("+50", STAR_YEL,
+                    BoardToScreen(nd.pos + new Vector2(0f, 60f)), 44f);
+                if (nd.starGO != null) nd.starGO.SetActive(false);
+                UpdateHUD();
+            }
+        }
+
+        var last = _nodes[route[route.Count - 1]];
+        if (last.isStation) yield return RoundSuccess(planMs);
+        else                yield return RoundFail(planMs, last.isBroken);
+    }
+
+    IEnumerator RoundSuccess(float planMs)
+    {
+        ReportEvent(true, planMs);
+        _starsCollected += _roundStars;
+        int roundScore = 150 + _roundStars * 50;
+        _score += roundScore;
+
+        GameFeel.PlaySuccess();
+        GameFeel.Confetti(30);
+        UITween.PulseOnce(_trainRT, 1.3f, 0.3f);
+        GameFeel.FloatingText("¡Ha llegado! +" + roundScore, KidUI.GOOD,
+            new Vector2(0f, 60f));
+        _msgLbl.text  = "¡Viaje " + (_round + 1) + " completado!";
+        _msgLbl.color = KidUI.GOOD;
+        UpdateHUD();
+
+        yield return new WaitForSeconds(1.4f);
+
+        if (_round >= ROUNDS - 1) FinishGame();
+        else                      BuildRound(_round + 1);
+    }
+
+    IEnumerator RoundFail(float planMs, bool broken)
+    {
+        ReportEvent(false, planMs);
+        _errors++;
+        GameFeel.Error(_trainRT);
+        _msgLbl.text = broken
+            ? "¡Oh no, la via esta rota! Busca otro camino"
+            : "¡Via muerta! Gira los desvios y prueba otra vez";
+        _msgLbl.color = KidUI.WARN;
+        UpdateHUD();
+
+        // Las estrellas recogidas en un viaje fallido vuelven a su sitio
+        foreach (var nd in _nodes)
+            if (nd.starTaken)
+            {
+                nd.starTaken = false;
+                if (nd.starGO != null) nd.starGO.SetActive(true);
+            }
+        _roundStars = 0;
+
+        if (_errors >= MAX_ERRORS)
+        {
+            _phase = Phase.Over;
+            yield return new WaitForSeconds(0.9f);
+            FailMinigame();
+            ShowResults(false, 0, _score,
+                new[]
+                {
+                    "Viajes completados: " + _round + " / " + ROUNDS,
+                    "Estrellas recogidas: " + _starsCollected,
+                    "Intentos gastados: " + _launches
+                },
+                "¡Casi!",
+                "Mira bien las flechas de los desvios antes de salir");
+            yield break;
+        }
+
+        yield return new WaitForSeconds(1.0f);
+
+        // El tren vuelve al inicio y se replanifica LA MISMA ronda
+        _trainRT.anchoredPosition = _nodes[_startIdx].pos;
+        UITween.PopIn(_trainRT, 0.35f, 0.4f);
+        _phase = Phase.Planning;
+        _planStart = Time.realtimeSinceStartup;
+        SetSwitchesInteractable(true);
+        _goBtn.interactable = true;
+        UpdateHUD();
+    }
+
+    void FinishGame()
+    {
+        _phase = Phase.Over;
+        float ratio = _launches > 0 ? Mathf.Clamp01((float)ROUNDS / _launches) : 1f;
+
+        CompleteMinigame(_score);
+        ShowResults(true, GameFeel.StarsFromRatio(true, ratio), _score,
+            new[]
+            {
+                "Viajes completados: " + ROUNDS + " / " + ROUNDS,
+                "Estrellas recogidas: " + _starsCollected + " / " + _starsTotalSeen,
+                "Salidas del tren: " + _launches
+            },
+            _launches == ROUNDS ? "¡Maquinista perfecto!" : "¡Buen viaje!",
+            "Los trenes de Attentia vuelven a circular");
+    }
+
+    // ================================================================ AUX
+
+    void SetSwitchesInteractable(bool value)
+    {
+        foreach (var nd in _nodes)
+            if (nd.btn != null) nd.btn.interactable = value;
+    }
+
+    void UpdateHUD()
+    {
+        if (_roundLbl != null)
+            _roundLbl.text = "Viaje " + (_round + 1) + " / " + ROUNDS;
+        if (_starLbl != null)
+            _starLbl.text = "Estrellas: " + (_starsCollected + _roundStars);
+        if (_tryDots != null)
+            for (int i = 0; i < _tryDots.Length; i++)
+                _tryDots[i].color = i < MAX_ERRORS - _errors
+                    ? KidUI.GOOD
+                    : new Color(1f, 1f, 1f, 0.15f);
+    }
+
+    /// <summary>Convierte coordenadas del tablero a coords de pantalla
+    /// (canvas 1920x1080, respecto al centro) para FloatingText.</summary>
+    Vector2 BoardToScreen(Vector2 boardPos)
+    {
+        return boardPos + new Vector2(0f, (0.47f - 0.5f) * 1080f);
     }
 }

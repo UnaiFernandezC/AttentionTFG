@@ -147,6 +147,12 @@ public class LaserGameManager : MinigameBase
             ReportEvent(false, -1f);
             GameFeel.PlayError();
 
+            // Feedback visual de fallo mas claro (solo presentacion):
+            // flash rojo suave + aviso flotante de tiempo agotado
+            GameFeel.ScreenFlash(new Color(0.90f, 0.22f, 0.28f), 0.15f, 0.25f);
+            GameFeel.FloatingText("¡Se acabo el tiempo!", new Color(1.00f, 0.45f, 0.40f),
+                                  new Vector2(0f, 250f), 44f);
+
             _currentPuzzle++;
 
             if (_currentPuzzle >= totalPuzzles)

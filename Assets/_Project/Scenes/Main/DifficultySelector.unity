@@ -331,7 +331,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 8340fa1f325a98c4ea586b06be8d7e40, type: 3}
+  m_Sprite: {fileID: 21300000, guid: ae985350ae56ed24a92e847963b3447c, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -1127,7 +1127,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 17c4f04ef0b291849ae9bc5de82c74c5, type: 3}
+  m_Sprite: {fileID: 21300000, guid: d1207673ba8457e4389abe9e325d5293, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -1425,7 +1425,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 77d76a41a28849b4b9c1eba97b7f2603, type: 3}
+  m_Sprite: {fileID: 21300000, guid: 8d6ef73e5d3a71d4b809a1e1cf9b06ec, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -2103,9 +2103,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e6d9f442582e4817a2b3ac1d87e6fcd5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  easyScene: EasyMenu
-  mediumScene: MediumMenu
-  hardScene: HardMenu
 --- !u!4 &2131255654
 Transform:
   m_ObjectHideFlags: 0

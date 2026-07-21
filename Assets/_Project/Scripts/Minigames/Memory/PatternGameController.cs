@@ -46,17 +46,22 @@ public class PatternGameController : MinigameBase
     private TMPro.TextMeshProUGUI _statDetail;
     private TMPro.TextMeshProUGUI _statScore;
 
+    // Paleta morada de la categoria Memoria
     private static readonly Color C_BG_DARK  = new Color(0.08f, 0.09f, 0.18f);
-    private static readonly Color C_PANEL    = new Color(0.13f, 0.14f, 0.26f);
-    private static readonly Color C_HEADER   = new Color(0.10f, 0.11f, 0.22f);
-    private static readonly Color C_ACCENT   = new Color(0.25f, 0.55f, 1.00f);
+    private static readonly Color C_PANEL    = new Color(0.12f, 0.10f, 0.24f, 0.96f);
+    private static readonly Color C_HEADER   = new Color(0.10f, 0.08f, 0.22f, 0.94f);
+    private static readonly Color C_ACCENT   = new Color(0.58f, 0.28f, 0.92f);
     private static readonly Color C_GREEN    = new Color(0.20f, 0.78f, 0.48f);
     private static readonly Color C_RED      = new Color(0.85f, 0.25f, 0.32f);
     private static readonly Color C_ORANGE   = new Color(1.00f, 0.60f, 0.18f);
-    private static readonly Color C_BTN_BLUE = new Color(0.22f, 0.50f, 0.95f);
+    private static readonly Color C_BTN_BLUE = new Color(0.48f, 0.24f, 0.82f);
     private static readonly Color C_BTN_GREY = new Color(0.30f, 0.32f, 0.40f);
-    private static readonly Color C_TEXT_DIM = new Color(0.65f, 0.68f, 0.80f);
-    private static readonly Color C_DOT_OFF  = new Color(0.25f, 0.27f, 0.45f);
+    private static readonly Color C_TEXT_DIM = new Color(0.72f, 0.68f, 0.88f);
+    private static readonly Color C_DOT_OFF  = new Color(0.28f, 0.24f, 0.46f);
+    private static readonly Color C_GLOW     = new Color(0.58f, 0.28f, 0.92f, 0.12f);
+
+    private RectTransform _boardRoot, _boardPanel, _boardGlow, _boardShadow, _transCard;
+    private Image         _stateDot;
 
     protected override string GetIntroDescription() =>
         "Varias casillas se iluminan a la vez.\n" +
@@ -157,9 +162,19 @@ public class PatternGameController : MinigameBase
         _grid.GeneratePattern(patternCount, _useDecoy);
         _grid.EnableInput(false);
 
+        // Ajustar bandeja y halo morado al tamaño real de la cuadricula
+        if (_boardPanel != null)
+        {
+            _boardPanel.sizeDelta = _gridContainer.sizeDelta + new Vector2(56f, 56f);
+            _boardGlow.sizeDelta  = _boardPanel.sizeDelta + new Vector2(48f, 48f);
+            if (_boardShadow != null)   // la sombra sigue al tamaño real del tablero
+                _boardShadow.sizeDelta = _boardPanel.sizeDelta + new Vector2(12f, 12f);
+        }
+        UITween.PopIn(_gridContainer, 0.50f, 0.84f);
+
         SetInstructions(_useDecoy
             ? "Memoriza el patrón (¡la casilla que parpadea rosa es trampa!)"
-            : "Memoriza el patrón");
+            : "Memoriza el patrón", C_ACCENT);
         StartCoroutine(MemorizePhase(patternCount, displayTime));
     }
 
@@ -168,6 +183,7 @@ public class PatternGameController : MinigameBase
         yield return new WaitForSeconds(0.3f);
         _grid.ShowPattern();
         _countdownPanel.SetActive(true);
+        UITween.PopIn(_countdownPanel.transform as RectTransform, 0.35f, 0.80f);
 
         float remaining = displayTime;
         while (remaining > 0f)
@@ -186,10 +202,12 @@ public class PatternGameController : MinigameBase
     {
         _phase = Phase.Recall;
         _grid.HidePattern();
-        SetInstructions("Toca las casillas que estaban iluminadas");
+        SetInstructions("¡Tu turno! Toca las casillas que estaban iluminadas", C_GREEN);
         UpdateSelectionLabel(0, patternCount);
         _selectionPanel.SetActive(true);
+        UITween.PopIn(_selectionPanel.transform as RectTransform, 0.35f, 0.80f);
         _confirmBtn.SetActive(true);
+        UITween.PopIn(_confirmBtn.transform as RectTransform, 0.40f, 0.80f);
         _grid.EnableInput(true);
         _recallStart = Time.time;
     }
@@ -265,6 +283,7 @@ public class PatternGameController : MinigameBase
     private IEnumerator RoundTransition(int completedRound)
     {
         _transPanel.SetActive(true);
+        if (_transCard != null) UITween.PopIn(_transCard, 0.45f, 0.80f);
         _transTitle.text    = $"Ronda {completedRound + 1} completada!";
         _transSubtitle.text = "Preparate para la siguiente...";
         yield return new WaitForSeconds(0.6f);
@@ -296,16 +315,22 @@ public class PatternGameController : MinigameBase
         root.anchorMax = Vector2.one;
         root.sizeDelta = Vector2.zero;
 
-        MakePanel(root, "BG", C_BG_DARK, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+        // Fondo espacial coherente (nebulosas + estrellas + planeta)
+        KidUI.BuildSpaceBackground(root);
 
+        // Cabecera flotante redondeada con acento morado
         var header = MakePanel(root, "Header", C_HEADER,
-            new Vector2(0f, 1f), new Vector2(1f, 1f),
-            new Vector2(0f, -40f), new Vector2(0f, 80f));
+            new Vector2(0.015f, 1f), new Vector2(0.985f, 1f),
+            new Vector2(0f, -44f), new Vector2(0f, 72f));
+        Roundify(header, 1.3f);
         var headerRT = header.GetComponent<RectTransform>();
+        UITween.PopIn(headerRT, 0.45f, 0.90f);
 
-        MakePanel(headerRT, "Accent", C_ACCENT,
+        var accent = MakePanel(headerRT, "Accent", C_ACCENT,
             new Vector2(0f, 0f), new Vector2(1f, 0f),
-            new Vector2(0f, 2f), new Vector2(0f, 3f));
+            new Vector2(0f, 3f), new Vector2(-30f, 4f));
+        Roundify(accent, 4f);
+        accent.GetComponent<Image>().raycastTarget = false;
 
         var title = MakeLabel(headerRT, "Title", "Repite el dibujo",
             Color.white, 42f,
@@ -313,9 +338,10 @@ public class PatternGameController : MinigameBase
         title.fontStyle = TMPro.FontStyles.Bold;
         title.alignment = TMPro.TextAlignmentOptions.Center;
 
-        var roundBar = MakePanel(root, "RoundBar", C_HEADER,
-            new Vector2(0f, 1f), new Vector2(1f, 1f),
-            new Vector2(0f, -99f), new Vector2(0f, 38f));
+        var roundBar = MakePanel(root, "RoundBar", new Color(0.08f, 0.06f, 0.18f, 0.80f),
+            new Vector2(0.015f, 1f), new Vector2(0.985f, 1f),
+            new Vector2(0f, -104f), new Vector2(0f, 38f));
+        Roundify(roundBar, 1.8f);
         var roundBarRT = roundBar.GetComponent<RectTransform>();
 
         _roundLabel = MakeLabel(roundBarRT, "RoundLbl", "Ronda 1 / 3",
@@ -335,17 +361,24 @@ public class PatternGameController : MinigameBase
             dotRT.anchoredPosition = new Vector2(-50f - (TOTAL_ROUNDS - 1 - i) * 28f, 0f);
             dotRT.sizeDelta        = new Vector2(18f, 18f);
             _roundDots[i] = dot.AddComponent<Image>();
+            _roundDots[i].sprite = KidUI.CircleSpr;   // puntos circulares reales
             _roundDots[i].color = C_DOT_OFF;
         }
 
+        // Chip de estado (revelando / tu turno) con punto de color
         var instrBar = MakePanel(root, "InstrBar",
-            new Color(0.12f, 0.14f, 0.28f),
-            new Vector2(0f, 1f), new Vector2(1f, 1f),
-            new Vector2(0f, -138f), new Vector2(0f, 40f));
-        _instrLabel = MakeLabel(instrBar.GetComponent<RectTransform>(), "Instr",
+            new Color(0.10f, 0.08f, 0.24f, 0.92f),
+            new Vector2(0.22f, 1f), new Vector2(0.78f, 1f),
+            new Vector2(0f, -148f), new Vector2(0f, 44f));
+        Roundify(instrBar, 1.8f);
+        var instrBarRT = instrBar.GetComponent<RectTransform>();
+        _stateDot = KidUI.CircleAt(instrBarRT, "StateDot", C_ACCENT,
+                                   new Vector2(0.045f, 0.5f), 16f).GetComponent<Image>();
+        _stateDot.raycastTarget = false;
+        _instrLabel = MakeLabel(instrBarRT, "Instr",
             "Memoriza el patron",
-            new Color(0.72f, 0.76f, 0.92f), 28f,
-            Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+            new Color(0.82f, 0.78f, 0.96f), 28f,
+            new Vector2(0.08f, 0f), Vector2.one, Vector2.zero, Vector2.zero);
         _instrLabel.alignment = TMPro.TextAlignmentOptions.Center;
 
         _countdownPanel = new GameObject("CountdownPanel");
@@ -354,9 +387,10 @@ public class PatternGameController : MinigameBase
         cdRT.anchorMin        = new Vector2(0.5f, 1f);
         cdRT.anchorMax        = new Vector2(0.5f, 1f);
         cdRT.pivot            = new Vector2(0.5f, 1f);
-        cdRT.anchoredPosition = new Vector2(0f, -180f);
+        cdRT.anchoredPosition = new Vector2(0f, -200f);
         cdRT.sizeDelta        = new Vector2(160f, 56f);
-        _countdownPanel.AddComponent<Image>().color = new Color(0.14f, 0.16f, 0.30f);
+        _countdownPanel.AddComponent<Image>().color = new Color(0.14f, 0.10f, 0.30f, 0.95f);
+        Roundify(_countdownPanel, 1.5f);
 
         _countdownLabel = MakeLabel(cdRT, "CdLabel", "4",
             C_ACCENT, 50f, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
@@ -370,22 +404,56 @@ public class PatternGameController : MinigameBase
         spRT.anchorMin        = new Vector2(0.5f, 1f);
         spRT.anchorMax        = new Vector2(0.5f, 1f);
         spRT.pivot            = new Vector2(0.5f, 1f);
-        spRT.anchoredPosition = new Vector2(0f, -180f);
+        spRT.anchoredPosition = new Vector2(0f, -200f);
         spRT.sizeDelta        = new Vector2(420f, 52f);
-        _selectionPanel.AddComponent<Image>().color = new Color(0.14f, 0.16f, 0.30f);
+        _selectionPanel.AddComponent<Image>().color = new Color(0.14f, 0.10f, 0.30f, 0.95f);
+        Roundify(_selectionPanel, 1.5f);
 
         _selectionLabel = MakeLabel(spRT, "SelLabel", "0 / 0 seleccionadas",
             C_TEXT_DIM, 30f, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
         _selectionLabel.alignment = TMPro.TextAlignmentOptions.Center;
         _selectionPanel.SetActive(false);
 
+        // Tablero flotante centrado: halo morado + bandeja redondeada + cuadricula.
+        // El conjunto se balancea suavemente (FloatBob) para dar sensacion espacial.
+        var boardRootGO = new GameObject("BoardRoot");
+        boardRootGO.transform.SetParent(root, false);
+        _boardRoot = boardRootGO.AddComponent<RectTransform>();
+        _boardRoot.anchorMin        = new Vector2(0.5f, 0.5f);
+        _boardRoot.anchorMax        = new Vector2(0.5f, 0.5f);
+        _boardRoot.pivot            = new Vector2(0.5f, 0.5f);
+        _boardRoot.anchoredPosition = new Vector2(0f, 30f);
+        _boardRoot.sizeDelta        = Vector2.zero;
+        boardRootGO.AddComponent<FloatBob>().Configure(7f, 0.9f);
+
+        // Sombra suave bajo el tablero (refuerza la sensacion de flotar)
+        var shadowGO = MakePanel(_boardRoot, "BoardShadow", new Color(0f, 0f, 0f, 0.35f),
+            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+            new Vector2(0f, -20f), new Vector2(680f, 680f));
+        Roundify(shadowGO, 0.8f);
+        shadowGO.GetComponent<Image>().raycastTarget = false;
+        _boardShadow = shadowGO.GetComponent<RectTransform>();
+
+        var glowGO = MakePanel(_boardRoot, "BoardGlow", C_GLOW,
+            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+            Vector2.zero, new Vector2(700f, 700f));
+        Roundify(glowGO, 0.6f);
+        glowGO.GetComponent<Image>().raycastTarget = false;
+        _boardGlow = glowGO.GetComponent<RectTransform>();
+
+        var trayGO = MakePanel(_boardRoot, "BoardPanel", new Color(0.06f, 0.04f, 0.15f, 0.82f),
+            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+            Vector2.zero, new Vector2(660f, 660f));
+        Roundify(trayGO, 0.9f);
+        _boardPanel = trayGO.GetComponent<RectTransform>();
+
         var gridGO = new GameObject("GridContainer");
-        gridGO.transform.SetParent(root, false);
+        gridGO.transform.SetParent(_boardRoot, false);
         _gridContainer = gridGO.AddComponent<RectTransform>();
         _gridContainer.anchorMin        = new Vector2(0.5f, 0.5f);
         _gridContainer.anchorMax        = new Vector2(0.5f, 0.5f);
         _gridContainer.pivot            = new Vector2(0.5f, 0.5f);
-        _gridContainer.anchoredPosition = new Vector2(0f, 30f);
+        _gridContainer.anchoredPosition = Vector2.zero;
         _gridContainer.sizeDelta        = new Vector2(600f, 600f);
 
         _confirmBtn = new GameObject("BtnConfirm");
@@ -398,7 +466,10 @@ public class PatternGameController : MinigameBase
         confirmRT.sizeDelta        = new Vector2(560f, 68f);
 
         var confirmImg = _confirmBtn.AddComponent<Image>();
-        confirmImg.color = C_GREEN;
+        confirmImg.color                   = C_GREEN;
+        confirmImg.sprite                  = KidUI.RoundedSprite;
+        confirmImg.type                    = Image.Type.Sliced;
+        confirmImg.pixelsPerUnitMultiplier = 1.1f;
         var confirmBtn = _confirmBtn.AddComponent<Button>();
         confirmBtn.targetGraphic = confirmImg;
         var cbc = confirmBtn.colors;
@@ -441,11 +512,14 @@ public class PatternGameController : MinigameBase
         var card = MakePanel(rt, "Card", C_PANEL,
             new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
             Vector2.zero, new Vector2(680f, 300f));
+        Roundify(card, 1.0f);
         var cardRT = card.GetComponent<RectTransform>();
+        _transCard = cardRT;
 
-        MakePanel(cardRT, "AccentTop", C_GREEN,
+        var accTop = MakePanel(cardRT, "AccentTop", C_GREEN,
             new Vector2(0f, 1f), new Vector2(1f, 1f),
-            new Vector2(0f, -11f), new Vector2(0f, 22f));
+            new Vector2(0f, -8f), new Vector2(-60f, 8f));
+        Roundify(accTop, 4f);
 
         _transTitle = MakeLabel(cardRT, "TransTitle", "Ronda 1 completada!",
             Color.white, 52f,
@@ -473,6 +547,7 @@ public class PatternGameController : MinigameBase
         var card = MakePanel(overlayRT, "Card", C_PANEL,
             new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
             Vector2.zero, new Vector2(720f, 520f));
+        Roundify(card, 1.0f);
         var cardRT = card.GetComponent<RectTransform>();
 
         _endAccentBar = MakePanel(cardRT, "AccentBar", C_GREEN,
@@ -545,7 +620,26 @@ public class PatternGameController : MinigameBase
         tmp.fontSize = 22f; tmp.alignment = TMPro.TextAlignmentOptions.MidlineLeft;
     }
 
-    private void SetInstructions(string text) => _instrLabel.text = text;
+    /// <summary>Actualiza el chip de estado: texto + punto de color (fase).</summary>
+    private void SetInstructions(string text, Color? state = null)
+    {
+        _instrLabel.text = text;
+        if (_stateDot != null)
+        {
+            _stateDot.color = state ?? C_ACCENT;
+            UITween.PulseOnce(_stateDot.rectTransform, 1.35f, 0.25f);
+        }
+    }
+
+    /// <summary>Aplica el sprite redondeado 9-slice de KidUI a un panel.</summary>
+    private static void Roundify(GameObject go, float cornerScale = 1.2f)
+    {
+        var img = go.GetComponent<Image>();
+        if (img == null) return;
+        img.sprite                  = KidUI.RoundedSprite;
+        img.type                    = Image.Type.Sliced;
+        img.pixelsPerUnitMultiplier = cornerScale;
+    }
 
     private TMPro.TextMeshProUGUI BuildStatRow(RectTransform parent,
                                                string label, string value, float anchoredY)

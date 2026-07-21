@@ -17,9 +17,10 @@ public class PatternCell : MonoBehaviour
 
     private Image  _bg;
     private Image  _shine;
+    private Image  _glow;    // halo exterior de la celda (glow morado al revelarse)
     private Button _button;
 
-    private static readonly Color C_IDLE     = new Color(0.18f, 0.20f, 0.36f);
+    private static readonly Color C_IDLE     = new Color(0.20f, 0.16f, 0.38f);   // morado oscuro (paleta Memoria)
     private static readonly Color C_PATTERN  = new Color(0.18f, 0.82f, 0.92f);
     private static readonly Color C_SELECTED = new Color(0.32f, 0.52f, 0.96f);
     private static readonly Color C_CORRECT  = new Color(0.18f, 0.76f, 0.46f);
@@ -29,11 +30,21 @@ public class PatternCell : MonoBehaviour
     private static readonly Color SHINE_ON   = new Color(1f, 1f, 1f, 0.18f);
     private static readonly Color SHINE_OFF  = new Color(1f, 1f, 1f, 0.00f);
 
-    public void Initialize(int index, Image bg, Image shine)
+    // Colores del halo por estado (solo estetica; el morado es la paleta Memoria)
+    private static readonly Color G_IDLE     = new Color(0.58f, 0.28f, 0.92f, 0.10f);
+    private static readonly Color G_PATTERN  = new Color(0.58f, 0.28f, 0.92f, 0.50f);
+    private static readonly Color G_SELECTED = new Color(0.32f, 0.52f, 0.96f, 0.40f);
+    private static readonly Color G_CORRECT  = new Color(0.18f, 0.76f, 0.46f, 0.45f);
+    private static readonly Color G_WRONG    = new Color(0.86f, 0.24f, 0.32f, 0.45f);
+    private static readonly Color G_MISSED   = new Color(1.00f, 0.60f, 0.18f, 0.40f);
+    private static readonly Color G_DECOY    = new Color(0.95f, 0.35f, 0.75f, 0.40f);
+
+    public void Initialize(int index, Image bg, Image shine, Image glow = null)
     {
         Index   = index;
         _bg     = bg;
         _shine  = shine;
+        _glow   = glow;
         _button = GetComponent<Button>();
 
         _button.targetGraphic = _bg;
@@ -58,37 +69,38 @@ public class PatternCell : MonoBehaviour
         switch (state)
         {
             case CellState.Idle:
-                ApplyColor(C_IDLE, SHINE_OFF);
+                ApplyColor(C_IDLE, SHINE_OFF, G_IDLE);
                 break;
 
             case CellState.PatternShow:
-                ApplyColor(C_PATTERN, SHINE_ON);
+                // Revelado: glow morado encendido + pulso (mas legible)
+                ApplyColor(C_PATTERN, SHINE_ON, G_PATTERN);
                 StartCoroutine(Pulse(0.12f, 0.30f));
                 break;
 
             case CellState.Selected:
-                ApplyColor(C_SELECTED, SHINE_ON);
+                ApplyColor(C_SELECTED, SHINE_ON, G_SELECTED);
                 StartCoroutine(Pulse(0.07f, 0.16f));
                 break;
 
             case CellState.Correct:
-                ApplyColor(C_CORRECT, SHINE_ON);
+                ApplyColor(C_CORRECT, SHINE_ON, G_CORRECT);
                 StartCoroutine(Pulse(0.14f, 0.38f));
                 break;
 
             case CellState.Wrong:
-                ApplyColor(C_WRONG, new Color(1f, 1f, 1f, 0.10f));
+                ApplyColor(C_WRONG, new Color(1f, 1f, 1f, 0.10f), G_WRONG);
                 StartCoroutine(Shake());
                 break;
 
             case CellState.Missed:
-                ApplyColor(C_MISSED, new Color(1f, 1f, 1f, 0.12f));
+                ApplyColor(C_MISSED, new Color(1f, 1f, 1f, 0.12f), G_MISSED);
                 StartCoroutine(Pulse(0.10f, 0.28f));
                 break;
 
             case CellState.Decoy:
                 // Celda "trampa": parpadea distinto y NO forma parte del patrón.
-                ApplyColor(C_DECOY, SHINE_ON);
+                ApplyColor(C_DECOY, SHINE_ON, G_DECOY);
                 StartCoroutine(Blink());
                 break;
         }
@@ -102,10 +114,11 @@ public class PatternCell : MonoBehaviour
         OnClicked?.Invoke(this);
     }
 
-    private void ApplyColor(Color bg, Color shine)
+    private void ApplyColor(Color bg, Color shine, Color? glow = null)
     {
         _bg.color    = bg;
         _shine.color = shine;
+        if (_glow != null && glow != null) _glow.color = glow.Value;
     }
 
     private IEnumerator Pulse(float strength, float duration)

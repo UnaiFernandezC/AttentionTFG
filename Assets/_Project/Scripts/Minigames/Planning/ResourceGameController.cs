@@ -3,119 +3,118 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using TMPro;
 
+/// <summary>
+/// TORRES DE ENERGIA — Torre de Hanoi infantil (paradigma clasico de
+/// planificacion). Hay 3 torres y N anillos de energia de colores apilados
+/// en la torre izquierda. Toca una torre para levantar su anillo superior
+/// y otra torre para soltarlo. Un anillo grande nunca puede ir encima de
+/// uno pequeño. Objetivo: mover toda la pila a la torre derecha.
+/// La clase conserva su nombre original (ResourceGameController) y sus
+/// campos publicos para no romper las referencias serializadas de la escena.
+/// </summary>
 public class ResourceGameController : MinigameBase
 {
-
+    // ---------------------------------------------------------------
+    // CAMPOS LEGACY: conservados solo para que las escenas serializadas
+    // no pierdan referencias. El juego nuevo NO los usa.
+    // ---------------------------------------------------------------
     [Serializable]
     public class ActionData
     {
-        [Tooltip("Icono de texto que se muestra en el boton")]
         public string icon = "+";
-
-        [Tooltip("Nombre de la accion")]
         public string actionName = "Accion";
-
-        [Tooltip("Estrellas que cuesta")]
         public int cost = 1;
-
-        [Tooltip("Progreso que da (sobre 100)")]
         public int progress = 10;
-
-        [Tooltip("Color del boton (si es negro se usa el color automatico)")]
         public Color buttonColor = Color.black;
-
-        [Tooltip("Trampa: cara y poco eficiente")]
         public bool isTrap = false;
-
-        [Tooltip("Arriesgada: progreso aleatorio entre riskyMin y riskyMax")]
         public bool isRisky = false;
         public int  riskyMin = 25;
         public int  riskyMax = 55;
     }
 
-    [Header("=== ESTRELLAS (energia) — fallback, ApplyDifficulty manda ===")]
-    [Tooltip("Estrellas disponibles en esta escena")]
+    [Header("Campos legacy (conservados para la escena, sin uso)")]
     public int stars = 20;
-
-    [Header("=== OBJETIVO ===")]
-    [Tooltip("Progreso necesario para ganar")]
     public int goal = 100;
-
-    [Header("=== ACCIONES (fallback, ApplyDifficulty manda) ===")]
     public List<ActionData> actions = new List<ActionData>();
 
-    private int   _maxStars;
-    private int   _stars;
-    private float _progress;
-    private float _rawProgress;      // sin tope, para calcular eficiencia
-    private int   _starsSpent;
-    private int   _trapUses;
-    private float _displayProg;
-    private bool  _ended;
-    private float _bestPerStar = 10f;
-    private float _lastActionTime;
+    // ================================================================ CONFIG
 
-    private RectTransform   _starsFill;
-    private Image           _starsFillImg;
-    private TextMeshProUGUI _starsLbl;
-    private RectTransform   _progFill;
-    private TextMeshProUGUI _progLbl;
-    private TextMeshProUGUI _progPct;
-    private List<Button>         _btns      = new List<Button>();
-    private List<Image>          _btnBgs    = new List<Image>();
-    private List<CanvasGroup>    _btnGroups = new List<CanvasGroup>();
+    const int TOWERS = 3;
+    static readonly float[] TOWER_X = { -520f, 0f, 520f };
+    const float BASE_Y   = -215f;
+    const float PILLAR_H = 330f;
+    const float RING_H   = 44f;
+    const float RING_STEP = 48f;
 
-    static readonly Color BG       = new Color(0.14f, 0.16f, 0.28f);
-    static readonly Color PANEL    = new Color(0.18f, 0.20f, 0.35f);
-    static readonly Color HEADER   = new Color(0.12f, 0.13f, 0.24f);
-    static readonly Color ACCENT   = new Color(0.30f, 0.58f, 1.00f);
-    static readonly Color GREEN    = new Color(0.20f, 0.80f, 0.48f);
-    static readonly Color RED      = new Color(0.90f, 0.28f, 0.32f);
-    static readonly Color YELLOW   = new Color(1.00f, 0.85f, 0.22f);
-    static readonly Color ORANGE   = new Color(1.00f, 0.62f, 0.20f);
-    static readonly Color DIM      = new Color(0.55f, 0.58f, 0.75f);
-    static readonly Color DARK     = new Color(0.08f, 0.09f, 0.16f);
-    static readonly Color BTN_OFF  = new Color(0.22f, 0.24f, 0.34f);
-
-    static readonly Color[] AUTO_COLORS = {
-        new Color(0.30f, 0.60f, 1.00f),
-        new Color(0.92f, 0.45f, 0.20f),
-        new Color(0.60f, 0.32f, 0.95f),
-        new Color(0.20f, 0.75f, 0.55f),
-        new Color(0.90f, 0.30f, 0.50f),
+    // Colores de los anillos (del mas pequeño al mas grande)
+    static readonly Color[] RING_COLORS =
+    {
+        new Color(0.98f, 0.80f, 0.10f),
+        new Color(0.18f, 0.80f, 0.58f),
+        new Color(0.28f, 0.60f, 1.00f),
+        new Color(0.58f, 0.28f, 0.92f)
     };
 
+    static readonly Color ACCENT2 = new Color(0.28f, 0.60f, 1.00f);
+
+    // ------- dificultad -------
+    int  _ringCount  = 3;
+    int  _optimal    = 7;
+    int  _target     = 14;   // 2x optimo
+    bool _showTarget = false;
+
+    // ------- estado -------
+    List<int>[]     _piles;          // cada pila guarda tamaños (1 pequeño..N grande)
+    RectTransform[] _ringRT;         // visual de cada anillo, indexado por tamaño
+    int   _selected = -1;
+    bool  _busy, _ended;
+    int   _moves;
+    int   _legalMoves, _illegalTries;
+    float _lastMoveTime;
+
+    // ------- UI -------
+    RectTransform _root, _board;
+    RectTransform[] _towerGlow;
+    TextMeshProUGUI _movesLbl, _msgLbl;
+
+    // ================================================================ CICLO
+
+    protected override void Start()
+    {
+        minigameName = "Torres de energía";
+        category     = MinigameCategory.Planning;
+        base.Start();
+    }
+
     protected override string GetIntroDescription() =>
-        "Tienes estrellas de energia limitadas. Elige bien las acciones\n" +
-        "para llenar la barra hasta el 100% antes de quedarte sin estrellas.";
+        "Lleva todos los anillos de energia a la torre derecha.\n" +
+        "Toca una torre para levantar su anillo de arriba y otra\n" +
+        "torre para soltarlo. Recuerda: un anillo grande nunca\n" +
+        "puede ir encima de uno pequeño. ¡Planifica tus movimientos!";
 
     protected override void OnMinigameStart()
     {
+        KidUI.EnsureEventSystem();
         ApplyDifficulty();
 
-        EnsureES();
-        _maxStars       = stars;
-        _stars          = _maxStars;
-        _progress       = 0f;
-        _rawProgress    = 0f;
-        _starsSpent     = 0;
-        _trapUses       = 0;
-        _displayProg    = 0f;
-        _ended          = false;
-        _lastActionTime = Time.realtimeSinceStartup;
-
-        _bestPerStar = 1f;
-        foreach (var a in actions)
-            if (!a.isRisky && a.cost > 0)
-                _bestPerStar = Mathf.Max(_bestPerStar, (float)a.progress / a.cost);
+        _moves        = 0;
+        _legalMoves   = 0;
+        _illegalTries = 0;
+        _selected     = -1;
+        _busy         = false;
+        _ended        = false;
+        _lastMoveTime = Time.realtimeSinceStartup;
 
         BuildUI();
-        Refresh();
+        BuildRings();
+        RefreshHUD();
     }
+
+    protected override void OnMinigameComplete() { }
+    protected override void OnMinigameFailed()   { }
 
     void ApplyDifficulty()
     {
@@ -123,411 +122,344 @@ public class ResourceGameController : MinigameBase
             ? GameManager.Instance.CurrentDifficulty
             : DifficultyLevel.Easy;
 
-        goal = 100;
-
         switch (diff)
         {
             case DifficultyLevel.Medium:
-                stars = 11;
-                actions = new List<ActionData>
-                {
-                    new ActionData { icon = "+", actionName = "Pasito corto",  cost = 1, progress = 9  },
-                    new ActionData { icon = "++", actionName = "Buen avance",   cost = 2, progress = 20 },
-                    new ActionData { icon = "+++", actionName = "Super impulso", cost = 4, progress = 42 },
-                    new ActionData { icon = "$", actionName = "Mega maquina",  cost = 5, progress = 25, isTrap = true },
-                };
+                _ringCount = 3; _showTarget = true;   // objetivo: <= 14 (2x de 7)
                 break;
-
             case DifficultyLevel.Hard:
-                stars = 9;
-                actions = new List<ActionData>
-                {
-                    new ActionData { icon = "+", actionName = "Pasito corto",  cost = 1, progress = 10 },
-                    new ActionData { icon = "++", actionName = "Buen avance",   cost = 2, progress = 22 },
-                    new ActionData { icon = "+++", actionName = "Super impulso", cost = 4, progress = 45 },
-                    new ActionData { icon = "$", actionName = "Mega maquina",  cost = 5, progress = 24, isTrap = true },
-                    new ActionData { icon = "?", actionName = "Salto sorpresa", cost = 2, progress = 40,
-                                     isRisky = true, riskyMin = 25, riskyMax = 55 },
-                };
+                _ringCount = 4; _showTarget = true;   // objetivo: <= 30 (2x de 15)
                 break;
-
-            default: // Easy
-                stars = 14;
-                actions = new List<ActionData>
-                {
-                    new ActionData { icon = "+", actionName = "Pasito corto",  cost = 1, progress = 8  },
-                    new ActionData { icon = "++", actionName = "Buen avance",   cost = 2, progress = 18 },
-                    new ActionData { icon = "+++", actionName = "Super impulso", cost = 4, progress = 40 },
-                };
+            default: // Easy: sin limite, contador solo informativo
+                _ringCount = 3; _showTarget = false;
                 break;
         }
+        _optimal = (1 << _ringCount) - 1;
+        _target  = _optimal * 2;
     }
 
-    protected override void OnMinigameComplete() { }
-    protected override void OnMinigameFailed()   { }
+    // ================================================================ UI
 
-    private void Update()
+    void BuildUI()
     {
-        if (Mathf.Abs(_displayProg - _progress) > 0.15f)
+        var cv = KidUI.MakeCanvas("HanoiCanvas", 50, transform);
+        _root  = cv.GetComponent<RectTransform>();
+        KidUI.BuildSpaceBackground(_root);
+
+        // ---- cabecera ----
+        var hdr = KidUI.RoundImg(_root, "Hdr", KidUI.PANEL,
+            new Vector2(0.02f, 0.905f), new Vector2(0.98f, 0.985f),
+            Vector2.zero, Vector2.zero, 1.4f);
+        var line = KidUI.RoundImg(hdr, "Line", ACCENT2,
+            new Vector2(0.02f, 0f), new Vector2(0.98f, 0f),
+            new Vector2(0f, 2f), new Vector2(0f, 4f), 4f);
+        line.GetComponent<Image>().raycastTarget = false;
+
+        var title = KidUI.Txt(hdr, "T", "TORRES DE ENERGIA", Color.white, 36,
+            new Vector2(0.02f, 0f), new Vector2(0.45f, 1f));
+        title.fontStyle = FontStyles.Bold;
+        title.alignment = TextAlignmentOptions.MidlineLeft;
+
+        _movesLbl = KidUI.Txt(hdr, "Moves", "", ACCENT2, 27,
+            new Vector2(0.45f, 0f), new Vector2(0.98f, 1f));
+        _movesLbl.fontStyle = FontStyles.Bold;
+        _movesLbl.alignment = TextAlignmentOptions.MidlineRight;
+        UITween.PopIn(hdr, 0.4f, 0.9f);
+
+        // ---- mensaje-guia ----
+        _msgLbl = KidUI.Txt(_root, "Msg",
+            "Toca una torre para levantar su anillo de arriba",
+            KidUI.DIM, 28, new Vector2(0.05f, 0.83f), new Vector2(0.95f, 0.90f));
+        _msgLbl.overflowMode = TextOverflowModes.Overflow;
+
+        // ---- tablero ----
+        var boardGO = new GameObject("Board");
+        boardGO.transform.SetParent(_root, false);
+        _board = boardGO.AddComponent<RectTransform>();
+        _board.anchorMin = _board.anchorMax = new Vector2(0.5f, 0.45f);
+        _board.pivot = new Vector2(0.5f, 0.5f);
+        _board.anchoredPosition = Vector2.zero;
+        _board.sizeDelta = Vector2.zero;
+
+        _towerGlow = new RectTransform[TOWERS];
+        for (int i = 0; i < TOWERS; i++)
+            BuildTower(i);
+
+        // Rotulos de ayuda bajo las torres
+        MakeLabel("SALIDA",  TOWER_X[0], KidUI.DIM);
+        MakeLabel("META",    TOWER_X[2], KidUI.GOOD);
+
+        // ---- boton reiniciar ----
+        KidUI.Btn(_root, "Volver a empezar", KidUI.BTNC,
+            new Vector2(0.02f, 0.02f), new Vector2(0.20f, 0.095f),
+            ResetPuzzle, 24f);
+    }
+
+    void MakeLabel(string txt, float x, Color col)
+    {
+        var lbl = KidUI.Txt(_board, "Lbl_" + txt, txt, col, 24,
+            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f));
+        var rt = (RectTransform)lbl.transform;
+        rt.anchoredPosition = new Vector2(x, BASE_Y - 58f);
+        rt.sizeDelta = new Vector2(220f, 34f);
+        lbl.fontStyle = FontStyles.Bold;
+        lbl.raycastTarget = false;
+    }
+
+    void BuildTower(int i)
+    {
+        float x = TOWER_X[i];
+
+        // Pilar
+        var pillar = KidUI.RoundImg(_board, "Pillar" + i, new Color(0.20f, 0.26f, 0.46f),
+            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+            new Vector2(x, BASE_Y + PILLAR_H * 0.5f), new Vector2(26f, PILLAR_H), 2f);
+        pillar.GetComponent<Image>().raycastTarget = false;
+
+        // Base
+        var bse = KidUI.RoundImg(_board, "Base" + i, new Color(0.16f, 0.21f, 0.38f),
+            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+            new Vector2(x, BASE_Y - 20f), new Vector2(420f, 36f), 1.2f);
+        bse.GetComponent<Image>().raycastTarget = false;
+
+        // Halo superior (se enciende cuando la torre esta seleccionada)
+        var glow = KidUI.CircleAt(_board, "Glow" + i,
+            new Color(ACCENT2.r, ACCENT2.g, ACCENT2.b, 0.30f),
+            new Vector2(0.5f, 0.5f), 110f);
+        glow.anchoredPosition = new Vector2(x, BASE_Y + PILLAR_H + 66f);
+        glow.GetComponent<Image>().raycastTarget = false;
+        glow.gameObject.SetActive(false);
+        _towerGlow[i] = glow;
+
+        // Zona tactil de toda la columna (imagen invisible que si recibe clics)
+        var hit = KidUI.Img(_board, "Hit" + i, new Color(0f, 0f, 0f, 0f),
+            new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+            new Vector2(x, BASE_Y + PILLAR_H * 0.5f + 40f),
+            new Vector2(460f, PILLAR_H + 260f));
+        var btn = hit.gameObject.AddComponent<Button>();
+        btn.transition = Selectable.Transition.None;
+        int captured = i;
+        btn.onClick.AddListener(() => OnTower(captured));
+
+        UITween.PopIn(pillar, 0.4f, 0.6f, 0.05f * i);
+        UITween.PopIn(bse, 0.4f, 0.6f, 0.05f * i);
+    }
+
+    void BuildRings()
+    {
+        _piles = new List<int>[TOWERS];
+        for (int i = 0; i < TOWERS; i++) _piles[i] = new List<int>();
+        _ringRT = new RectTransform[_ringCount + 1];
+
+        // Pila inicial en la torre izquierda: grande abajo, pequeño arriba
+        for (int size = _ringCount; size >= 1; size--)
         {
-            _displayProg = Mathf.Lerp(_displayProg, _progress, Time.deltaTime * 8f);
-            UpdateProgVisual();
+            _piles[0].Add(size);
+
+            float w = 130f + size * 62f;
+            var ring = KidUI.RoundImg(_board, "Ring" + size,
+                RING_COLORS[(size - 1) % RING_COLORS.Length],
+                new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                RingRestPos(0, _piles[0].Count - 1), new Vector2(w, RING_H), 0.85f);
+
+            // Brillito superior para dar volumen
+            var shine = KidUI.RoundImg(ring, "Shine", new Color(1f, 1f, 1f, 0.28f),
+                new Vector2(0.08f, 0.58f), new Vector2(0.92f, 0.80f),
+                Vector2.zero, Vector2.zero, 4f);
+            shine.GetComponent<Image>().raycastTarget = false;
+            ring.GetComponent<Image>().raycastTarget = false;
+
+            _ringRT[size] = ring;
+            UITween.PopIn(ring, 0.45f, 0.5f, 0.10f + 0.07f * (_ringCount - size));
         }
     }
 
-    private void DoAction(int i)
+    Vector2 RingRestPos(int tower, int stackIdx) =>
+        new Vector2(TOWER_X[tower], BASE_Y + RING_H * 0.5f + stackIdx * RING_STEP);
+
+    Vector2 LiftPos(int tower) =>
+        new Vector2(TOWER_X[tower], BASE_Y + PILLAR_H + 66f);
+
+    // ================================================================ JUEGO
+
+    void OnTower(int i)
     {
-        if (_ended || i < 0 || i >= actions.Count) return;
-        ActionData a = actions[i];
-        if (_stars < a.cost) return;
+        if (_ended || _busy || !IsPlaying) return;
 
-        int gain = a.isRisky
-            ? UnityEngine.Random.Range(a.riskyMin, a.riskyMax + 1)
-            : a.progress;
-
-        _stars       -= a.cost;
-        _starsSpent  += a.cost;
-        _rawProgress += gain;
-        _progress     = Mathf.Min(_progress + gain, goal);
-        if (a.isTrap) _trapUses++;
-
-        float rtMs = (Time.realtimeSinceStartup - _lastActionTime) * 1000f;
-        _lastActionTime = Time.realtimeSinceStartup;
-        ReportEvent(!a.isTrap, rtMs);
-
-        GameFeel.PlayPop();
-        GameFeel.FloatingText("+" + gain + "%", a.isRisky ? YELLOW : GREEN, new Vector2(240f, 90f));
-        if (a.isRisky && gain >= 45) GameFeel.PlayStar();
-
-        Refresh();
-        StartCoroutine(Pulse(i));
-
-        if (_progress >= goal)
+        if (_selected < 0)
         {
-            _ended = true;
-            StartCoroutine(Finish(true));
+            // --- elegir torre origen ---
+            if (_piles[i].Count == 0)
+            {
+                GameFeel.PlayPop();
+                _msgLbl.text  = "Esa torre esta vacia. ¡Elige una con anillos!";
+                _msgLbl.color = KidUI.DIM;
+                return;
+            }
+            _selected = i;
+            int top = TopOf(i);
+            GameFeel.PlayPop();
+            _towerGlow[i].gameObject.SetActive(true);
+            StartCoroutine(GlideRing(_ringRT[top], LiftPos(i), 0.22f, null));
+            _msgLbl.text  = "¡Anillo levantado! Ahora toca la torre donde soltarlo";
+            _msgLbl.color = ACCENT2;
         }
-        else if (!CanDoAny())
+        else if (i == _selected)
         {
-            _ended = true;
-            StartCoroutine(Finish(false));
-        }
-    }
-
-    private bool CanDoAny()
-    {
-        for (int i = 0; i < actions.Count; i++)
-            if (_stars >= actions[i].cost) return true;
-        return false;
-    }
-
-    private int EfficiencyPct()
-    {
-        if (_starsSpent <= 0) return 100;
-        float eff = (_rawProgress / _starsSpent) / _bestPerStar;
-        return Mathf.Clamp(Mathf.RoundToInt(eff * 100f), 0, 100);
-    }
-
-    private IEnumerator Finish(bool won)
-    {
-        yield return new WaitForSeconds(0.6f);
-
-        int effPct = EfficiencyPct();
-
-        if (won)
-        {
-            GameFeel.PlaySuccess();
-            GameFeel.Confetti(35);
-
-            int sc = 500 + Mathf.RoundToInt(((float)_stars / _maxStars) * 300f)
-                         + Mathf.RoundToInt(effPct * 2f);
-            float ratio = Mathf.Clamp01(effPct / 100f - _trapUses * 0.10f);
-
-            CompleteMinigame(sc);
-            ShowResults(true, GameFeel.StarsFromRatio(true, ratio), sc,
-                new[]
-                {
-                    "Eficiencia: " + effPct + "%",
-                    "Estrellas sobrantes: " + _stars + " / " + _maxStars
-                });
+            // --- soltar en la misma torre (cancelar) ---
+            int top = TopOf(i);
+            _towerGlow[i].gameObject.SetActive(false);
+            _selected = -1;
+            GameFeel.PlayPop();
+            StartCoroutine(GlideRing(_ringRT[top],
+                RingRestPos(i, _piles[i].Count - 1), 0.22f, null));
+            _msgLbl.text  = "Anillo devuelto. Toca una torre para empezar";
+            _msgLbl.color = KidUI.DIM;
         }
         else
         {
-            GameFeel.PlayError();
-            GameFeel.ScreenFlash(RED, 0.18f, 0.3f);
+            // --- intentar mover al destino ---
+            int from = _selected;
+            int size = TopOf(from);
+            bool legal = _piles[i].Count == 0 || TopOf(i) > size;
 
-            FailMinigame();
-            ShowResults(false, 0, 0,
-                new[]
-                {
-                    "Progreso: " + Mathf.RoundToInt(_progress) + "%",
-                    "Eficiencia: " + effPct + "%"
-                },
-                "¡Sin estrellas!",
-                "Planifica que acciones rinden mas");
+            float rtMs = (Time.realtimeSinceStartup - _lastMoveTime) * 1000f;
+            _lastMoveTime = Time.realtimeSinceStartup;
+            ReportEvent(legal, rtMs);
+
+            _towerGlow[from].gameObject.SetActive(false);
+            _selected = -1;
+
+            if (legal)
+            {
+                _piles[from].RemoveAt(_piles[from].Count - 1);
+                _piles[i].Add(size);
+                _moves++;
+                _legalMoves++;
+                GameFeel.PlayPop();
+                StartCoroutine(MoveRingAcross(size, from, i));
+                RefreshHUD();
+            }
+            else
+            {
+                // Feedback suave: no es un fallo grave, solo se recoloca
+                _illegalTries++;
+                GameFeel.PlayError();
+                GameFeel.Shake(_ringRT[size], 10f, 0.3f);
+                GameFeel.FloatingText("El grande no cabe encima", KidUI.WARN,
+                    new Vector2(0f, 40f), 38f);
+                StartCoroutine(GlideRing(_ringRT[size],
+                    RingRestPos(from, _piles[from].Count - 1), 0.25f, null));
+                _msgLbl.text  = "Los anillos grandes van siempre debajo";
+                _msgLbl.color = KidUI.WARN;
+            }
         }
     }
 
-    private void Reset()
+    int TopOf(int tower) => _piles[tower][_piles[tower].Count - 1];
+
+    IEnumerator MoveRingAcross(int size, int from, int to)
     {
-        if (_ended) return;
-        StopAllCoroutines();
-        _stars          = _maxStars;
-        _progress       = 0f;
-        _rawProgress    = 0f;
-        _starsSpent     = 0;
-        _trapUses       = 0;
-        _displayProg    = 0f;
-        _lastActionTime = Time.realtimeSinceStartup;
-        Refresh();
-    }
+        _busy = true;
+        var ring = _ringRT[size];
+        // El anillo ya esta levantado sobre 'from': cruza y baja
+        yield return GlideRing(ring, LiftPos(to), 0.26f, null);
+        yield return GlideRing(ring, RingRestPos(to, _piles[to].Count - 1), 0.20f, null);
+        UITween.PulseOnce(ring, 1.08f, 0.16f);
+        _busy = false;
 
-    private void Refresh()
-    {
-        float r = Mathf.Clamp01((float)_stars / _maxStars);
-        _starsFill.anchorMax = new Vector2(Mathf.Max(r, 0.005f), 1f);
-        _starsLbl.text = _stars + " / " + _maxStars;
-
-        if (r > 0.5f)       _starsFillImg.color = YELLOW;
-        else if (r > 0.25f) _starsFillImg.color = ORANGE;
-        else                _starsFillImg.color = RED;
-
-        UpdateProgVisual();
-
-        for (int i = 0; i < _btns.Count; i++)
+        if (_piles[2].Count == _ringCount)
         {
-            bool ok = _stars >= actions[i].cost && !_ended;
-            _btns[i].interactable = ok;
-            Color c = GetBtnColor(i);
-            _btnBgs[i].color = ok ? c : BTN_OFF;
-            _btnGroups[i].alpha = ok ? 1f : 0.45f;
+            _ended = true;
+            StartCoroutine(Finish());
+        }
+        else if (_showTarget && _moves == _target + 1)
+        {
+            _msgLbl.text  = "Puedes seguir jugando, ¡pero intenta planear mejor!";
+            _msgLbl.color = KidUI.WARN;
+        }
+        else
+        {
+            _msgLbl.text  = "¡Muy bien! Sigue asi";
+            _msgLbl.color = KidUI.DIM;
         }
     }
 
-    private void UpdateProgVisual()
+    IEnumerator GlideRing(RectTransform ring, Vector2 target, float dur, Action onDone)
     {
-        float r = Mathf.Clamp01(_displayProg / goal);
-        _progFill.anchorMax = new Vector2(Mathf.Max(r, 0.005f), 1f);
-        int pct = Mathf.RoundToInt(_displayProg);
-        _progLbl.text = pct + "%";
-        _progPct.text = pct + "%";
-        _progPct.color = r >= 1f ? GREEN : Color.white;
-    }
-
-    private IEnumerator Pulse(int i)
-    {
-        if (i >= _btns.Count) yield break;
-        RectTransform rt = _btns[i].GetComponent<RectTransform>();
+        if (ring == null) yield break;
+        Vector2 start = ring.anchoredPosition;
         float t = 0f;
-        while (t < 1f)
+        while (t < dur)
         {
-            t += Time.deltaTime * 10f;
-            float s = 1f + 0.06f * Mathf.Sin(t * Mathf.PI);
-            rt.localScale = new Vector3(s, s, 1f);
+            if (ring == null) yield break;
+            t += Time.deltaTime;
+            ring.anchoredPosition = Vector2.Lerp(start, target,
+                Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(t / dur)));
             yield return null;
         }
-        rt.localScale = Vector3.one;
+        ring.anchoredPosition = target;
+        onDone?.Invoke();
     }
 
-    private Color GetBtnColor(int i)
+    IEnumerator Finish()
     {
-        if (actions[i].buttonColor != Color.black)
-            return actions[i].buttonColor;
-        return AUTO_COLORS[i % AUTO_COLORS.Length];
+        GameFeel.PlaySuccess();
+        GameFeel.Confetti(45);
+        GameFeel.FloatingText("¡Torre completada!", KidUI.GOOD, new Vector2(0f, 80f));
+
+        float ratio = _moves > 0 ? Mathf.Clamp01((float)_optimal / _moves) : 1f;
+        int score = 400 + Mathf.RoundToInt(600f * ratio);
+
+        CompleteMinigame(score);
+
+        yield return new WaitForSeconds(1.2f);
+
+        int pct = Mathf.RoundToInt(ratio * 100f);
+        ShowResults(true, GameFeel.StarsFromRatio(true, ratio), score,
+            new[]
+            {
+                "Movimientos: " + _moves,
+                "Optimo: " + _optimal,
+                "Eficiencia: " + pct + "%"
+            },
+            _moves == _optimal ? "¡Plan perfecto!" : "¡Energia restaurada!",
+            _moves == _optimal
+                ? "Lo resolviste con los movimientos justos"
+                : "Toda la energia llego a la torre meta");
     }
 
-    private void BuildUI()
+    /// <summary>Recoloca los anillos en la torre de salida y reinicia el
+    /// contador (borron y cuenta nueva, sin castigos).</summary>
+    void ResetPuzzle()
     {
+        if (_ended || !IsPlaying) return;
+        StopAllCoroutines();
+        _busy = false;
+        _selected = -1;
+        _moves = 0;
+        _lastMoveTime = Time.realtimeSinceStartup;
+        foreach (var g in _towerGlow) g.gameObject.SetActive(false);
 
-        GameObject cGO = new GameObject("Canvas");
-        cGO.transform.SetParent(transform, false);
-        Canvas cv = cGO.AddComponent<Canvas>();
-        cv.renderMode = RenderMode.ScreenSpaceOverlay;
-        cv.sortingOrder = 10;
-        CanvasScaler cs = cGO.AddComponent<CanvasScaler>();
-        cs.uiScaleMode         = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        cs.referenceResolution = new Vector2(1920f, 1080f);
-        cs.matchWidthOrHeight  = 0.5f;
-        cGO.AddComponent<GraphicRaycaster>();
-        RectTransform R = cGO.GetComponent<RectTransform>();
-
-        Img(R, "BG", BG, V(0,0), V(1,1), V(0,0), V(0,0));
-
-        RectTransform hdr = Img(R, "Hdr", HEADER, V(0,1), V(1,1), V(0,-44), V(0,88));
-        Img(hdr, "Line", ACCENT, V(0,0), V(1,0), V(0,1.5f), V(0,3));
-
-        TextMeshProUGUI t1 = Txt(hdr, "T", "Gestion de recursos", Color.white, 42, V(0.03f,0), V(0.70f,1));
-        t1.fontStyle = FontStyles.Bold;
-        t1.alignment = TextAlignmentOptions.MidlineLeft;
-
-        TextMeshProUGUI t2 = Txt(hdr, "I", "Usa tus estrellas para llegar al 100%", DIM, 24, V(0.45f,0), V(0.98f,1));
-        t2.alignment = TextAlignmentOptions.MidlineRight;
-
-        RectTransform topP = Img(R, "TopP", PANEL, V(0.03f,0.58f), V(0.97f,0.88f), V(0,0), V(0,0));
-        BuildBars(topP);
-
-        RectTransform botP = Img(R, "BotP", PANEL, V(0.03f,0.12f), V(0.97f,0.55f), V(0,0), V(0,0));
-        BuildActions(botP);
-
-        RectTransform bar = Img(R, "Bar", HEADER, V(0,0), V(1,0), V(0,45), V(0,90));
-        MkBtn(bar, "Reiniciar", new Color(0.32f,0.34f,0.44f), V(0.06f,0.12f), V(0.94f,0.88f), () => Reset());
-    }
-
-    private void BuildBars(RectTransform p)
-    {
-
-        TextMeshProUGUI sT = Txt(p, "ST", "ESTRELLAS", YELLOW, 28, V(0.03f,0.70f), V(0.30f,0.95f));
-        sT.fontStyle = FontStyles.Bold; sT.alignment = TextAlignmentOptions.MidlineLeft;
-
-        _starsLbl = Txt(p, "SV", "", Color.white, 26, V(0.30f,0.70f), V(0.48f,0.95f));
-        _starsLbl.alignment = TextAlignmentOptions.MidlineRight;
-
-        RectTransform sBg = Img(p, "SBg", DARK, V(0.03f,0.35f), V(0.48f,0.70f), V(0,0), V(0,0));
-        GameObject sf = new GameObject("SF");
-        sf.transform.SetParent(sBg, false);
-        _starsFill = sf.AddComponent<RectTransform>();
-        _starsFill.anchorMin = V(0,0); _starsFill.anchorMax = V(1,1);
-        _starsFill.offsetMin = V(0,0); _starsFill.offsetMax = V(0,0);
-        _starsFillImg = sf.AddComponent<Image>();
-        _starsFillImg.color = YELLOW;
-
-        TextMeshProUGUI sH = Txt(p, "SH", "Cuantas estrellas te quedan", DIM, 19, V(0.03f,0.06f), V(0.48f,0.34f));
-        sH.alignment = TextAlignmentOptions.Center;
-
-        TextMeshProUGUI pT = Txt(p, "PT", "PROGRESO", GREEN, 28, V(0.53f,0.70f), V(0.76f,0.95f));
-        pT.fontStyle = FontStyles.Bold; pT.alignment = TextAlignmentOptions.MidlineLeft;
-
-        _progLbl = Txt(p, "PV", "0%", Color.white, 26, V(0.76f,0.70f), V(0.97f,0.95f));
-        _progLbl.alignment = TextAlignmentOptions.MidlineRight;
-
-        RectTransform pBg = Img(p, "PBg", DARK, V(0.53f,0.35f), V(0.97f,0.70f), V(0,0), V(0,0));
-        GameObject pf = new GameObject("PF");
-        pf.transform.SetParent(pBg, false);
-        _progFill = pf.AddComponent<RectTransform>();
-        _progFill.anchorMin = V(0,0); _progFill.anchorMax = V(0,1);
-        _progFill.offsetMin = V(0,0); _progFill.offsetMax = V(0,0);
-        pf.AddComponent<Image>().color = GREEN;
-
-        _progPct = Txt(p, "PP", "0%", Color.white, 42, V(0.53f,0.06f), V(0.97f,0.34f));
-        _progPct.fontStyle = FontStyles.Bold;
-        _progPct.alignment = TextAlignmentOptions.Center;
-    }
-
-    private void BuildActions(RectTransform p)
-    {
-        TextMeshProUGUI at = Txt(p, "AT", "Elige una accion:", Color.white, 28, V(0.03f,0.88f), V(0.97f,1f));
-        at.fontStyle = FontStyles.Bold; at.alignment = TextAlignmentOptions.Center;
-
-        int n = Mathf.Min(actions.Count, 5);
-        _btns.Clear(); _btnBgs.Clear(); _btnGroups.Clear();
-
-        float margin = 0.03f;
-        float gap = 0.02f;
-        float total = 1f - margin * 2f;
-        float w = (total - gap * (n - 1)) / n;
-
-        for (int i = 0; i < n; i++)
+        for (int i = 0; i < TOWERS; i++) _piles[i].Clear();
+        for (int size = _ringCount; size >= 1; size--)
         {
-            int idx = i;
-            ActionData a = actions[i];
-            Color col = GetBtnColor(i);
-
-            float xL = margin + (w + gap) * i;
-            float xR = xL + w;
-
-            RectTransform brt = Img(p, "A" + i, col, V(xL, 0.04f), V(xR, 0.85f), V(0,0), V(0,0));
-            CanvasGroup cg = brt.gameObject.AddComponent<CanvasGroup>();
-
-            Button btn = brt.gameObject.AddComponent<Button>();
-            Image bg = brt.GetComponent<Image>();
-            btn.targetGraphic = bg;
-            ColorBlock cb = btn.colors;
-            cb.normalColor = Color.white;
-            cb.highlightedColor = new Color(1,1,1,0.85f);
-            cb.pressedColor = new Color(0.7f,0.7f,0.7f);
-            cb.disabledColor = new Color(0.5f,0.5f,0.5f,0.4f);
-            btn.colors = cb;
-            btn.onClick.AddListener(() => DoAction(idx));
-            ButtonJuice.Attach(brt.gameObject);
-
-            float nameSize = n >= 5 ? 27f : (n >= 4 ? 30f : 34f);
-            TextMeshProUGUI nm = Txt(brt, "Nm", a.actionName, Color.white, nameSize, V(0.04f,0.38f), V(0.96f,0.95f));
-            nm.fontStyle = FontStyles.Bold;
-            nm.alignment = TextAlignmentOptions.Center;
-
-            RectTransform infoBg = Img(brt, "Info", new Color(0,0,0,0.25f), V(0.06f,0.04f), V(0.94f,0.34f), V(0,0), V(0,0));
-
-            TextMeshProUGUI costT = Txt(infoBg, "C", "-" + a.cost + " E", YELLOW, 22, V(0,0.5f), V(1,1));
-            costT.fontStyle = FontStyles.Bold; costT.alignment = TextAlignmentOptions.Center;
-
-            string gainTxt = a.isRisky
-                ? "+" + a.riskyMin + "-" + a.riskyMax + "% ?"
-                : "+" + a.progress + "%";
-            TextMeshProUGUI gainT = Txt(infoBg, "G", gainTxt, GREEN, 22, V(0,0), V(1,0.5f));
-            gainT.fontStyle = FontStyles.Bold; gainT.alignment = TextAlignmentOptions.Center;
-
-            _btns.Add(btn);
-            _btnBgs.Add(bg);
-            _btnGroups.Add(cg);
+            _piles[0].Add(size);
+            _ringRT[size].anchoredPosition = RingRestPos(0, _piles[0].Count - 1);
+            UITween.PopIn(_ringRT[size], 0.3f, 0.7f);
         }
+        _msgLbl.text  = "Torres reiniciadas. ¡A planificar!";
+        _msgLbl.color = KidUI.DIM;
+        RefreshHUD();
     }
 
-    private static Vector2 V(float x, float y) { return new Vector2(x, y); }
-
-    private RectTransform Img(RectTransform parent, string name, Color c,
-                              Vector2 amin, Vector2 amax, Vector2 pos, Vector2 sd)
+    void RefreshHUD()
     {
-        GameObject go = new GameObject(name);
-        go.transform.SetParent(parent, false);
-        RectTransform rt = go.AddComponent<RectTransform>();
-        rt.anchorMin = amin; rt.anchorMax = amax;
-        rt.pivot = V(0.5f, 0.5f);
-        rt.anchoredPosition = pos; rt.sizeDelta = sd;
-        go.AddComponent<Image>().color = c;
-        return rt;
-    }
-
-    private TextMeshProUGUI Txt(RectTransform parent, string name, string text,
-                                Color c, float size, Vector2 amin, Vector2 amax)
-    {
-        GameObject go = new GameObject(name);
-        go.transform.SetParent(parent, false);
-        RectTransform rt = go.AddComponent<RectTransform>();
-        rt.anchorMin = amin; rt.anchorMax = amax;
-        rt.pivot = V(0.5f, 0.5f);
-        rt.anchoredPosition = V(0,0); rt.sizeDelta = V(0,0);
-        TextMeshProUGUI tmp = go.AddComponent<TextMeshProUGUI>();
-        tmp.text = text; tmp.color = c; tmp.fontSize = size;
-        tmp.alignment = TextAlignmentOptions.Center;
-        tmp.overflowMode = TextOverflowModes.Ellipsis;
-        return tmp;
-    }
-
-    private void MkBtn(RectTransform parent, string label, Color bgC,
-                       Vector2 amin, Vector2 amax,
-                       UnityEngine.Events.UnityAction click)
-    {
-        RectTransform bg = Img(parent, "B_" + label, bgC, amin, amax, V(0,0), V(0,0));
-        Button b = bg.gameObject.AddComponent<Button>();
-        b.targetGraphic = bg.GetComponent<Image>();
-        ColorBlock cb = b.colors;
-        cb.normalColor = Color.white;
-        cb.highlightedColor = new Color(1,1,1,0.85f);
-        cb.pressedColor = new Color(0.7f,0.7f,0.7f);
-        b.colors = cb;
-        b.onClick.AddListener(click);
-        ButtonJuice.Attach(bg.gameObject);
-        TextMeshProUGUI t = Txt(bg, "T", label, Color.white, 28, V(0,0), V(1,1));
-        t.fontStyle = FontStyles.Bold;
-    }
-
-    private static void EnsureES()
-    {
-        if (FindObjectOfType<EventSystem>() == null)
-        {
-            GameObject go = new GameObject("EventSystem");
-            go.AddComponent<EventSystem>();
-            go.AddComponent<StandaloneInputModule>();
-        }
+        if (_movesLbl == null) return;
+        _movesLbl.text = _showTarget
+            ? "Movimientos: " + _moves + "   (optimo " + _optimal + ", objetivo " + _target + ")"
+            : "Movimientos: " + _moves + "   (optimo " + _optimal + ")";
+        _movesLbl.color = (_showTarget && _moves > _target) ? KidUI.WARN : ACCENT2;
+        UITween.PulseOnce((RectTransform)_movesLbl.transform, 1.06f, 0.14f);
     }
 }

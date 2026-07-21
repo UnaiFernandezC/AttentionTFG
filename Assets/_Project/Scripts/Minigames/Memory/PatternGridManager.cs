@@ -36,7 +36,12 @@ public class PatternGridManager : MonoBehaviour
                 float x   = c * (cellSize + spacing) - (totalW - cellSize) * 0.5f;
                 float y   = -r * (cellSize + spacing) + (totalH - cellSize) * 0.5f;
 
-                _cells.Add(CreateCell(container, idx, new Vector2(x, y), cellSize));
+                var newCell = CreateCell(container, idx, new Vector2(x, y), cellSize);
+                _cells.Add(newCell);
+
+                // Entrada escalonada en oleada diagonal (solo presentacion)
+                UITween.PopIn((RectTransform)newCell.transform, 0.28f, 0.60f,
+                              (r + c) * 0.025f);
             }
         }
     }
@@ -53,9 +58,30 @@ public class PatternGridManager : MonoBehaviour
         frameRT.pivot            = new Vector2(0.5f, 0.5f);
         frameRT.anchoredPosition = pos;
         frameRT.sizeDelta        = new Vector2(size, size);
-        frameGO.AddComponent<Image>().color = new Color(0.06f, 0.07f, 0.15f);
+        // Marco redondeado con tinte morado oscuro (paleta Memoria)
+        var frameImg = frameGO.AddComponent<Image>();
+        frameImg.color                   = new Color(0.09f, 0.05f, 0.20f);
+        frameImg.sprite                  = KidUI.RoundedSprite;
+        frameImg.type                    = Image.Type.Sliced;
+        frameImg.pixelsPerUnitMultiplier = 1.4f;
 
         frameGO.AddComponent<Button>();
+
+        // Halo morado suave detras de la celda (glow)
+        var glowGO = new GameObject("Glow");
+        glowGO.transform.SetParent(frameGO.transform, false);
+        glowGO.transform.SetAsFirstSibling();
+        var glowRT = glowGO.AddComponent<RectTransform>();
+        glowRT.anchorMin        = Vector2.zero;
+        glowRT.anchorMax        = Vector2.one;
+        glowRT.anchoredPosition = Vector2.zero;
+        glowRT.sizeDelta        = new Vector2(16f, 16f);
+        var glowImg = glowGO.AddComponent<Image>();
+        glowImg.color                   = new Color(0.58f, 0.28f, 0.92f, 0.10f);
+        glowImg.sprite                  = KidUI.RoundedSprite;
+        glowImg.type                    = Image.Type.Sliced;
+        glowImg.pixelsPerUnitMultiplier = 0.9f;
+        glowImg.raycastTarget           = false;
 
         var bgGO = new GameObject("BG");
         bgGO.transform.SetParent(frameGO.transform, false);
@@ -65,7 +91,10 @@ public class PatternGridManager : MonoBehaviour
         bgRT.anchoredPosition = Vector2.zero;
         bgRT.sizeDelta        = new Vector2(-7f, -7f);
         var bgImg = bgGO.AddComponent<Image>();
-        bgImg.color = new Color(0.18f, 0.20f, 0.36f);
+        bgImg.color                   = new Color(0.20f, 0.16f, 0.38f);
+        bgImg.sprite                  = KidUI.RoundedSprite;
+        bgImg.type                    = Image.Type.Sliced;
+        bgImg.pixelsPerUnitMultiplier = 1.6f;
 
         var shineGO = new GameObject("Shine");
         shineGO.transform.SetParent(bgGO.transform, false);
@@ -75,10 +104,15 @@ public class PatternGridManager : MonoBehaviour
         shineRT.anchoredPosition = Vector2.zero;
         shineRT.sizeDelta        = Vector2.zero;
         var shineImg = shineGO.AddComponent<Image>();
-        shineImg.color = new Color(1f, 1f, 1f, 0f);
+        shineImg.color                   = new Color(1f, 1f, 1f, 0f);
+        shineImg.sprite                  = KidUI.RoundedSprite;
+        shineImg.type                    = Image.Type.Sliced;
+        shineImg.pixelsPerUnitMultiplier = 1.6f;
+        shineImg.raycastTarget           = false;
 
         var cell = frameGO.AddComponent<PatternCell>();
-        cell.Initialize(index, bgImg, shineImg);
+        // Se pasa tambien el halo para que la celda lo encienda al revelarse
+        cell.Initialize(index, bgImg, shineImg, glowImg);
         cell.OnClicked += HandleCellClicked;
 
         return cell;
@@ -109,19 +143,37 @@ public class PatternGridManager : MonoBehaviour
 
     public void ShowPattern()
     {
+        // Revelado escalonado: las celdas del patron se encienden una a una
+        // (solo visual; el tiempo de memorizacion no cambia).
+        if (_revealCo != null) StopCoroutine(_revealCo);
+        _revealCo = StartCoroutine(ShowPatternStaggered());
+    }
+
+    private Coroutine _revealCo;
+
+    private System.Collections.IEnumerator ShowPatternStaggered()
+    {
+        foreach (var cell in _cells)
+            if (!_patternSet.Contains(cell.Index) && cell.Index != _decoyIndex)
+                cell.SetState(PatternCell.CellState.Idle);
+
+        var wait = new WaitForSeconds(0.07f);
         foreach (var cell in _cells)
         {
-            if (_patternSet.Contains(cell.Index))
-                cell.SetState(PatternCell.CellState.PatternShow);
-            else if (cell.Index == _decoyIndex)
-                cell.SetState(PatternCell.CellState.Decoy);
-            else
-                cell.SetState(PatternCell.CellState.Idle);
+            if (!_patternSet.Contains(cell.Index)) continue;
+            // SetState(PatternShow) ya incluye su propio pulso de escala
+            cell.SetState(PatternCell.CellState.PatternShow);
+            yield return wait;
         }
+
+        if (_decoyIndex >= 0 && _decoyIndex < _cells.Count)
+            _cells[_decoyIndex].SetState(PatternCell.CellState.Decoy);
+        _revealCo = null;
     }
 
     public void HidePattern()
     {
+        if (_revealCo != null) { StopCoroutine(_revealCo); _revealCo = null; }
         foreach (var cell in _cells)
             cell.SetState(PatternCell.CellState.Idle);
     }

@@ -61,7 +61,7 @@ public class PauseMenuController : MonoBehaviour
         // privacidad, consentimiento, hub, área del tutor o pantalla de error).
         if (PinPrompt.IsOpen || TutorialScreen.IsOpen || ProfileScreenController.IsOpen ||
             PolicyViewer.IsOpen || ConsentScreen.IsOpen || ProgressMapScreen.IsOpen ||
-            TutorPanel.IsOpen || NavErrorScreen.IsOpen) return;
+            IntroVideoScreen.IsOpen || TutorPanel.IsOpen || NavErrorScreen.IsOpen) return;
 
         if (Input.GetKeyDown(KeyCode.Escape))
         {

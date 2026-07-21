@@ -415,24 +415,28 @@ public class ProfileScreenController : MonoBehaviour
         _nameField = KidUI.InputField(rt, "Escribe aqui...",
                                       new Vector2(0.33f, 0.76f), new Vector2(0.67f, 0.83f));
 
-        // --- Avatar
-        KidUI.Txt(rt, "LblAvatar", "Elige tu avatar:", KidUI.DIM, 22,
-                  new Vector2(0.25f, 0.68f), new Vector2(0.75f, 0.73f));
+        // --- Avatar: 12 personajes en dos filas de 6, cada uno con su "?" que
+        // abre un modal con la historia del personaje en Attentia.
+        KidUI.Txt(rt, "LblAvatar", "Elige tu personaje (toca el ? para conocer su historia):",
+                  KidUI.DIM, 20, new Vector2(0.15f, 0.68f), new Vector2(0.85f, 0.73f));
         int n = KidUI.AVATAR_IDS.Length;
-        float aw = 0.09f, gap = 0.015f;
+        float aw = 0.105f, gap = 0.014f;
         float ax0 = 0.5f - (n * aw + (n - 1) * gap) / 2f;
         for (int i = 0; i < n; i++)
         {
             string id = KidUI.AVATAR_IDS[i];
             float x = ax0 + i * (aw + gap);
+            float y = 0.585f;
+
             var frame = KidUI.CircleAt(rt, "AvFrame_" + id, KidUI.PANEL2,
-                                       new Vector2(x + aw / 2f, 0.595f), 148f);
+                                       new Vector2(x + aw / 2f, y), 168f);
             _avatarFrames.Add(frame.GetComponent<Image>());
             var frameInner = KidUI.CircleAt(frame, "Inner", new Color(0.05f, 0.07f, 0.14f, 1f),
-                                            new Vector2(0.5f, 0.5f), 128f);
+                                            new Vector2(0.5f, 0.5f), 150f);
             frameInner.GetComponent<Image>().raycastTarget = false;
-            KidUI.Avatar(frameInner, id, id, KidUI.CARD_COLORS[i % KidUI.CARD_COLORS.Length],
-                         new Vector2(0.12f, 0.12f), new Vector2(0.88f, 0.88f));
+            KidUI.Avatar(frameInner, id, CharacterLore.Nombre(id),
+                         KidUI.CARD_COLORS[i % KidUI.CARD_COLORS.Length],
+                         new Vector2(0.06f, 0.06f), new Vector2(0.94f, 0.94f));
             var b = frame.gameObject.AddComponent<Button>();
             b.targetGraphic = frame.GetComponent<Image>();
             string captured = id;
@@ -441,6 +445,21 @@ public class ProfileScreenController : MonoBehaviour
                 if (UIAudioManager.Instance != null) UIAudioManager.Instance.PlayClick();
                 _selAvatar = captured;
                 RefreshCreateSelection();
+            });
+
+            // Botón "?" — la historia del personaje (el hijo captura el clic
+            // antes que el marco, así no cambia la selección).
+            var ask = KidUI.CircleAt(frame, "Ask", new Color(0.30f, 0.65f, 1f, 0.95f),
+                                     new Vector2(0.88f, 0.88f), 40f);
+            var askT = KidUI.Txt(ask, "T", "?", Color.white, 22, Vector2.zero, Vector2.one);
+            askT.fontStyle = FontStyles.Bold;
+            askT.raycastTarget = false;
+            var askBtn = ask.gameObject.AddComponent<Button>();
+            askBtn.targetGraphic = ask.GetComponent<Image>();
+            askBtn.onClick.AddListener(() =>
+            {
+                if (UIAudioManager.Instance != null) UIAudioManager.Instance.PlayClick();
+                ShowLoreModal(captured);
             });
         }
 
@@ -505,6 +524,78 @@ public class ProfileScreenController : MonoBehaviour
             _edadFrames[i].color = i == _selEdad
                 ? KidUI.CARD_COLORS[i] * 0.6f + KidUI.PANEL2 * 0.4f
                 : KidUI.PANEL2;
+    }
+
+    // =================================================== HISTORIA DEL PERSONAJE
+
+    GameObject _loreModal;
+
+    /// <summary>Modal con la historia del personaje en Attentia: retrato grande,
+    /// nombre, título y su cuento. Se cierra tocando el fondo o el botón.</summary>
+    void ShowLoreModal(string avatarId)
+    {
+        if (_loreModal != null) Destroy(_loreModal);
+
+        _loreModal = new GameObject("LoreModal");
+        _loreModal.transform.SetParent(_rootRT, false);
+        var ort = _loreModal.AddComponent<RectTransform>();
+        ort.anchorMin = Vector2.zero; ort.anchorMax = Vector2.one;
+        ort.sizeDelta = Vector2.zero;
+
+        // Fondo oscuro: también cierra al tocarlo
+        var dim = KidUI.Img(ort, "Dim", new Color(0f, 0f, 0f, 0.72f),
+                            Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+        var dimBtn = dim.gameObject.AddComponent<Button>();
+        dimBtn.transition = Selectable.Transition.None;
+        dimBtn.onClick.AddListener(CloseLoreModal);
+
+        var card = KidUI.RoundImg(ort, "Card", new Color(0.055f, 0.075f, 0.15f, 0.98f),
+                                  new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                                  Vector2.zero, new Vector2(940f, 640f), 0.8f);
+
+        // Retrato con halo
+        var halo = KidUI.CircleAt(card, "Halo", new Color(0.30f, 0.65f, 1f, 0.15f),
+                                  new Vector2(0.20f, 0.60f), 340f);
+        halo.GetComponent<Image>().raycastTarget = false;
+        var portrait = KidUI.Img(card, "Portrait", Color.clear,
+                                 new Vector2(0.05f, 0.32f), new Vector2(0.36f, 0.88f),
+                                 Vector2.zero, Vector2.zero);
+        portrait.GetComponent<Image>().raycastTarget = false;
+        KidUI.Avatar(portrait, avatarId, CharacterLore.Nombre(avatarId), KidUI.ACCENT,
+                     Vector2.zero, Vector2.one);
+        portrait.gameObject.AddComponent<FloatBob>().Configure(7f, 1.0f);
+
+        // Nombre + título
+        var nm = KidUI.Txt(card, "N", CharacterLore.Nombre(avatarId), Color.white, 42,
+                           new Vector2(0.40f, 0.80f), new Vector2(0.95f, 0.94f));
+        nm.fontStyle = FontStyles.Bold;
+        nm.characterSpacing = 4f;
+        nm.alignment = TextAlignmentOptions.MidlineLeft;
+        var tt = KidUI.Txt(card, "TT", CharacterLore.Titulo(avatarId),
+                           new Color(0.30f, 0.65f, 1f), 21,
+                           new Vector2(0.40f, 0.73f), new Vector2(0.95f, 0.80f));
+        tt.fontStyle = FontStyles.Bold;
+        tt.alignment = TextAlignmentOptions.MidlineLeft;
+
+        // La historia
+        var story = KidUI.Txt(card, "Story", CharacterLore.Historia(avatarId),
+                              new Color(0.88f, 0.92f, 1f), 20,
+                              new Vector2(0.40f, 0.18f), new Vector2(0.95f, 0.72f));
+        story.alignment = TextAlignmentOptions.TopLeft;
+        story.enableWordWrapping = true;
+
+        KidUI.Btn(card, "¡Me encanta!", KidUI.GOOD,
+                  new Vector2(0.36f, 0.045f), new Vector2(0.64f, 0.145f),
+                  CloseLoreModal, 22f);
+
+        UITween.PopIn(card, 0.35f, 0.85f);
+        GameFeel.PlayPop();
+    }
+
+    void CloseLoreModal()
+    {
+        if (_loreModal != null) Destroy(_loreModal);
+        _loreModal = null;
     }
 
     void OnCreateConfirm()

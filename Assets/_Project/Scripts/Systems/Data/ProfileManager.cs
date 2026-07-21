@@ -52,7 +52,19 @@ public class ProfileManager : MonoBehaviour
     {
         if (scene.name != SceneLoader.MAIN_MENU) return;
 
-        // Primer arranque: consentimiento parental ANTES de cualquier dato.
+        // Primerísimo arranque: vídeo de presentación ANTES de todo.
+        if (IntroVideoScreen.ShouldShow)
+        {
+            IntroVideoScreen.Show(onFinished: AfterIntroVideo);
+            return;
+        }
+        AfterIntroVideo();
+    }
+
+    /// <summary>Flujo tras el vídeo de presentación (o si ya se vio):
+    /// consentimiento parental primero, luego el enrutado normal.</summary>
+    void AfterIntroVideo()
+    {
         if (!ConsentGiven)
         {
             ConsentScreen.Show(onAccepted: RouteFromMainMenu);
@@ -76,6 +88,12 @@ public class ProfileManager : MonoBehaviour
         // Por si la escena inicial ya estaba cargada antes de suscribirnos.
         if (_gateShownOnce || SceneManager.GetActiveScene().name != SceneLoader.MAIN_MENU)
             return;
+        if (IntroVideoScreen.IsOpen) return;   // el vídeo ya está en marcha
+        if (IntroVideoScreen.ShouldShow)
+        {
+            IntroVideoScreen.Show(onFinished: AfterIntroVideo);
+            return;
+        }
         if (!ConsentGiven)
         {
             ConsentScreen.Show(onAccepted: RouteFromMainMenu);

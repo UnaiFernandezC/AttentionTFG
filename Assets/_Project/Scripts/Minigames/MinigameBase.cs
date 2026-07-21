@@ -46,6 +46,53 @@ public abstract class MinigameBase : MonoBehaviour
         ActiveCategory = category;
         TelemetryManager.NotifyMinigameStarted(minigameName, category);
         OnMinigameStart();
+        ShowChallengeChip();   // chip "RETO: ORO" si el sector ya tiene rango
+    }
+
+    /// <summary>Chip central discreto que indica el reto actual del sector (rango
+    /// del ChallengeSystem). Solo se muestra si el sector ya está revivido
+    /// (rango >= 1). Canvas propio, no bloquea clics.</summary>
+    void ShowChallengeChip()
+    {
+        int r = ChallengeSystem.RankEscenaActual();
+        if (r < 1) return;
+
+        string pid = GameCatalog.ActiveProfileId;
+        string sb  = ChallengeSystem.SceneBaseActual();
+        var (faltan, siguiente) = ChallengeSystem.PuntosParaSiguiente(pid, sb);
+        int metaSiguiente = siguiente != null
+            ? ChallengeSystem.MejorPuntuacion(pid, sb) + faltan : 0;
+
+        Color col = ChallengeSystem.ColorRango(r);
+        var cv = KidUI.MakeCanvas("ChallengeChip", 60);
+        var root = cv.GetComponent<RectTransform>();
+
+        var chip = KidUI.RoundImg(root, "Chip", new Color(0.05f, 0.07f, 0.14f, 0.92f),
+            new Vector2(0.36f, 0.935f), new Vector2(0.64f, 0.995f),
+            Vector2.zero, Vector2.zero, 2.2f);
+        chip.GetComponent<Image>().raycastTarget = false;
+
+        var line = KidUI.RoundImg(chip, "Line", col,
+            new Vector2(0.10f, 0f), new Vector2(0.90f, 0f),
+            new Vector2(0f, 3f), new Vector2(0f, 4f), 4f);
+        line.GetComponent<Image>().raycastTarget = false;
+
+        // Rango actual del sector
+        var t = KidUI.Txt(chip, "T", "RETO: " + ChallengeSystem.NombreRango(r),
+                          col, 16, new Vector2(0.04f, siguiente != null ? 0.46f : 0f),
+                          new Vector2(0.96f, 1f));
+        t.fontStyle = FontStyles.Bold;
+        t.characterSpacing = 2f;
+        t.raycastTarget = false;
+
+        // Meta de puntos para el siguiente rango (si no es ya DIAMANTE)
+        if (siguiente != null)
+        {
+            var meta = KidUI.Txt(chip, "Meta", $"Meta {siguiente}: {metaSiguiente} pts",
+                                 new Color(0.80f, 0.86f, 0.96f), 12,
+                                 new Vector2(0.04f, 0.06f), new Vector2(0.96f, 0.48f));
+            meta.raycastTarget = false;
+        }
     }
 
     void BuildIntroPanel()
@@ -71,6 +118,10 @@ public abstract class MinigameBase : MonoBehaviour
                                string[] stats = null, string title = null,
                                string subtitle = null)
     {
+        // Registra la puntuación de la partida ganada para el sistema de rangos
+        // (la mejor marca decide si el sector sube de BRONCE a DIAMANTE).
+        if (success) ChallengeSystem.RegistrarResultado(score, stars);
+
         ResultsPanel.Show(new ResultsPanel.Config
         {
             success = success,
